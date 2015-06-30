@@ -2,7 +2,7 @@ package org.codeprose.provider
 
 import java.io.File
 import scalariform.lexer.Token
-import scalariform.lexer.ScalaLexer
+
 import com.typesafe.scalalogging.LazyLogging
 
 
@@ -17,6 +17,7 @@ object Tokenizer extends Tokenizer with LazyLogging{
   def tokenize(file: File): List[Token] = {
     logger.info("Tokenizing: \t" + file)
     val content = scala.io.Source.fromFile(file.getAbsolutePath(), "utf-8").getLines.mkString("\n")
-    ScalaLexer.rawTokenise(content)     
+    import scalariform.lexer.{ScalaLexer => lexer}
+    lexer.rawTokenise(content)     
    }
 }

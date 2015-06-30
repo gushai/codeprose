@@ -8,6 +8,7 @@ import org.ensime.model.OffsetRange
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Success, Failure}
+import com.typesafe.scalalogging.LazyLogging
 
 trait TokenEnricher {
    def initialize() : Unit 
@@ -17,7 +18,10 @@ trait TokenEnricher {
 }
 
 
-class EnsimeProvider(host: String, port: Int) extends TokenEnricher {
+class EnsimeProvider(
+    host: String, 
+    port: Int) 
+    extends TokenEnricher with LazyLogging {
 
   private val ensimeClient = new Client(host,port)
   ensimeClient.initialize()
@@ -26,21 +30,18 @@ class EnsimeProvider(host: String, port: Int) extends TokenEnricher {
   def shutdownServer() : Unit = {
     ensimeClient.shutdownServer()
   }
-  
-  def log(s: String) : Unit = {
-    println("[EnsimeProvider]:\t"+s)
-  }
-  
+ 
+ 
   def initialize(): Unit = {
-    
+    logger.info("Initializing Ensime client ... ")
     ensimeClient.initialize()
-    log("Initialized Ensime client.")
+    logger.info("Done.")
     /// TODO: 
     // Get connection info and initialize project
     // Requires a more sophisticated verion of the ensimeclient to return information on messages that have no return point
     
     val connectionInto = ensimeClient.connectionInfo()
-    log("Connection Info: " + connectionInto.toString())
+    logger.info("Connection Info: " + connectionInto.toString())
     
     // send
     //Init project message
@@ -52,7 +53,7 @@ class EnsimeProvider(host: String, port: Int) extends TokenEnricher {
   }
 
   def enrichTokens(file: File, tokens: List[Token]): scala.collection.mutable.Map[Int,(Token, List[(String,String)])] = {
-   
+    logger.info("Enriching tokens: \t." + file)
     val information = scala.collection.mutable.Map[Int,(Token,List[(String,String)])]()
         
     for (token <- tokens){

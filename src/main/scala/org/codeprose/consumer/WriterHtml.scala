@@ -5,16 +5,17 @@ import scalariform.lexer.Tokens
 import java.io.File
 import org.codeprose.util.FileUtil
 import scala.collection.immutable.ListMap
+import com.typesafe.scalalogging.Logger
+import org.slf4j.LoggerFactory
+import com.typesafe.scalalogging.LoggerMacro
+import com.typesafe.scalalogging.LazyLogging
 
 
 
 class WriterHtml(outputPath: File)
-extends Consumer {
-
-	def log(s: String): Unit = {
-			println("[WriterHtml]\t" + s)
-	}
-
+extends Consumer with LazyLogging {
+ 
+  
 	def generateOutput(
 			info: scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.Map[Int,(Token,List[(String, String)] )])]
 			): Unit = {
@@ -23,29 +24,24 @@ extends Consumer {
 					val outputFilenames = filenamesShorted.map(s => outputPath + "/content/" + s.replace("/","_") + ".html")
 
 
-					log("Generating output ...")
-
-
-					log("Index page ...")
+					logger.info("Generating output ...")
+					
 					generateIndexFile(info.map(e => e._1.getAbsolutePath()).toArray,filenamesShorted,outputFilenames)
-
-					log("Individual pages")
+          
+					logger.info("Individual pages: ")
 					var idx=0
 					for(i<-info){     
 						generateOutputFile(new File(outputFilenames(idx)),i._1,i._2)
 						idx+=1
 					}
-			log("...Done.")
+			logger.info("Done.")
 	}
 
-	private def generateIndexFile(originalFilenames: Array[String], filenamesShortened : Array[String], links: Array[String] ) : Unit = {
-
+	private def generateIndexFile(originalFilenames: Array[String], filenamesShortened : Array[String], links: Array[String] ) : Unit = {   
 			val outputFilename= new File(outputPath.getAbsolutePath + "/index.html")
-
-			log(outputFilename.getAbsolutePath)
-
+      logger.info("Index page: \t" + outputFilename + " ...")      
 			val htmlFrame = new HtmlIndexContext()			
-			FileUtil.writeToFile(outputFilename,htmlFrame.begin + htmlFrame.getFileListing(originalFilenames,filenamesShortened,links) + htmlFrame.end)
+			FileUtil.writeToFile(outputFilename,htmlFrame.begin + htmlFrame.getFileListing(originalFilenames,filenamesShortened,links) + htmlFrame.end)      
 	} 
 
 	private def generateOutputFile(
@@ -53,6 +49,7 @@ extends Consumer {
 			srcFile: File, 
 			info: scala.collection.mutable.Map[Int,(Token, List[(String, String)])]) : Unit = {
 
+      logger.info("Processing: \t" + srcFile)
 			val infoSorted = ListMap(info.toSeq.sortBy(_._1):_*)
 
 			val htmlFrame = new HtmlContext(srcFile.getAbsolutePath(),getPackageInformationForFile(srcFile))

@@ -12,9 +12,10 @@ import org.codeprose.provider.EnsimeProvider
 import scalariform.lexer.Token
 import org.codeprose.consumer.WriterHtml
 import org.codeprose.consumer.Consumer
+import com.typesafe.scalalogging.LazyLogging
 
 
-object Broker {
+object Broker extends LazyLogging {
   
   def main(args: Array[String]): Unit = {
     
@@ -26,7 +27,7 @@ object Broker {
       val outputPath = if(!args(1).endsWith("/")){
         new File(args(1)+"/")
       } else new File(args(1))
-      
+      logger.info("Starting codeprose broker.")
       codeprose(ensimeFile,mainSrcFolder,outputPath)
     }
   }
@@ -47,6 +48,7 @@ object Broker {
 //      broker.close()
 //    }
 //        
+    
     val info = broker.analyzeSourceCode()
     broker.generateOutput(info)
         
@@ -61,7 +63,11 @@ object Broker {
 }
 
 
-class Broker(ensimeFile: File, mainSrcFolder: File, outputPath: File){
+class Broker(
+    ensimeFile: File, 
+    mainSrcFolder: File, 
+    outputPath: File)
+    extends LazyLogging {
   
   val host = "127.0.0.1"
   val port =  setPort()
@@ -99,7 +105,7 @@ class Broker(ensimeFile: File, mainSrcFolder: File, outputPath: File){
   def analyzeSourceCode() : scala.collection.mutable.ArrayBuffer[
     (java.io.File, scala.collection.mutable.Map[Int,(Token,List[(String, String)] )])] 
   = {
-    
+    logger.info("Analysing source code ... ")
     val out = scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.Map[Int,(Token,List[(String, String)] )])]()
 
     for(f <- filesToProcess){
@@ -127,6 +133,7 @@ class Broker(ensimeFile: File, mainSrcFolder: File, outputPath: File){
       info: 
       scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.Map[Int,(Token,List[(String, String)] )])]) 
   : Unit = {
+    logger.info("Generating output ... ")
    consumer.generateOutput(info)
   }
     

@@ -119,11 +119,11 @@ extends Consumer {
 	}
 
   private def handleComments(token: Token, tokenProp: List[(String, String)]) : String = {
-    import org.codeprose.consumer.MarkDownScalaMd
+    import org.codeprose.consumer.util.MarkdownConverter
     import org.codeprose.consumer.util.CommentUtil
     token.tokenType match{ 
       case Tokens.MULTILINE_COMMENT => {            
-                s"""\n<div class="textbox">""" + MarkDownScalaMd.apply(CommentUtil.cleanMultilineComment(token.rawText)) + "\n</div>"
+                s"""\n<div class="textbox">""" + MarkdownConverter.apply(CommentUtil.cleanMultilineComment(token.rawText)) + "\n</div>"
               }        
        case _ => {            
                 s"""<span class="comment">""" + token.rawText + "</span>"

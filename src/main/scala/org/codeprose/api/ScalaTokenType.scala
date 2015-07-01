@@ -1,10 +1,10 @@
 package org.codeprose.api
 
 trait TokenType {
-  
+  val name : String 
 }
 
-case class ScalaTokenType(name: String, isXml: Boolean = false) {
+case class ScalaTokenType(val name: String, isXml: Boolean = false) extends TokenType {
 
   import org.codeprose.api.{ScalaTokens => Tokens}
   

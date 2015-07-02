@@ -5,8 +5,9 @@ import java.io.File
 import scala.io.Source
 import scala.sys.process._
 import ExecutionContext.Implicits.global
+import com.typesafe.scalalogging.LazyLogging
 
-object EnsimeServerUtil {
+object EnsimeServerUtil extends LazyLogging {
 
 	def startEnsimeServer(ensimeFile: File) : Process ={
 
@@ -29,7 +30,7 @@ object EnsimeServerUtil {
       val port : Future[Int] = Future {
 
 				while(!pathToEnsimePort.exists() && numOfTries<maxNumOfTrials){
-          println("...waiting... for port file")
+          logger.info("waiting for port file (" + (maxNumOfTrials-numOfTries)*timeToWaitMs + " ms left)")
 					Thread.sleep(timeToWaitMs)          
 				}
 				if (pathToEnsimePort.exists()){

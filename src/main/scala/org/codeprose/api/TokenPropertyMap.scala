@@ -10,7 +10,7 @@ class TokenPropertyMap {
   import TokenPropertyMap.Key
   import collection.mutable.Map
   
-  val data = Map.empty[Key,Any]
+  private val data = Map.empty[Key,Any]
   
   def get(key: Key) : Option[key.Value] = {
     data.get(key).asInstanceOf[Option[key.Value]]
@@ -87,7 +87,7 @@ object ScalaLangKeys extends org.codeprose.api.Keys {
    val tokenType = new Key('tokenType) with TokenTypeValued
    val token = new Key('token) with TokenValued
    val declaredAt = new Key('declaredAt) with SourcePositionValued
-   val typeId = new Key('typeId) with IntValued
+   val typeId = new Key('typeId) with IntValued   
    // TODO be extended
 }
   

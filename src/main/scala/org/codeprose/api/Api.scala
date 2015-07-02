@@ -13,8 +13,9 @@ trait Language {
 
 	trait DefaultToken {
 		val offset: Int
-		val text: String
+		val text: String // In case of scala unicode escaping is not applied
 		val length = text.length
+    val range = Range(offset, offset+length)
 	}
 
 	type Token <: DefaultToken 
@@ -25,7 +26,7 @@ object ScalaLang extends Language {
 
 	trait ScalaToken extends DefaultToken {
 		type tokenType <: ScalaTokenType
-		val tokenType : ScalaTokenType
+		val tokenType : ScalaTokenType    
 	}
 
 	type TokenType <: ScalaToken 

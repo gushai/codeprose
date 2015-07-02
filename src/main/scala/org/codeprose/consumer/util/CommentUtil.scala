@@ -2,9 +2,10 @@ package org.codeprose.consumer.util
 
 object CommentUtil {
 
-  /*
+  /**
    * Removes leading / * and  trailing * / and removes leading WS * WS in each lines (WS whitespace).
-   *    
+   * @param source multi line comment. Either /* */ or /** */
+   * @return source string without the comment symbols    
    */
   def cleanMultilineComment(source: String): String = {   
     // Remove 
@@ -28,6 +29,18 @@ object CommentUtil {
         }
       }
     }.mkString("\n")        
+  }
+  
+  /**
+   * Returns true if string begins with WS / * *
+   * @param source multi line comment.
+   * @return true if after trimming source begins with ScalaDoc comment begin / * *
+   */
+  def isScalaDocComment(source: String) : Boolean  = {
+    if (source.trim().startsWith("/**"))
+      return true
+    else 
+      return false
   }
   
   

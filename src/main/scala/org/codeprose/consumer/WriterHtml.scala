@@ -119,13 +119,23 @@ extends Consumer with LazyLogging {
     import org.codeprose.consumer.util.MarkdownConverter
     import org.codeprose.consumer.util.CommentUtil
     token.tokenType match{ 
-      case Tokens.MULTILINE_COMMENT => {            
-                s"""\n<div class="textbox">""" + MarkdownConverter.apply(CommentUtil.cleanMultilineComment(token.rawText)) + "\n</div>"
+      case Tokens.MULTILINE_COMMENT => {
+                val s = if(CommentUtil.isScalaDocComment(token.rawText)){
+                  handleCommentsScalaDoc(token)
+                } else {
+                  s"""\n<div class="textbox">""" + MarkdownConverter.apply(CommentUtil.cleanMultilineComment(token.rawText)) + "\n</div>"
+                }
+                s
               }        
        case _ => {            
                 s"""<span class="comment">""" + token.rawText + "</span>"
               }        
     }
+  }
+  
+  private def handleCommentsScalaDoc(token: Token) : String = {
+      // TODO: Include proper handling of Scaladoc comments
+      s"""<span class="scaladoc">""" + token.rawText + "</span>"
   }
   
 	private def handleKeywords(token: Token, tokenProp: List[(String, String)]) : String = {
@@ -246,7 +256,8 @@ extends Consumer with LazyLogging {
 			htmlEntries: Iterable[String]
 			) 
 			: scala.collection.mutable.ArrayBuffer[String] = {
-			val combinedHtmlEntries = (infoSorted.map(e=>if(e._2._1.tokenType == Tokens.MULTILINE_COMMENT) true else false).toList zip htmlEntries)
+      import org.codeprose.consumer.util.CommentUtil     
+			val combinedHtmlEntries = (infoSorted.map(e=>if(e._2._1.tokenType == Tokens.MULTILINE_COMMENT && !CommentUtil.isScalaDocComment(e._2._1.rawText)) true else false).toList zip htmlEntries)
 
 					val outputArray = scala.collection.mutable.ArrayBuffer[String]()
 

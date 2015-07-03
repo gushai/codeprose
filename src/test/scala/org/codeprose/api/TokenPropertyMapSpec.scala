@@ -20,8 +20,11 @@ class TokenPropertyMapSpec extends FunSpec {
       tpm.set(ScalaLangKeys.typeId)(24)
       assert(tpm.size() == 3)
       tpm.set(ScalaLangKeys.declaredAt)(new SourcePosition("pathtofile",42))
-      assert(tpm.size() == 4)
-            
+      assert(tpm.size() == 4)      
+      tpm.set(ScalaLangKeys.fullName)("full.name")
+      assert(tpm.size() == 5)
+      
+                  
       // Get stuff and remove
       tpm.get(ScalaLangKeys.typeId) match {
         case Some(id) => assert(id==24)
@@ -41,13 +44,18 @@ class TokenPropertyMapSpec extends FunSpec {
       }
       tpm.remove(ScalaLangKeys.text)
       
-      
       val sp = tpm.get(ScalaLangKeys.declaredAt)
       sp match {
         case Some(sp) => assert(sp.filename == "pathtofile" && sp.offset == 42)
         case None => fail()
       }
       tpm.remove(ScalaLangKeys.declaredAt)
+            
+      tpm.get(ScalaLangKeys.fullName) match {
+        case Some(name) => assert(name == "full.name")
+        case None => fail()
+      }
+      tpm.remove(ScalaLangKeys.fullName)
       
       assert(tpm.size() == 0)
     }

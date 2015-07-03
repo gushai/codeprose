@@ -86,8 +86,16 @@ object ScalaLangKeys extends org.codeprose.api.Keys {
    
    val tokenType = new Key('tokenType) with TokenTypeValued
    val token = new Key('token) with TokenValued
+   val fullName = new Key('fullName) with StringValued
    val declaredAt = new Key('declaredAt) with SourcePositionValued
    val typeId = new Key('typeId) with IntValued   
+   // Alternative speicification with anom inner class
+   // val dummy = new Key('dummy) {type Value = String}
+   
+   // Alt: 2
+   def key[T](key: Symbol) : Key { type Value = T } = {
+     new Key(key) {type Value = T}
+     }
    // TODO be extended
 }
   

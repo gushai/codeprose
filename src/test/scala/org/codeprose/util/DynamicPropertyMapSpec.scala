@@ -93,8 +93,15 @@ class DynamicPropertyMapSpec extends FunSpec {
       
     }
     
-    it("should fail ") {
-      fail()
+    it("should be able to handle requests for key that are not in the DPM") {
+      
+      import FancySpec._
+      val dpm = DPM(42)
+      
+      assert(dpm(tt) == None)
+      assert(dpm(foo) == None)
+      assert(dpm(fullName) == None)
+      
     }
     
   }

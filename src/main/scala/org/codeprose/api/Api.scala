@@ -7,7 +7,10 @@ import org.codeprose.api.TokenProperties.SourcePosition
 // Token
 class Token(val offset: Int, val text: String) extends DynamicPropertyMap {
 	val length = text.length
-			val range = Range(offset,offset+length)  
+  val range = Range(offset,offset+length)
+  def toPrettyString() : String = {
+   s"""Token($text,$offset) w/ prop: """ + toString()   
+  }
 }
 
 

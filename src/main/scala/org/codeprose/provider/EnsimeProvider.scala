@@ -62,34 +62,44 @@ class EnsimeProvider(host: String, port: Int) extends TokenEnricher with LazyLog
     import org.codeprose.api.ScalaLang._
     import org.codeprose.api.ScalaTokens
     import org.codeprose.api.TokenProperties.SourcePosition
+    
     for (token <- tokens){
      
-      token(tokenType) match {
-        
-        case ScalaTokens.VARID => {             	 
-    	    val typeInfo = ensimeClient.typeAtPoint(file, OffsetRange(token.offset))
-        
-    	  typeInfo onSuccess({
-    	  case Some(tI) => {
-          if(!tI.pos.isDefined)
-    		  {
-            token.set(fullName)(tI.fullName)
-            token.set(typeId)(tI.typeId)
-            token.set(declaredAs)(tI.declAs.toString)
-          }
-          else{
-            token.set(fullName)(tI.fullName)
-            token.set(typeId)(tI.typeId)
-            token.set(declaredAs)(tI.declAs.toString)
-            token.set(declaredAt)(new SourcePosition(tI.pos.get.asInstanceOf[org.ensime.model.OffsetSourcePosition].file.getAbsolutePath,
-                                  tI.pos.get.asInstanceOf[org.ensime.model.OffsetSourcePosition].offset))
-          }
-    	  }    	  
-      })
-        }
-    	  
-      } 
+      val tokenTyp = token(tokenType)
       
+    		  tokenTyp match {
+    		  case Some(tt) => {
+    			  tt match {
+
+    			  case ScalaTokens.VARID => {             	 
+    				  val typeInfo = ensimeClient.typeAtPoint(file, OffsetRange(token.offset))
+
+    						  typeInfo onSuccess({
+    						  case Some(tI) => {
+    							  if(!tI.pos.isDefined)
+    							  {
+    								  token.set(fullName)(tI.fullName)
+    								  token.set(typeId)(tI.typeId)
+    								  token.set(declaredAs)(tI.declAs.toString)
+    							  }
+    							  else{
+    								  token.set(fullName)(tI.fullName)
+    								  token.set(typeId)(tI.typeId)
+    								  token.set(declaredAs)(tI.declAs.toString)
+    								  token.set(declaredAt)(new SourcePosition(tI.pos.get.asInstanceOf[org.ensime.model.OffsetSourcePosition].file.getAbsolutePath,
+    										  tI.pos.get.asInstanceOf[org.ensime.model.OffsetSourcePosition].offset))
+    							  }
+    						  }    	  
+    						  })
+    			  }
+
+    			  } 
+
+    		  }
+          case _ => { logger.info("Oops: Not able to determine the tokenType")
+            
+          }
+      } 
     }
 
     // TODO: Professional waiting for all futures. Set limit of 3sec??

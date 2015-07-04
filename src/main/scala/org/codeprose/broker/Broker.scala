@@ -6,12 +6,12 @@ import scala.util.{Success, Failure}
 import scala.concurrent._
 import scala.concurrent.duration._
 import ExecutionContext.Implicits.global
-import org.codeprose.util.FileUtil
-import org.codeprose.provider.Tokenizer
-import org.codeprose.provider.EnsimeProvider
-import scalariform.lexer.Token
+import org.codeprose.api.Token
 import org.codeprose.consumer.WriterHtml
 import org.codeprose.consumer.Consumer
+import org.codeprose.provider.Tokenizer
+import org.codeprose.provider.EnsimeProvider
+import org.codeprose.util.FileUtil
 import com.typesafe.scalalogging.LazyLogging
 
 
@@ -103,23 +103,16 @@ class Broker(
       
   // For each file get tokens and enrich them
   def analyzeSourceCode() : scala.collection.mutable.ArrayBuffer[
-    (java.io.File, scala.collection.mutable.Map[Int,(Token,List[(String, String)] )])] 
+    (java.io.File, scala.collection.mutable.ArrayBuffer[Token])]
   = {
+      
     logger.info("Analysing source code ... ")
-    val out = scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.Map[Int,(Token,List[(String, String)] )])]()
+    val out = scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.ArrayBuffer[Token])]()
 
     for(f <- filesToProcess){
-      
-      // Get enriched tokens
-      println("[Broker]:\t" + f.toString())
-      val tokens = Tokenizer.tokenize(f)
-      //tokens.foreach(t => if (t.offset < 100) println(t.toString() ))
-      val enrichedTokens = provider.enrichTokens(f, tokens)        
-     /*
-      enrichedTokens.foreach( 
-          p => println("[BROKER]:\t" + "Offset: "+p._1.toString() + "\tToken: " + p._2._1 + "\tProp:" + p._2._2.toString())         
-      )*/                                     
-     out += ((f,enrichedTokens))
+      logger.info(f.toString())
+      val tokens = provider.getEnrichedTokens(f)                                    
+     out += ((f,tokens))
     } 
     out
   }
@@ -131,9 +124,8 @@ class Broker(
   // Generate output
   private def generateOutput(
       info: 
-      scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.Map[Int,(Token,List[(String, String)] )])]) 
-  : Unit = {
-    logger.info("Generating output ... ")
+      scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.ArrayBuffer[Token])]) 
+  : Unit = {    
    consumer.generateOutput(info)
   }
     

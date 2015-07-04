@@ -4,7 +4,6 @@ package org.codeprose.provider
 import scala.collection.mutable.ArrayBuffer
 import java.io.File
 import com.typesafe.scalalogging.LazyLogging
-import org.codeprose.api.TokenPropertyMap
 
 trait Tokenizer {
   def tokenize(src: String) : ArrayBuffer[org.codeprose.api.Token]

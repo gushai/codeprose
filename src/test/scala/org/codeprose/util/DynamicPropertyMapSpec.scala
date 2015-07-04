@@ -3,6 +3,9 @@ package org.codeprose.util
 import org.scalatest.FunSpec
 
   
+// TODO: Replace with mocks?
+
+// Setup for key and extended keys
 trait DefaultSpec {
   trait TT {    
     val bar : String
@@ -87,7 +90,6 @@ class DynamicPropertyMapSpec extends FunSpec {
       }
       dpm.remove(tt)
       assert(dpm.size() == 0)
-      
       
     }
     

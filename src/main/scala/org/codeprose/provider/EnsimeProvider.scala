@@ -1,9 +1,7 @@
 package org.codeprose.provider
 
 import org.ensime.client.Client
-import scalariform.lexer.Token
 import java.io.File
-import scalariform.lexer.Tokens
 import org.ensime.model.OffsetRange
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -12,16 +10,18 @@ import com.typesafe.scalalogging.LazyLogging
 
 trait TokenEnricher {
    def initialize() : Unit 
-   def close() : Unit 
-   //def enrichTokens(file : File, tokens: List[Token]) : scala.collection.mutable.Map[Token,List[(String,String)]] 
-   def enrichTokens(file : File, tokens: List[Token]) : scala.collection.mutable.Map[Int,(Token,List[(String,String)])]
+   def close() : Unit    
+   def getEnrichedTokens(file : File) : scala.collection.mutable.ArrayBuffer[org.codeprose.api.Token]
 }
 
+// TODO: Do clearer specification of meta information specification
+//trait MetaInformationEnricher {
+//   def initializeMeta() : Unit 
+//   def close() : Unit   
+//} 
+   
 
-class EnsimeProvider(
-    host: String, 
-    port: Int) 
-    extends TokenEnricher with LazyLogging {
+class EnsimeProvider(host: String, port: Int) extends TokenEnricher with LazyLogging {
 
   private val ensimeClient = new Client(host,port)
   ensimeClient.initialize()
@@ -31,7 +31,7 @@ class EnsimeProvider(
     ensimeClient.shutdownServer()
   }
  
- 
+  
   def initialize(): Unit = {
     logger.info("Initializing Ensime client ... ")
     ensimeClient.initialize()
@@ -43,6 +43,7 @@ class EnsimeProvider(
     val connectionInto = ensimeClient.connectionInfo()
     logger.info("Connection Info: " + connectionInto.toString())
     
+    // TODO: Check if certain messages need to be send to initialize project
     // send
     //Init project message
     isInitialized = true
@@ -52,70 +53,64 @@ class EnsimeProvider(
     ensimeClient.close()
   }
 
-  def enrichTokens(file: File, tokens: List[Token]): scala.collection.mutable.Map[Int,(Token, List[(String,String)])] = {
-    logger.info("Enriching tokens: \t." + file)
-    val information = scala.collection.mutable.Map[Int,(Token,List[(String,String)])]()
-        
+  def getEnrichedTokens(file: File) : scala.collection.mutable.ArrayBuffer[org.codeprose.api.Token] = {
+  
+    logger.info("Processing: \t" + file)
+    val tokens = getTokens(file)
+    logger.info("Enriching tokens.")
+    
+    import org.codeprose.api.ScalaLang._
+    import org.codeprose.api.ScalaTokens
+    import org.codeprose.api.TokenProperties.SourcePosition
     for (token <- tokens){
      
-      token.tokenType match {               
-        case Tokens.VARID => {
-         
-    	  
-    	  val typeInfo = ensimeClient.typeAtPoint(file, OffsetRange(token.offset))
+      token(tokenType) match {
+        
+        case ScalaTokens.VARID => {             	 
+    	    val typeInfo = ensimeClient.typeAtPoint(file, OffsetRange(token.offset))
         
     	  typeInfo onSuccess({
-    	  case Some(t) => {
-          if(!t.pos.isDefined)
+    	  case Some(tI) => {
+          if(!tI.pos.isDefined)
     		  {
-            information += (token.offset ->(token,List[(String,String)](
-                ("NAME",t.fullName),
-                ("TYPEID",t.typeId.toString),
-                ("DECLAS",t.declAs.toString))))
+            token.set(fullName)(tI.fullName)
+            token.set(typeId)(tI.typeId)
+            token.set(declaredAs)(tI.declAs.toString)
           }
           else{
-              information += (token.offset -> (token,List[(String,String)](
-                  ("NAME",t.fullName),
-                  ("TYPEID",t.typeId.toString),
-                  ("DECLAS",t.declAs.toString),
-                  ("POS-PATH",t.pos.get.asInstanceOf[org.ensime.model.OffsetSourcePosition].file.getAbsolutePath),
-                  ("POS-OFFSET",t.pos.get.asInstanceOf[org.ensime.model.OffsetSourcePosition].offset.toString)
-                  )))
+            token.set(fullName)(tI.fullName)
+            token.set(typeId)(tI.typeId)
+            token.set(declaredAs)(tI.declAs.toString)
+            token.set(declaredAt)(new SourcePosition(tI.pos.get.asInstanceOf[org.ensime.model.OffsetSourcePosition].file.getAbsolutePath,
+                                  tI.pos.get.asInstanceOf[org.ensime.model.OffsetSourcePosition].offset))
           }
-    				  
-
-    	  }
-    	  case None => {
-    		  information += (token.offset -> (token,List[(String,String)]()))
-    	  }
-    	  })
-
-    	  typeInfo onFailure({          
-    	  case _ => {
-    		  information += (token.offset -> (token,List[(String,String)]()))
-    	  }
-    	  })    
+    	  }    	  
+      })
+        }
+    	  
       } 
-      case _ => {
-          information += (token.offset -> (token -> List[(String,String)]()))    
-      }
-      }     
+      
     }
-    
-    println("[EnsimeProvider]:\t" +"Awaiting results ... ")
-    Thread.sleep(4000)
-    
-    return information
+
+    // TODO: Professional waiting for all futures. Set limit of 3sec??
+    logger.info("Awaiting results of token enrichment...")
+    Thread.sleep(4000)    
+    return tokens
+  }
+
+  private def getTokens(file: java.io.File) = {
+    logger.info("Getting raw tokens.")
+    import org.codeprose.util.FileUtil    
+    val srcContent = FileUtil.loadSrcFileContent(file)        
+    val tokens = org.codeprose.provider.ScalaTokenizer.tokenize(srcContent)
+    tokens
   }
   
   def getConnectionInfo() : Unit = {
     val f = ensimeClient.connectionInfo()       
     f onComplete {
       case Success(c) => {println(c.toString())}
-      case Failure(c) => {println("boahhhh connection info failed!")}      
+      case Failure(c) => {println("Oops: Connection info failed!")}      
     }          
   }
-  
-  
-  
 }

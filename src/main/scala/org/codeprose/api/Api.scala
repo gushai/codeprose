@@ -42,10 +42,13 @@ trait ScalaLang extends DefaultLang {
   // ScalaLang Keys  
   import DynamicPropertyMap._
   
-  val declaredAt = new Key('declaredAt) { type Value = SourcePosition } 
+  val declaredAs = new Key('declaredAs) { type Value = String }
+  val declaredAt = new Key('declaredAt) { type Value = SourcePosition }
+  
   val fullName = new Key('fullName) { type Value = String }  
-  val isArrowTye = new Key('isArrowType) { type Value = Boolean }
+  val isArrowType = new Key('isArrowType) { type Value = Boolean }
   override val tokenType = new Key('tokenType) { type Value = ScalaTokenType }
+  val typeId = new Key('typeId) { type Value = Int }
   
 
 }

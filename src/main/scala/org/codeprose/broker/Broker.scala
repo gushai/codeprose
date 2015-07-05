@@ -50,8 +50,7 @@ object Broker extends LazyLogging {
 //        
     
     val info = broker.analyzeSourceCode()
-    broker.generateOutput(info)
-        
+    broker.generateOutput(info)           
     broker.close()
     
   }

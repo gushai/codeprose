@@ -1,13 +1,18 @@
 package org.codeprose.consumer
 
-
 import java.io.File
-import org.codeprose.util.FileUtil
+
+import org.codeprose.api.ScalaLang.declaredAs
+import org.codeprose.api.ScalaLang.fullName
+import org.codeprose.api.ScalaLang.tokenType
+import org.codeprose.api.ScalaLang.typeId
+import org.codeprose.api.ScalaTokens
 import org.codeprose.api.Token
-import scala.collection.immutable.ListMap
-import com.typesafe.scalalogging.Logger
-import org.slf4j.LoggerFactory
-import com.typesafe.scalalogging.LoggerMacro
+import org.codeprose.consumer.util.CommentUtil
+import org.codeprose.consumer.util.MarkdownConverter
+import org.codeprose.util.FileUtil
+import org.codeprose.util.StringUtil
+
 import com.typesafe.scalalogging.LazyLogging
 
 
@@ -84,18 +89,17 @@ extends Consumer with LazyLogging {
 
 			val htmlEntries = infoSorted.map(token => {
 
-
 				import org.codeprose.api.ScalaLang._
 				import org.codeprose.api.ScalaTokens
 
 				val tokenTyp = token(tokenType)
 				tokenTyp match {
 				case Some(tt) => {
-					if(ScalaTokens.KEYWORDS.contains(tt)){
+					if(tt.isKeyword){
 						handleKeywords(token,tt)             
-					} else if(ScalaTokens.LITERALS.contains(tt)) {
+					} else if(tt.isLiteral) {
 						handleLiterals(token,tt)
-					} else if(ScalaTokens.COMMENTS.contains(tt)) {
+					} else if(tt.isComment) {
 						handleComments(token,tt)
 					}
 					else {              
@@ -133,23 +137,28 @@ extends Consumer with LazyLogging {
 			htmlEntries
 	}
 
+  
+  
+  
+  
   private def handleComments(token: Token, tokenTyp: org.codeprose.api.ScalaLang.ScalaTokenType) : String = {
     import org.codeprose.consumer.util.MarkdownConverter
     import org.codeprose.consumer.util.CommentUtil
     import org.codeprose.api.ScalaLang._
-    import org.codeprose.api.ScalaTokens
+    import org.codeprose.api.ScalaTokens._
+    
     tokenTyp match{ 
-      case ScalaTokens.MULTILINE_COMMENT => {
-                val s = if(CommentUtil.isScalaDocComment(token.text)){
-                  handleCommentsScalaDoc(token)
-                } else {
-                  s"""\n<div class="textbox">""" + MarkdownConverter.apply(CommentUtil.cleanMultilineComment(token.text)) + "\n</div>"
-                }
-                s
-              }        
+      case MULTILINE_COMMENT => {
+        val s = if(CommentUtil.isScalaDocComment(token.text)){
+          handleCommentsScalaDoc(token)
+        } else {
+          s"""\n<div class="textbox">""" + MarkdownConverter.apply(CommentUtil.cleanMultilineComment(token.text)) + "\n</div>"
+        }
+        s
+       }        
        case _ => {            
-                s"""<span class="comment">""" + token.text + "</span>"
-              }        
+        s"""<span class="comment">""" + token.text + "</span>"
+       }        
     }
   }
   
@@ -160,116 +169,116 @@ extends Consumer with LazyLogging {
   
 	private def handleKeywords(token: Token, tokenTyp: org.codeprose.api.ScalaLang.ScalaTokenType) : String = {
       import org.codeprose.api.ScalaLang._
-      import org.codeprose.api.ScalaTokens
+      import org.codeprose.api.ScalaTokens._
     
       
 			tokenTyp match {
-			case ScalaTokens.ABSTRACT => {
+			case ABSTRACT => {
 				s"""<span class="keyword" title="Scala keyword: ABSTRACT">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.CASE => {
+			case CASE => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.CATCH => {
+			case CATCH => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.CLASS => {
+			case CLASS => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.DEF => {
+			case DEF => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.DO => {
+			case DO => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.ELSE => {
+			case ELSE => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.EXTENDS => {
+			case EXTENDS => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.FINAL => {
+			case FINAL => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.FINALLY => {
+			case FINALLY => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.FOR => {
+			case FOR => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.FORSOME => {
+			case FORSOME => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.IF => {
+			case IF => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.IMPLICIT => {
+			case IMPLICIT => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.IMPORT => {
+			case IMPORT => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.LAZY => {
+			case LAZY => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.MATCH => {
+			case MATCH => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.NEW => {
+			case NEW => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.OBJECT => {
+			case OBJECT => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.OVERRIDE => {
+			case OVERRIDE => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.PACKAGE => {
+			case PACKAGE => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.PRIVATE => {
+			case PRIVATE => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.PROTECTED => {
+			case PROTECTED => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.RETURN => {
+			case RETURN => {
 				s"""<span class="return" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.SEALED => {
+			case SEALED => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.SUPER => {
+			case SUPER => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.THIS => {
+			case THIS => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.THROW => {
+			case THROW => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.TRAIT => {
+			case TRAIT => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.TRY => {
+			case TRY => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.TYPE => {
+			case TYPE => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.VAL => {
+			case VAL => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.VAR => {
+			case VAR => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.WHILE => {
+			case WHILE => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.WITH => {
+			case WITH => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case ScalaTokens.YIELD => {
+			case YIELD => {
 				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>"
 			}
 			}
@@ -284,7 +293,22 @@ extends Consumer with LazyLogging {
       import org.codeprose.api.ScalaLang._
       import org.codeprose.api.ScalaTokens
       
-			val combinedHtmlEntries = (infoSorted.map(t=>if(t(tokenType) == ScalaTokens.MULTILINE_COMMENT && !CommentUtil.isScalaDocComment(t.text)) true else false).toList zip htmlEntries)
+// t(tokenType returns Option!!      
+//			val combinedHtmlEntries = (infoSorted.map(t=>if(t(tokenType) == ScalaTokens.MULTILINE_COMMENT && !CommentUtil.isScalaDocComment(t.text)) true else false).toList zip htmlEntries)
+      val combinedHtmlEntries = (
+          infoSorted.map(
+              t => 
+                if(t(tokenType) match { 
+                  case Some(tt) => { tt == ScalaTokens.MULTILINE_COMMENT && !CommentUtil.isScalaDocComment(t.text) } 
+                  case None => { false }
+                  }
+                ) 
+                  true 
+                else 
+                  false
+              )
+          .toList zip htmlEntries
+          )
 
 					val outputArray = scala.collection.mutable.ArrayBuffer[String]()
 

@@ -12,7 +12,14 @@ class ScalaTokenizerSpec extends FunSpec {
       
       import org.codeprose.provider.ScalaTokenizer
       
-      val source = s"""object HelloWorld {
+      val source = s"""
+        /*
+        * Multi 
+        * line
+        * comment
+        */
+        // single line comment
+        object HelloWorld {
   def main(args: Array[String]) {
     println("Hello, world!")
   }
@@ -33,8 +40,15 @@ class ScalaTokenizerSpec extends FunSpec {
         assert(otherTokens(i).offset == tokens(i).offset)
         assert(otherTokens(i).rawText == tokens(i).text)
         
-        val tokenTypeName = tokens(i)(tokenType).map(tt => tt.name)
-        println(otherTokens(i).tokenType + " // " + tokenTypeName)
+        //val tokenTypeName = tokens(i)(tokenType).map(tt => tt.name)
+        tokens(i)(tokenType) match {
+          case Some(tt) => {
+          println(otherTokens(i).tokenType + " // " + tt.name)
+          assert(tt.name == otherTokens(i).tokenType.name)
+          }
+          case None => fail()
+        }
+        
         
       }
       
@@ -43,7 +57,55 @@ class ScalaTokenizerSpec extends FunSpec {
       
       
     }
-    
+    it("should match MULTILINE_COMMENT tokentype ") { 
+      
+      val source = s"""
+        /*
+        * Multi 
+        * line
+        * comment
+        */      
+        /**
+        * Multi 
+        * line
+        * comment scala doc
+        */
+"""       
+      val otherTokens = scalariform.lexer.ScalaLexer.rawTokenise(source)
+            
+      // Tokenize (internal format)     
+      import org.codeprose.provider.ScalaTokenizer
+      val tokens = ScalaTokenizer.tokenize(source)
+      
+      tokens.foreach(println)
+      
+      import org.codeprose.api.ScalaLang._     
+      import org.codeprose.api.ScalaTokens._
+      
+      assert(tokens(0)(tokenType).get == WS)
+      assert(tokens(1)(tokenType).get == MULTILINE_COMMENT)
+      assert(tokens(2)(tokenType).get == WS)
+      assert(tokens(3)(tokenType).get == MULTILINE_COMMENT)
+      assert(tokens(4)(tokenType).get == WS)
+      assert(tokens(5)(tokenType).get == EOF)
+      
+      
+//      for(t<-tokens){
+//        t(tokenType) match {
+//          case Some(tt) => {
+//            tt match {
+//              case MULTILINE_COMMENT => {
+//                
+//              }
+//              case _ => {
+//                fail()
+//              }
+//            }
+//          }
+//          case None => { fail() }
+//        }
+//      }
+    }
     
   }
   

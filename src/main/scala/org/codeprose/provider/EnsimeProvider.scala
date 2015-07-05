@@ -60,7 +60,7 @@ class EnsimeProvider(host: String, port: Int) extends TokenEnricher with LazyLog
     logger.info("Enriching tokens.")
     
     import org.codeprose.api.ScalaLang._
-    import org.codeprose.api.ScalaTokens
+    import org.codeprose.api.ScalaTokens._
     import org.codeprose.api.TokenProperties.SourcePosition
     
     for (token <- tokens){
@@ -71,7 +71,7 @@ class EnsimeProvider(host: String, port: Int) extends TokenEnricher with LazyLog
     		  case Some(tt) => {
     			  tt match {
 
-    			  case ScalaTokens.VARID => {             	 
+    			  case VARID => {             	 
     				  val typeInfo = ensimeClient.typeAtPoint(file, OffsetRange(token.offset))
 
     						  typeInfo onSuccess({
@@ -91,13 +91,17 @@ class EnsimeProvider(host: String, port: Int) extends TokenEnricher with LazyLog
     							  }
     						  }    	  
     						  })
-    			  }
+    			    }
+              case _ => { 
+                logger.info("No information requested for " + tt)
+               
+              }
 
     			  } 
 
     		  }
           case _ => { logger.info("Oops: Not able to determine the tokenType")
-            
+                throw new Exception("Unknown tt!")
           }
       } 
     }

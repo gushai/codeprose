@@ -33,11 +33,28 @@ trait ScalaLang extends DefaultLang {
   
   	import org.codeprose.api.ScalaTokens._
   	def isNewline = this == ScalaTokens.NEWLINE || this == ScalaTokens.NEWLINES
-  //  def isKeyword = ScalaTokens.KEYWORDS contains this
+    
+    // TODO: Fix: Compiler error: type missmatch
+//[error]  found   : ScalaLang.this.ScalaTokenType
+//[error]  required: org.codeprose.api.ScalaLang.ScalaTokenType
+//[error]     def isKeyword = ScalaTokens.KEYWORDS contains this
+  //  def isKeyword = ScalaTokens.KEYWORDS contains this 
   //	def isComment = ScalaTokens.COMMENTS contains this
   //	def isId = ScalaTokens.IDS contains this
   //	def isLiteral = ScalaTokens.LITERALS contains this
+  def isKeyword = (this == ABSTRACT || this == CASE || this == CATCH || this == CLASS || this == DEF || 
+        this == DO || this == ELSE || this == EXTENDS || this == FINAL || 
+        this == FINALLY || this == FOR || this == FORSOME || this == IF || this == IMPLICIT || 
+        this == IMPORT || this == LAZY || this == MATCH || this == NEW || 
+        this == OBJECT || this == OVERRIDE || this == PACKAGE || this == PRIVATE || this == PROTECTED || 
+        this == RETURN || this == SEALED || this == SUPER || this == THIS || 
+        this == THROW || this == TRAIT || this == TRY || this == TYPE || 
+        this == VAL || this == VAR || this == WHILE || this == WITH || this == YIELD)
+  def isComment = (this == ScalaTokens.MULTILINE_COMMENT || this == ScalaTokens.LINE_COMMENT || this == ScalaTokens.XML_COMMENT)        
+  def isId = (this == VARID || this == PLUS || this == MINUS || this == STAR || this == PIPE || this == TILDE || this == EXCLAMATION)
+  def isLiteral = (this == CHARACTER_LITERAL || this == INTEGER_LITERAL || this == FLOATING_POINT_LITERAL || this == STRING_LITERAL || this == STRING_PART || this == SYMBOL_LITERAL || this == TRUE || this == FALSE || this == NULL)    
   
+    
   	override lazy val toString = name
   
   }

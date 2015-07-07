@@ -13,9 +13,13 @@ class Token(val offset: Int, val text: String) extends DynamicPropertyMap {
   }
 }
 
+// Container of information exchange
+object Api {
+  type TokenInfoContainer = scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.ArrayBuffer[Token])]
+  type MetaInfoContainer = scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.ArrayBuffer[String])]
+}
 
 // DefaultLang
-
 trait DefaultLang {
 	import DynamicPropertyMap._
 	trait TokenType {}

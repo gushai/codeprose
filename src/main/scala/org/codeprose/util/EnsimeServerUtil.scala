@@ -34,8 +34,7 @@ object EnsimeServerUtil extends LazyLogging {
 					Thread.sleep(timeToWaitMs)          
 				}
 				if (pathToEnsimePort.exists()){
-					val lines = Source.fromFile(pathToEnsimePort).getLines().mkString
-							lines.toInt
+					readPortFromPortFile(pathToEnsimePort) 
 				} else { 
 					-1
 				}
@@ -43,12 +42,17 @@ object EnsimeServerUtil extends LazyLogging {
 			port
 	}
   
-  private def getPathToPortFile(ensimeFile: File) : File = {
+  def getPathToPortFile(ensimeFile: File) : File = {
     //val pathSep = System.getProperty("path.separator");    
     val pathSep = "/";
     var file = new File(ensimeFile.getParentFile().getAbsolutePath() + s"""/.ensime_cache/port""")
     file
   }
+  
+  def readPortFromPortFile(pathToEnsimePort: File) : Int = {
+    val lines = Source.fromFile(pathToEnsimePort).getLines().mkString
+    lines.toInt
+  } 
 
 }
 

@@ -19,7 +19,6 @@ object CodeproseBroker extends LazyLogging {
   
   def main(args: Array[String]): Unit = {
     
-
     // Get inputs
     if(args.length!=2 ){      
       println(help())
@@ -37,6 +36,8 @@ object CodeproseBroker extends LazyLogging {
     val port = if(pathToPortFile.exists()){
       EnsimeServerUtil.readPortFromPortFile(pathToPortFile)
     } else -1
+    val verbose = true
+    val outputType = "html"
     
     if(port == -1){
       logger.error("Port file could not be determined! Shutting down.")
@@ -45,9 +46,8 @@ object CodeproseBroker extends LazyLogging {
     
     
     // create broker context 
-    val bc = getBrokerContext(host,port,ensimeFile,mainSrcFolder,outputPath)    
+    val bc = getBrokerContext(host,port,ensimeFile,mainSrcFolder,outputPath,verbose,outputType)    
     runCodeprose(bc) 
-    
     
   }
   
@@ -69,12 +69,14 @@ object CodeproseBroker extends LazyLogging {
     port: Int,
     ensimeFile: File,
     mainSrcFolder: File,
-    outputPath: File    
+    outputPath: File,
+    verbose: Boolean,
+    outputType: String
   ) : BrokerContext = {
 
     // TODO: Extend to include several folders
     val filesToProcess = FileUtil.getAllScalaFilesIncludingSubDir(mainSrcFolder)        
-    return new BrokerContext(host,port,ensimeFile,filesToProcess,outputPath)   
+    return new BrokerContext(host,port,ensimeFile,filesToProcess,outputPath,verbose)   
   }
        
 }
@@ -88,7 +90,8 @@ class BrokerContext(
     val port: Int,
     val ensimeFile: File,
     val filesToProcess: Array[File],
-    val outputPath: File
+    val outputPath: File,
+    val verbose: Boolean
     ){}
 
 
@@ -120,7 +123,9 @@ class CodeproseBroker()(implicit bc: BrokerContext)
     val out = new Api.TokenInfoContainer()
 
     for(f <- bc.filesToProcess){
-      logger.info(f.toString())
+      if(bc.verbose)
+        logger.info(f.toString())
+        
       val tokens = provider.getEnrichedTokens(f)                                    
      out += ((f,tokens))
     } 

@@ -7,6 +7,10 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Success, Failure}
 import com.typesafe.scalalogging.LazyLogging
+import java.util.regex.Pattern.CIBackRef
+import org.ensime.server.ConnectionInfo
+import scala.concurrent.Await
+import scala.concurrent.duration._
 
 trait TokenEnricher {
    def initialize() : Unit 
@@ -19,11 +23,19 @@ trait TokenEnricher {
 //   def initializeMeta() : Unit 
 //   def close() : Unit   
 //} 
-   
 
-class EnsimeProvider(host: String, port: Int) extends TokenEnricher with LazyLogging {
+trait ProviderContext { val verbose: Boolean }
 
-  private val ensimeClient = new Client(host,port)
+
+class EnsimeProviderContext(
+    val host: String,
+    val port: Int,
+    val verbose: Boolean
+    ) extends ProviderContext
+
+class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher with LazyLogging {
+
+  private val ensimeClient = new Client(c.host,c.port)
   ensimeClient.initialize()
   var isInitialized = false
   
@@ -33,20 +45,45 @@ class EnsimeProvider(host: String, port: Int) extends TokenEnricher with LazyLog
  
   
   def initialize(): Unit = {
-    logger.info("Initializing Ensime client ... ")
-    ensimeClient.initialize()
-    logger.info("Done.")
+//    logger.info("Initializing Ensime client ... ")    
+//    ensimeClient.initialize()         
+//    logger.info("Done.")
+//    
+//    isInitialized = testConnection()
+//        
+}
+
+  /*
+   * Send a ConnectionInfo to the server and returna boolean sucess indicator.
+   */
+  def testConnection() : Boolean = {
     /// TODO: 
     // Get connection info and initialize project
-    // Requires a more sophisticated verion of the ensimeclient to return information on messages that have no return point
-    
-    val connectionInto = ensimeClient.connectionInfo()
-    logger.info("Connection Info: " + connectionInto.toString())
-    
+    // Requires a more sophisticated version of the ensimeclient to return information on messages that have no return point
     // TODO: Check if certain messages need to be send to initialize project
-    // send
-    //Init project message
-    isInitialized = true
+    val serverReady = false
+//    val serverReady : Future[Boolean] 
+//
+//    logger.info("Testing connection ...")
+//    val connectionInfo = ensimeClient.connectionInfo()
+//    connectionInfo onSuccess({
+//      case cI : ConnectionInfo => {
+//          logger.info(cI.toString)
+//          logger.info("Connection successfully tested")
+//          serverReady = true          
+//        }         
+//      })
+//    
+//    connectionInfo onFailure({
+//      case _ => {          
+//         logger.error("Connection failed!")
+//         serverReady = false
+//      }
+//     })
+//    
+//    Await.result(connectionInfo, 3.seconds )
+    
+    serverReady
   }
   
   def close() : Unit = {
@@ -54,10 +91,11 @@ class EnsimeProvider(host: String, port: Int) extends TokenEnricher with LazyLog
   }
 
   def getEnrichedTokens(file: File) : scala.collection.mutable.ArrayBuffer[org.codeprose.api.Token] = {
-  
-    logger.info("Processing: \t" + file)
+    if(c.verbose)
+      logger.info("Processing: \t" + file)
+    
     val tokens = getTokens(file)
-    logger.info("Enriching tokens.")
+    
     
     import org.codeprose.api.ScalaLang._
     import org.codeprose.api.ScalaTokens._
@@ -93,15 +131,17 @@ class EnsimeProvider(host: String, port: Int) extends TokenEnricher with LazyLog
     						  })
     			    }
               case _ => { 
-                logger.info("No information requested for " + tt)
+                if(c.verbose)
+                  logger.info("No information requested for " + tt)
                
               }
 
     			  } 
 
     		  }
-          case _ => { logger.info("Oops: Not able to determine the tokenType")
-                throw new Exception("Unknown tt!")
+          case _ => { 
+            logger.error("Oops: Not able to determine the token type of " + token.toPrettyString())
+            throw new Exception("Unknown to determine the token type! Token: " + token.toPrettyString())
           }
       } 
     }
@@ -118,13 +158,5 @@ class EnsimeProvider(host: String, port: Int) extends TokenEnricher with LazyLog
     val srcContent = FileUtil.loadSrcFileContent(file)        
     val tokens = org.codeprose.provider.ScalaTokenizer.tokenize(srcContent)
     tokens
-  }
-  
-  def getConnectionInfo() : Unit = {
-    val f = ensimeClient.connectionInfo()       
-    f onComplete {
-      case Success(c) => {println(c.toString())}
-      case Failure(c) => {println("Oops: Connection info failed!")}      
-    }          
   }
 }

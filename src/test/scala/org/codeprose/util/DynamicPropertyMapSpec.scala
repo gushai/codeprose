@@ -100,6 +100,15 @@ class DynamicPropertyMapSpec extends FunSpec {
       
     }
     
+    it("should print a information summary of the comonents"){
+      
+      import FancySpec._
+      val dpm = DPM(42)
+      dpm.set(bar)(314)
+      dpm.set(foo)("foo")
+      dpm.set(fullName)("name")           
+      println(dpm.toString())
+    }
   }
   
   

@@ -13,6 +13,9 @@ import org.codeprose.provider.Tokenizer
 import org.codeprose.provider.EnsimeProvider
 import org.codeprose.util.FileUtil
 import com.typesafe.scalalogging.LazyLogging
+import org.codeprose.provider.ProviderContext
+import org.codeprose.provider.EnsimeProvider
+import org.codeprose.provider.EnsimeProviderContext
 
 
 object CodeproseBroker extends LazyLogging {
@@ -112,7 +115,8 @@ class CodeproseBroker()(implicit bc: BrokerContext)
   private val consumer = initializeWriter("html")
     
   private def initializeProvider() : EnsimeProvider = {
-      return new EnsimeProvider(bc.host,bc.port)
+      val pc = new EnsimeProviderContext(bc.host,bc.port,bc.verbose)
+      return new EnsimeProvider()(pc)
   }
     
     

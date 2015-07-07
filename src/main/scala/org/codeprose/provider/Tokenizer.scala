@@ -12,6 +12,7 @@ trait Tokenizer {
 trait ScalaTokenizer extends Tokenizer with LazyLogging {
   
   import org.codeprose.api.ScalaLang
+  import org.codeprose.api.Api
   
   def tokenize(src: String) : ArrayBuffer[org.codeprose.api.Token] = {    
     val otherTokens = getTokensWithDifferentSpec(src)

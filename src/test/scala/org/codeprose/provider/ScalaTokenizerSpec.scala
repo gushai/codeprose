@@ -48,15 +48,9 @@ class ScalaTokenizerSpec extends FunSpec {
           }
           case None => fail()
         }
-        
-        
       }
-      
-      
-      
-      
-      
     }
+    
     it("should match MULTILINE_COMMENT tokentype ") { 
       
       val source = s"""
@@ -89,22 +83,6 @@ class ScalaTokenizerSpec extends FunSpec {
       assert(tokens(4)(tokenType).get == WS)
       assert(tokens(5)(tokenType).get == EOF)
       
-      
-//      for(t<-tokens){
-//        t(tokenType) match {
-//          case Some(tt) => {
-//            tt match {
-//              case MULTILINE_COMMENT => {
-//                
-//              }
-//              case _ => {
-//                fail()
-//              }
-//            }
-//          }
-//          case None => { fail() }
-//        }
-//      }
     }
     
   }

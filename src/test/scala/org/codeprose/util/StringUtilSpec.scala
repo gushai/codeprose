@@ -33,10 +33,5 @@ class StringUtilSpec extends FunSpec {
     }
     
   }
-  
-  describe(""){
-    it("should fail"){
-     fail()
-    }
-  }
+    
 }

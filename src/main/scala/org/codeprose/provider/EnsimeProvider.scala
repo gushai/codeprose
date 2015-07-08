@@ -60,7 +60,7 @@ class EnsimeProviderContext(
 			logger.info("Testing connection to ensime-server ...")
 			val connectionInfo = ensimeClient.connectionInfo()
 			val serverReady = try {
-				val cIResult= Await.result(connectionInfo,  Duration(500, MILLISECONDS))
+				val cIResult= Await.result(connectionInfo,  Duration(1500, MILLISECONDS))
 						logger.info("Successfully completed.")
 						true
 			}  catch {
@@ -85,7 +85,8 @@ class EnsimeProviderContext(
 	}
 
 	def getEnrichedTokens(file: File) : scala.collection.mutable.ArrayBuffer[org.codeprose.api.Token] = {
-			if(c.verbose)
+    if(isInitialized){			
+      if(c.verbose)
 				logger.info("Processing: \t" + file)
 
       val tokens = getTokens(file).map{t => enrichToken(file,t)}
@@ -95,6 +96,10 @@ class EnsimeProviderContext(
       Thread.sleep(3000)    
             
       tokens
+    } else {
+      logger.error("Not initialized correctly.")
+      scala.collection.mutable.ArrayBuffer[org.codeprose.api.Token]()
+    }
 	}
 
   /*

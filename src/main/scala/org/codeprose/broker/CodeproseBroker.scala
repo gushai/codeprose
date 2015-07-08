@@ -116,7 +116,9 @@ class CodeproseBroker()(implicit bc: BrokerContext)
     
   private def initializeProvider() : EnsimeProvider = {
       val pc = new EnsimeProviderContext(bc.host,bc.port,bc.verbose)
-      return new EnsimeProvider()(pc)
+      val p = new EnsimeProvider()(pc)
+      p.initialize()
+      return p
   }
     
     

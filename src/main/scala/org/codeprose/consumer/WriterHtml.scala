@@ -2,11 +2,7 @@ package org.codeprose.consumer
 
 import java.io.File
 
-import org.codeprose.api.ScalaLang.declaredAs
-import org.codeprose.api.ScalaLang.fullName
-import org.codeprose.api.ScalaLang.tokenType
-import org.codeprose.api.ScalaLang.typeId
-import org.codeprose.api.ScalaTokens
+import org.codeprose.api.ScalaLang._
 import org.codeprose.api.Token
 import org.codeprose.consumer.util.CommentUtil
 import org.codeprose.consumer.util.MarkdownConverter
@@ -90,7 +86,6 @@ extends Consumer with LazyLogging {
 			val htmlEntries = infoSorted.map(token => {
 
 				import org.codeprose.api.ScalaLang._
-				import org.codeprose.api.ScalaTokens
 
 				val tokenTyp = token(tokenType)
 				tokenTyp match {
@@ -104,7 +99,7 @@ extends Consumer with LazyLogging {
 					}
 					else {              
 						tt match {                      
-						case ScalaTokens.VARID => {
+						case Tokens.VARID => {
 
 							val typ = token(declaredAs)
 									val name = token(fullName)                      
@@ -145,10 +140,10 @@ extends Consumer with LazyLogging {
     import org.codeprose.consumer.util.MarkdownConverter
     import org.codeprose.consumer.util.CommentUtil
     import org.codeprose.api.ScalaLang._
-    import org.codeprose.api.ScalaTokens._
+    
     
     tokenTyp match{ 
-      case MULTILINE_COMMENT => {
+      case Tokens.MULTILINE_COMMENT => {
         val s = if(CommentUtil.isScalaDocComment(token.text)){
           handleCommentsScalaDoc(token)
         } else {
@@ -168,8 +163,9 @@ extends Consumer with LazyLogging {
   }
   
 	private def handleKeywords(token: Token, tokenTyp: org.codeprose.api.ScalaLang.ScalaTokenType) : String = {
+  
       import org.codeprose.api.ScalaLang._
-      import org.codeprose.api.ScalaTokens._
+      import org.codeprose.api.ScalaLang.Tokens._
     
       
 			tokenTyp match {
@@ -291,7 +287,7 @@ extends Consumer with LazyLogging {
 			: scala.collection.mutable.ArrayBuffer[String] = {
       import org.codeprose.consumer.util.CommentUtil     
       import org.codeprose.api.ScalaLang._
-      import org.codeprose.api.ScalaTokens
+      
       
 // t(tokenType returns Option!!      
 //			val combinedHtmlEntries = (infoSorted.map(t=>if(t(tokenType) == ScalaTokens.MULTILINE_COMMENT && !CommentUtil.isScalaDocComment(t.text)) true else false).toList zip htmlEntries)
@@ -299,7 +295,7 @@ extends Consumer with LazyLogging {
           infoSorted.map(
               t => 
                 if(t(tokenType) match { 
-                  case Some(tt) => { tt == ScalaTokens.MULTILINE_COMMENT && !CommentUtil.isScalaDocComment(t.text) } 
+                  case Some(tt) => { tt == Tokens.MULTILINE_COMMENT && !CommentUtil.isScalaDocComment(t.text) } 
                   case None => { false }
                   }
                 ) 
@@ -341,34 +337,34 @@ extends Consumer with LazyLogging {
 	def handleLiterals(token: Token, tokenTyp: org.codeprose.api.ScalaLang.ScalaTokenType) : String = {
     
     import org.codeprose.api.ScalaLang._
-    import org.codeprose.api.ScalaTokens
+    import org.codeprose.api.ScalaLang.Tokens._
     
 		tokenTyp match {
-		case ScalaTokens.CHARACTER_LITERAL => {
+		case CHARACTER_LITERAL => {
 			s"""<span class="stringLiteral" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
 		}
-		case ScalaTokens.INTEGER_LITERAL => {
+		case INTEGER_LITERAL => {
 			s"""<span class="numberLiteral" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
 		}
-		case ScalaTokens.FLOATING_POINT_LITERAL => {
+		case FLOATING_POINT_LITERAL => {
 			s"""<span class="numberLiteral" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
 		}
-		case ScalaTokens.STRING_LITERAL => {
+		case STRING_LITERAL => {
 			s"""<span class="stringLiteral" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
 		}
-		case ScalaTokens.STRING_PART => {
+		case STRING_PART => {
 			s"""<span class="stringLiteral" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
 		}
-		case ScalaTokens.SYMBOL_LITERAL => {
+		case SYMBOL_LITERAL => {
 			s"""<span class="literal" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
 		}
-		case ScalaTokens.TRUE => {
+		case TRUE => {
 			s"""<span class="keyword" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
 		}
-		case ScalaTokens.FALSE => {
+		case FALSE => {
 			s"""<span class="keyword" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
 		}
-		case ScalaTokens.NULL => {
+		case NULL => {
 			s"""<span class="keyword" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
 		}
 

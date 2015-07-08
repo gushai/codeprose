@@ -93,7 +93,7 @@ class EnsimeProviderContext(
       
       // TODO: Professional waiting for all futures. Set limit of 3sec??
       logger.info("Awaiting results of token enrichment...")
-      Thread.sleep(3000)    
+      Thread.sleep(5000)    
             
       tokens
     } else {
@@ -106,7 +106,7 @@ class EnsimeProviderContext(
    * Enriches the token with additional information obtained from ensime-server.
    */
 	private def enrichToken(file: File, token: org.codeprose.api.Token) : org.codeprose.api.Token = {
-		  import org.codeprose.api.ScalaTokens._
+		  
       import org.codeprose.api.ScalaLang._
       
 			val tokenTyp = token(tokenType)
@@ -114,7 +114,7 @@ class EnsimeProviderContext(
 			tokenTyp match {
 			  case Some(tt) => {
 				  tt match {       
-				    case VARID => { enrichToken_VARID(file,token) }
+				    case Tokens.VARID => { enrichToken_VARID(file,token) }
 				  case _ => { if(c.verbose){ logger.info("No information requested for " + tt) } }					
 				} 
 			}
@@ -129,8 +129,7 @@ class EnsimeProviderContext(
 	}
 
   private def enrichToken_VARID(file: File, token: org.codeprose.api.Token) : org.codeprose.api.Token = {
-      import org.codeprose.api.ScalaLang._
-      import org.codeprose.api.ScalaTokens._
+      import org.codeprose.api.ScalaLang._      
       import org.codeprose.api.TokenProperties.SourcePosition    
     
       val typeInfo = ensimeClient.typeAtPoint(file, OffsetRange(token.offset))

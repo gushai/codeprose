@@ -28,18 +28,19 @@ trait TokenEnricher {
 
 trait ProviderContext { val verbose: Boolean }
 
-
 class EnsimeProviderContext(
 		val host: String,
 		val port: Int,
 		val verbose: Boolean
 		) extends ProviderContext
 
-		class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher with LazyLogging {
+
+    
+class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher with LazyLogging {
 
 	private val ensimeClient = new Client(c.host,c.port)  
 	var isInitialized = false
-
+  
 	/*
 	 * Initializes the ensime client and tests the connection to the server.
 	 * Sets isInitialized. 
@@ -54,7 +55,7 @@ class EnsimeProviderContext(
 
 	/*
 	 * Send a ConnectionInfo to the server and returns boolean success indicator.
-	 * Blocks turing test.
+	 * Blocks during test.
 	 */
 	def testConnection() : Boolean = {
 			logger.info("Testing connection to ensime-server ...")
@@ -79,7 +80,7 @@ class EnsimeProviderContext(
 	def shutdownServer() : Unit = {
 			if(c.verbose)
 				logger.info("Shutting down ensime-server...")
-				ensimeClient.shutdownServer()
+			ensimeClient.shutdownServer()
 				if(c.verbose)
 					logger.info("Done.")
 	}
@@ -107,7 +108,7 @@ class EnsimeProviderContext(
    */
 	private def enrichToken(file: File, token: org.codeprose.api.Token) : org.codeprose.api.Token = {
 		  
-      import org.codeprose.api.ScalaLang._
+      import org.codeprose.api.ScalaLang._      
       
 			val tokenTyp = token(tokenType)
 

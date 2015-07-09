@@ -69,20 +69,15 @@ class ScalaTokenizerSpec extends FunSpec {
             
       // Tokenize (internal format)     
       import org.codeprose.provider.ScalaTokenizer
-      val tokens = ScalaTokenizer.tokenize(source)
-      
-      tokens.foreach(println)
-      
+      val tokens = ScalaTokenizer.tokenize(source)      
+      tokens.foreach(println)      
       import org.codeprose.api.ScalaLang._     
-      import org.codeprose.api.ScalaTokens._
-      
-      assert(tokens(0)(tokenType).get == WS)
-      assert(tokens(1)(tokenType).get == MULTILINE_COMMENT)
-      assert(tokens(2)(tokenType).get == WS)
-      assert(tokens(3)(tokenType).get == MULTILINE_COMMENT)
-      assert(tokens(4)(tokenType).get == WS)
-      assert(tokens(5)(tokenType).get == EOF)
-      
+      assert(tokens(0)(tokenType).get == Tokens.WS)
+      assert(tokens(1)(tokenType).get == Tokens.MULTILINE_COMMENT)
+      assert(tokens(2)(tokenType).get == Tokens.WS)
+      assert(tokens(3)(tokenType).get == Tokens.MULTILINE_COMMENT)
+      assert(tokens(4)(tokenType).get == Tokens.WS)
+      assert(tokens(5)(tokenType).get == Tokens.EOF)      
     }
     
   }

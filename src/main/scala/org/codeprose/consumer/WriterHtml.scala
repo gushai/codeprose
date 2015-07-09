@@ -13,27 +13,32 @@ import com.typesafe.scalalogging.LazyLogging
 
 
 
+trait WriterContext {
+  val verbose: Boolean
+}
+
+class WriterHtmlContext(
+    val verbose: Boolean
+    ) extends WriterContext {    
+}
 
 
-
-
-
-
-class WriterHtml(outputPath: File)
+class WriterHtml(outputPath: File)(implicit c: WriterHtmlContext)
 extends Consumer with LazyLogging {
  
   
 	def generateOutput(
 			info: scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.ArrayBuffer[Token])]
 			): Unit = {
+    
       import org.codeprose.util.StringUtil
 			val filenamesShorted = StringUtil.getUniqueShortFileNames(info.map(e => e._1.getAbsolutePath).toList)
 			val outputFilenames = filenamesShorted.map(s => outputPath + "/content/" + s.replace("/","_") + ".html")
-
+      
       logger.info("Generating output ...")					
-			generateIndexFile(info.map(e => e._1.getAbsolutePath()).toList,filenamesShorted,outputFilenames)
-          
-			logger.info("Individual pages: ")
+
+      generateIndexFile(info.map(e => e._1.getAbsolutePath()).toList,filenamesShorted,outputFilenames)
+      
 			var idx=0
 			for(i<-info){     
 			  generateOutputFile(new File(outputFilenames(idx)),i._1,i._2)
@@ -59,15 +64,15 @@ extends Consumer with LazyLogging {
 			info: scala.collection.mutable.ArrayBuffer[Token]
       ) : Unit = {
 
-      logger.info("Processing: \t" + srcFile)
-			//val infoSorted = ListMap(info.toSeq.sortBy(_._1):_*)
-      val infoSorted = info
+      logger.info("Individual pages ... ")
+      if(c.verbose)
+        logger.info(srcFile + " ... ")
       
 			val htmlFrame = new HtmlContext(srcFile.getAbsolutePath(),getPackageInformationForFile(srcFile))
 
-			val htmlEntries = generateHtmlEntries(infoSorted)
+			val htmlEntries = generateHtmlEntries(info)
 
-			val outputArray = combineHtmlEntriesInContainer(infoSorted,htmlEntries)
+			val outputArray = combineHtmlEntriesInContainer(info,htmlEntries)
 
 			FileUtil.writeToFile(outputFile,htmlFrame.begin + outputArray.mkString("") + htmlFrame.end)    
 	}
@@ -129,9 +134,6 @@ extends Consumer with LazyLogging {
 			htmlEntries
 	}
 
-  
-  
-  
   
   private def handleComments(token: Token, tokenTyp: org.codeprose.api.ScalaLang.ScalaTokenType) : String = {
     import org.codeprose.consumer.util.MarkdownConverter

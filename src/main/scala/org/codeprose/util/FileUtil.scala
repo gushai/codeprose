@@ -27,8 +27,10 @@ object FileUtil {
     val pw = new java.io.PrintWriter(pathToFile)
     try pw.write(s) finally pw.close()
   }
-    
- 
+  
+  def loadSrcFileContent(file: File) : String = {
+    scala.io.Source.fromFile(file.getAbsolutePath(), "utf-8").getLines.mkString("\n")
+  }
 }
 
 // Imported from 

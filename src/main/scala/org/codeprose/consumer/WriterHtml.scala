@@ -1,43 +1,57 @@
 package org.codeprose.consumer
 
-import scalariform.lexer.Token
-import scalariform.lexer.Tokens
 import java.io.File
+
+import org.codeprose.api.ScalaLang._
+import org.codeprose.api.Token
+import org.codeprose.consumer.util.CommentUtil
+import org.codeprose.consumer.util.MarkdownConverter
 import org.codeprose.util.FileUtil
-import scala.collection.immutable.ListMap
-import com.typesafe.scalalogging.Logger
-import org.slf4j.LoggerFactory
-import com.typesafe.scalalogging.LoggerMacro
+import org.codeprose.util.StringUtil
+
 import com.typesafe.scalalogging.LazyLogging
 
 
 
-class WriterHtml(outputPath: File)
+trait WriterContext {
+  val verbose: Boolean
+}
+
+class WriterHtmlContext(
+    val verbose: Boolean
+    ) extends WriterContext {    
+}
+
+
+class WriterHtml(outputPath: File)(implicit c: WriterHtmlContext)
 extends Consumer with LazyLogging {
  
   
 	def generateOutput(
-			info: scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.Map[Int,(Token,List[(String, String)] )])]
+			info: scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.ArrayBuffer[Token])]
 			): Unit = {
+    
+      import org.codeprose.util.StringUtil
+			val filenamesShorted = StringUtil.getUniqueShortFileNames(info.map(e => e._1.getAbsolutePath).toList)
+			val outputFilenames = filenamesShorted.map(s => outputPath + "/content/" + s.replace("/","_") + ".html")
+      
+      logger.info("Generating output ...")					
 
-			val filenamesShorted = getUniqueShortFileNames(info.map(e => e._1.getAbsolutePath).toArray)
-					val outputFilenames = filenamesShorted.map(s => outputPath + "/content/" + s.replace("/","_") + ".html")
-
-
-					logger.info("Generating output ...")
-					
-					generateIndexFile(info.map(e => e._1.getAbsolutePath()).toArray,filenamesShorted,outputFilenames)
-          
-					logger.info("Individual pages: ")
-					var idx=0
-					for(i<-info){     
-						generateOutputFile(new File(outputFilenames(idx)),i._1,i._2)
-						idx+=1
-					}
+      generateIndexFile(info.map(e => e._1.getAbsolutePath()).toList,filenamesShorted,outputFilenames)
+      
+			var idx=0
+			for(i<-info){     
+			  generateOutputFile(new File(outputFilenames(idx)),i._1,i._2)
+				idx+=1
+      }
 			logger.info("Done.")
 	}
 
-	private def generateIndexFile(originalFilenames: Array[String], filenamesShortened : Array[String], links: Array[String] ) : Unit = {   
+	private def generateIndexFile(
+      originalFilenames: List[String], 
+      filenamesShortened : List[String], 
+      links: List[String]
+      ) : Unit = {   
 			val outputFilename= new File(outputPath.getAbsolutePath + "/index.html")
       logger.info("Index page: \t" + outputFilename + " ...")      
 			val htmlFrame = new HtmlIndexContext()			
@@ -47,16 +61,18 @@ extends Consumer with LazyLogging {
 	private def generateOutputFile(
 			outputFile: File, 
 			srcFile: File, 
-			info: scala.collection.mutable.Map[Int,(Token, List[(String, String)])]) : Unit = {
+			info: scala.collection.mutable.ArrayBuffer[Token]
+      ) : Unit = {
 
-      logger.info("Processing: \t" + srcFile)
-			val infoSorted = ListMap(info.toSeq.sortBy(_._1):_*)
-
+      logger.info("Individual pages ... ")
+      if(c.verbose)
+        logger.info(srcFile + " ... ")
+      
 			val htmlFrame = new HtmlContext(srcFile.getAbsolutePath(),getPackageInformationForFile(srcFile))
 
-			val htmlEntries = generateHtmlEntries(infoSorted)
+			val htmlEntries = generateHtmlEntries(info)
 
-			val outputArray = combineHtmlEntriesInContainer(infoSorted,htmlEntries)
+			val outputArray = combineHtmlEntriesInContainer(info,htmlEntries)
 
 			FileUtil.writeToFile(outputFile,htmlFrame.begin + outputArray.mkString("") + htmlFrame.end)    
 	}
@@ -66,198 +82,228 @@ extends Consumer with LazyLogging {
     "org.codeprose.rational"
   }
   
-	/**
-	 * Removes the longest common prefix of all elements
-	 */
-	private def getUniqueShortFileNames(s: Array[String]) : Array[String] = {
-			
-      import org.codeprose.util.StringUtil
-			val prefixLength = StringUtil.findLongtestCommonPrefix(s.toList).length 
-      println
-      val idxLastPathSep = s.map { e => e.lastIndexOf("/") }
-      val sliceFirstIndex = idxLastPathSep.map(e=> Math.min(prefixLength,e))
-      (sliceFirstIndex zip s).map(e => (e._2.slice(e._1,e._2.length)))			
-	}
+	private def generateHtmlEntries(
+			infoSorted: scala.collection.mutable.ArrayBuffer[Token]) : Iterable[String] = {
 
-	private def generateHtmlEntries(infoSorted: ListMap[Int, (Token, List[(String, String)])]) : Iterable[String] = {
+			val htmlEntries = infoSorted.map(token => {
 
-			val htmlEntries = infoSorted.map(e => {
-				val token = e._2._1
-				val tokenProp = e._2._2
+				import org.codeprose.api.ScalaLang._
 
-						if(Tokens.KEYWORDS.contains(token.tokenType)){
-							handleKeywords(token,tokenProp)             
-						} else if(Tokens.LITERALS.contains(token.tokenType)) {
-							handleLiterals(token,tokenProp)
-						} else if(Tokens.COMMENTS.contains(token.tokenType)) {
-              handleComments(token, tokenProp)
-            }
-						else {              
-							token.tokenType match {						          
-							case Tokens.VARID => {
-								if (tokenProp.length==0){
-									s""""""+ token.rawText
-								} else {
-                  
-									    val typ=tokenProp.filter(e => e._1.equals("DECLAS"))(0)._2.substring(1)
-                      val name =tokenProp.filter(e => e._1.equals("NAME"))(0)._2                      
-											val typId = tokenProp.filter(e => e._1.equals("TYPEID"))(0)._2
-											
-											s"""<span class="$typ" title="Name: $name Declared-As: $typ, ($typId)">""" + token.rawText + "</span>"  
-								}        
-							}                         
-							case _ => {
-								token.rawText 
-							}
-							}
-						}   
+				val tokenTyp = token(tokenType)
+				tokenTyp match {
+				case Some(tt) => {
+					if(tt.isKeyword){
+						handleKeywords(token,tt)             
+					} else if(tt.isLiteral) {
+						handleLiterals(token,tt)
+					} else if(tt.isComment) {
+						handleComments(token,tt)
+					}
+					else {              
+						tt match {                      
+						case Tokens.VARID => {
+
+							val typ = token(declaredAs)
+									val name = token(fullName)                      
+									val typId = token(typeId)
+
+									if (typ == None || name == None || typId == None){
+										s""""""+ token.text
+									} else {
+
+										val typVal = token(declaredAs).get
+												val nameVal = token(fullName).get                 
+												val typIdVal = token(typeId).get
+
+												s"""<span class="$typVal" title="Name: $nameVal Declared-As: $typVal, ($typIdVal)">""" + token.text + "</span>"  
+									}        
+						}                         
+						case _ => {
+							  token.text 
+						  }
+						}
+					}
+				} 
+				case _ => {
+			  		token.text 
+			  	} 
+				}
+
+
 			}) 
 			htmlEntries
 	}
 
-  private def handleComments(token: Token, tokenProp: List[(String, String)]) : String = {
+  
+  private def handleComments(token: Token, tokenTyp: org.codeprose.api.ScalaLang.ScalaTokenType) : String = {
     import org.codeprose.consumer.util.MarkdownConverter
     import org.codeprose.consumer.util.CommentUtil
-    token.tokenType match{ 
+    import org.codeprose.api.ScalaLang._
+    
+    
+    tokenTyp match{ 
       case Tokens.MULTILINE_COMMENT => {
-                val s = if(CommentUtil.isScalaDocComment(token.rawText)){
-                  handleCommentsScalaDoc(token)
-                } else {
-                  s"""\n<div class="textbox">""" + MarkdownConverter.apply(CommentUtil.cleanMultilineComment(token.rawText)) + "\n</div>"
-                }
-                s
-              }        
+        val s = if(CommentUtil.isScalaDocComment(token.text)){
+          handleCommentsScalaDoc(token)
+        } else {
+          s"""\n<div class="textbox">""" + MarkdownConverter.apply(CommentUtil.cleanMultilineComment(token.text)) + "\n</div>"
+        }
+        s
+       }        
        case _ => {            
-                s"""<span class="comment">""" + token.rawText + "</span>"
-              }        
+        s"""<span class="comment">""" + token.text + "</span>"
+       }        
     }
   }
   
   private def handleCommentsScalaDoc(token: Token) : String = {
-      // TODO: Include proper handling of Scaladoc comments
-      s"""<span class="scaladoc">""" + token.rawText + "</span>"
+      s"""<span class="scaladoc" title="ScalaDoc Comment">""" + token.text + "</span>"
   }
   
-	private def handleKeywords(token: Token, tokenProp: List[(String, String)]) : String = {
-			token.tokenType match {
-			case Tokens.ABSTRACT => {
-				s"""<span class="keyword" title="Scala keyword: ABSTRACT">""" + token.rawText + "</span>" 
+	private def handleKeywords(
+      token: Token, 
+      tokenTyp: org.codeprose.api.ScalaLang.ScalaTokenType
+      ) : String = {
+  
+      import org.codeprose.api.ScalaLang._
+      import org.codeprose.api.ScalaLang.Tokens._
+    
+      
+			tokenTyp match {
+			case ABSTRACT => {
+				s"""<span class="keyword" title="Scala keyword: ABSTRACT">""" + token.text + "</span>" 
 			}
-			case Tokens.CASE => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case CASE => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.CATCH => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case CATCH => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.CLASS => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case CLASS => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.DEF => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case DEF => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.DO => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case DO => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.ELSE => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case ELSE => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.EXTENDS => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case EXTENDS => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.FINAL => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case FINAL => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.FINALLY => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case FINALLY => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.FOR => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case FOR => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.FORSOME => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case FORSOME => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.IF => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case IF => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.IMPLICIT => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case IMPLICIT => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.IMPORT => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case IMPORT => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.LAZY => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case LAZY => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.MATCH => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case MATCH => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.NEW => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case NEW => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.OBJECT => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case OBJECT => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.OVERRIDE => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case OVERRIDE => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.PACKAGE => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case PACKAGE => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.PRIVATE => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case PRIVATE => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.PROTECTED => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case PROTECTED => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.RETURN => {
-				s"""<span class="return" title="Scala keyword">""" + token.rawText + "</span>" 
+			case RETURN => {
+				s"""<span class="return" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.SEALED => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case SEALED => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.SUPER => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case SUPER => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.THIS => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case THIS => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.THROW => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case THROW => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.TRAIT => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case TRAIT => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.TRY => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case TRY => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.TYPE => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case TYPE => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.VAL => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case VAL => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.VAR => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case VAR => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.WHILE => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case WHILE => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.WITH => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>" 
+			case WITH => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>" 
 			}
-			case Tokens.YIELD => {
-				s"""<span class="keyword" title="Scala keyword">""" + token.rawText + "</span>"
+			case YIELD => {
+				s"""<span class="keyword" title="Scala keyword">""" + token.text + "</span>"
 			}
 			}
 	}
 
 	private def combineHtmlEntriesInContainer(
-			infoSorted: ListMap[Int, (Token, List[(String, String)])],
+			infoSorted: scala.collection.mutable.ArrayBuffer[Token],
 			htmlEntries: Iterable[String]
 			) 
 			: scala.collection.mutable.ArrayBuffer[String] = {
       import org.codeprose.consumer.util.CommentUtil     
-			val combinedHtmlEntries = (infoSorted.map(e=>if(e._2._1.tokenType == Tokens.MULTILINE_COMMENT && !CommentUtil.isScalaDocComment(e._2._1.rawText)) true else false).toList zip htmlEntries)
+      import org.codeprose.api.ScalaLang._
+     
+   
+      val combinedHtmlEntries = (
+          infoSorted.map(
+              t => 
+                if(t(tokenType) match { 
+                  case Some(tt) => { tt == Tokens.MULTILINE_COMMENT && !CommentUtil.isScalaDocComment(t.text) } 
+                  case None => { false }
+                  }
+                ) 
+                  true 
+                else 
+                  false
+              )
+          .toList zip htmlEntries
+          )
 
 					val outputArray = scala.collection.mutable.ArrayBuffer[String]()
 
@@ -287,34 +333,38 @@ extends Consumer with LazyLogging {
 				outputArray
 	}
   
-	def handleLiterals(token: Token, tokenProp: List[(String, String)]) : String = {
-		token.tokenType match {
-		case Tokens.CHARACTER_LITERAL => {
-			s"""<span class="stringLiteral" title="Name: """ + token.tokenType.toString +s"""">""" + token.rawText + "</span>"
+	def handleLiterals(token: Token, tokenTyp: org.codeprose.api.ScalaLang.ScalaTokenType) : String = {
+    
+    import org.codeprose.api.ScalaLang._
+    import org.codeprose.api.ScalaLang.Tokens._
+    
+		tokenTyp match {
+		case CHARACTER_LITERAL => {
+			s"""<span class="stringLiteral" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
 		}
-		case Tokens.INTEGER_LITERAL => {
-			s"""<span class="numberLiteral" title="Name: """ + token.tokenType.toString +s"""">""" + token.rawText + "</span>"
+		case INTEGER_LITERAL => {
+			s"""<span class="numberLiteral" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
 		}
-		case Tokens.FLOATING_POINT_LITERAL => {
-			s"""<span class="numberLiteral" title="Name: """ + token.tokenType.toString +s"""">""" + token.rawText + "</span>"
+		case FLOATING_POINT_LITERAL => {
+			s"""<span class="numberLiteral" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
 		}
-		case Tokens.STRING_LITERAL => {
-			s"""<span class="stringLiteral" title="Name: """ + token.tokenType.toString +s"""">""" + token.rawText + "</span>"
+		case STRING_LITERAL => {
+			s"""<span class="stringLiteral" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
 		}
-		case Tokens.STRING_PART => {
-			s"""<span class="stringLiteral" title="Name: """ + token.tokenType.toString +s"""">""" + token.rawText + "</span>"
+		case STRING_PART => {
+			s"""<span class="stringLiteral" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
 		}
-		case Tokens.SYMBOL_LITERAL => {
-			s"""<span class="literal" title="Name: """ + token.tokenType.toString +s"""">""" + token.rawText + "</span>"
+		case SYMBOL_LITERAL => {
+			s"""<span class="literal" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
 		}
-		case Tokens.TRUE => {
-			s"""<span class="keyword" title="Name: """ + token.tokenType.toString +s"""">""" + token.rawText + "</span>"
+		case TRUE => {
+			s"""<span class="keyword" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
 		}
-		case Tokens.FALSE => {
-			s"""<span class="keyword" title="Name: """ + token.tokenType.toString +s"""">""" + token.rawText + "</span>"
+		case FALSE => {
+			s"""<span class="keyword" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
 		}
-		case Tokens.NULL => {
-			s"""<span class="keyword" title="Name: """ + token.tokenType.toString +s"""">""" + token.rawText + "</span>"
+		case NULL => {
+			s"""<span class="keyword" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
 		}
 
 		}
@@ -380,19 +430,23 @@ class HtmlIndexContext(){
 			val end  = s"""<div class="footer">generated by codeprose. help and support on <a href="http://github.com/sth/codeprose" target="blank">github</a>.</div>
 			</div></div></body></html>"""
 
-			def getFileListing(originalFilenames: Array[String],labels: Array[String], links: Array[String]): String = {
-			// TODO group based on folders
+			def getFileListing(
+          originalFilenames: List[String],
+          labels: List[String], 
+          links: List[String]
+          ): String = {
+			
+      // TODO group based on folders
 			val frameBeg = s"""<div class="textbox">"""
-					val frameEnd = s"""</div>\n"""
-					val beg = "<h2>" + "Files" +"</h2>"                 
+			val frameEnd = s"""</div>\n"""
+			val beg = "<h2>" + "Files" +"</h2>"                 
 					
-          var entries = (originalFilenames zip ( labels zip links)).map{e => (e._1,e._2._1,e._2._2)}
+      var entries = (originalFilenames zip ( labels zip links)).map{e => (e._1,e._2._1,e._2._2)}
 
-							frameBeg+ beg + "<ul>" + entries.map({e => 
-							s"""<li><a href="""" + 
-							e._3 + s"""" title="Originial filename:""" +e._1 + s"""">"""+
-							e._2 + s"""</a></li>"""})
-							.mkString("\n") + "</ul>\n" + frameEnd  
+			frameBeg+ beg + "<ul>" + entries.map({e => 
+			s"""<li><a href="""" + 
+			e._3 + s"""" title="Originial filename:""" +e._1 + s"""">""" +
+			e._2 + s"""</a></li>"""}).mkString("\n") + "</ul>\n" + frameEnd  
 	}
 
 }

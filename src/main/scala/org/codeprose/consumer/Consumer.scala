@@ -1,9 +1,9 @@
 package org.codeprose.consumer
 
-import scalariform.lexer.Token
+import org.codeprose.api.Token
 
 trait Consumer {
   def generateOutput(info:
-      scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.Map[Int,(Token,List[(String, String)] )])]
+      scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.ArrayBuffer[Token])]
   ) : Unit
 }

@@ -1,121 +1,166 @@
 package org.codeprose.provider
 
 import org.ensime.client.Client
-import scalariform.lexer.Token
 import java.io.File
-import scalariform.lexer.Tokens
 import org.ensime.model.OffsetRange
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Success, Failure}
 import com.typesafe.scalalogging.LazyLogging
+import java.util.regex.Pattern.CIBackRef
+import org.ensime.server.ConnectionInfo
+import scala.concurrent.Await
+import scala.concurrent.duration._
+import scala.util.Try
+import java.util.concurrent.TimeoutException
 
 trait TokenEnricher {
-   def initialize() : Unit 
-   def close() : Unit 
-   //def enrichTokens(file : File, tokens: List[Token]) : scala.collection.mutable.Map[Token,List[(String,String)]] 
-   def enrichTokens(file : File, tokens: List[Token]) : scala.collection.mutable.Map[Int,(Token,List[(String,String)])]
+	def initialize() : Unit 
+	def close() : Unit    
+	def getEnrichedTokens(file : File) : scala.collection.mutable.ArrayBuffer[org.codeprose.api.Token]
 }
 
+// TODO: Do clearer specification of meta information specification
+//trait MetaInformationEnricher {
+//   def initializeMeta() : Unit 
+//   def close() : Unit   
+//} 
 
-class EnsimeProvider(
-    host: String, 
-    port: Int) 
-    extends TokenEnricher with LazyLogging {
+trait ProviderContext { val verbose: Boolean }
 
-  private val ensimeClient = new Client(host,port)
-  ensimeClient.initialize()
-  var isInitialized = false
-  
-  def shutdownServer() : Unit = {
-    ensimeClient.shutdownServer()
-  }
- 
- 
-  def initialize(): Unit = {
-    logger.info("Initializing Ensime client ... ")
-    ensimeClient.initialize()
-    logger.info("Done.")
-    /// TODO: 
-    // Get connection info and initialize project
-    // Requires a more sophisticated verion of the ensimeclient to return information on messages that have no return point
+class EnsimeProviderContext(
+		val host: String,
+		val port: Int,
+		val verbose: Boolean
+		) extends ProviderContext
+
+
     
-    val connectionInto = ensimeClient.connectionInfo()
-    logger.info("Connection Info: " + connectionInto.toString())
-    
-    // send
-    //Init project message
-    isInitialized = true
-  }
+class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher with LazyLogging {
+
+	private val ensimeClient = new Client(c.host,c.port)  
+	var isInitialized = false
   
-  def close() : Unit = {
-    ensimeClient.close()
-  }
+	/*
+	 * Initializes the ensime client and tests the connection to the server.
+	 * Sets isInitialized. 
+	 */
+	def initialize(): Unit = {
+			logger.info("Initializing Ensime client ... ")    
+			ensimeClient.initialize()         
+			logger.info("Done.")
 
-  def enrichTokens(file: File, tokens: List[Token]): scala.collection.mutable.Map[Int,(Token, List[(String,String)])] = {
-    logger.info("Enriching tokens: \t." + file)
-    val information = scala.collection.mutable.Map[Int,(Token,List[(String,String)])]()
-        
-    for (token <- tokens){
-     
-      token.tokenType match {               
-        case Tokens.VARID => {
-         
-    	  
-    	  val typeInfo = ensimeClient.typeAtPoint(file, OffsetRange(token.offset))
-        
-    	  typeInfo onSuccess({
-    	  case Some(t) => {
-          if(!t.pos.isDefined)
-    		  {
-            information += (token.offset ->(token,List[(String,String)](
-                ("NAME",t.fullName),
-                ("TYPEID",t.typeId.toString),
-                ("DECLAS",t.declAs.toString))))
-          }
-          else{
-              information += (token.offset -> (token,List[(String,String)](
-                  ("NAME",t.fullName),
-                  ("TYPEID",t.typeId.toString),
-                  ("DECLAS",t.declAs.toString),
-                  ("POS-PATH",t.pos.get.asInstanceOf[org.ensime.model.OffsetSourcePosition].file.getAbsolutePath),
-                  ("POS-OFFSET",t.pos.get.asInstanceOf[org.ensime.model.OffsetSourcePosition].offset.toString)
-                  )))
-          }
-    				  
+			isInitialized = testConnection()       
+	}
 
-    	  }
-    	  case None => {
-    		  information += (token.offset -> (token,List[(String,String)]()))
-    	  }
-    	  })
+	/*
+	 * Send a ConnectionInfo to the server and returns boolean success indicator.
+	 * Blocks during test.
+	 */
+	def testConnection() : Boolean = {
+			logger.info("Testing connection to ensime-server ...")
+			val connectionInfo = ensimeClient.connectionInfo()
+			val serverReady = try {
+				val cIResult= Await.result(connectionInfo,  Duration(1500, MILLISECONDS))
+						logger.info("Successfully completed.")
+						true
+			}  catch {
+			case timeout : TimeoutException => { 
+				logger.error("Failed:\t" + timeout.getMessage) 
+				false
+			}
+			}
+			serverReady
+	}
 
-    	  typeInfo onFailure({          
-    	  case _ => {
-    		  information += (token.offset -> (token,List[(String,String)]()))
-    	  }
-    	  })    
-      } 
-      case _ => {
-          information += (token.offset -> (token -> List[(String,String)]()))    
-      }
-      }     
+	def close() : Unit = {
+			ensimeClient.close()
+	}
+
+	def shutdownServer() : Unit = {
+			if(c.verbose)
+				logger.info("Shutting down ensime-server...")
+			ensimeClient.shutdownServer()
+				if(c.verbose)
+					logger.info("Done.")
+	}
+
+	def getEnrichedTokens(file: File) : scala.collection.mutable.ArrayBuffer[org.codeprose.api.Token] = {
+    if(isInitialized){			
+      if(c.verbose)
+				logger.info("Processing: \t" + file)
+
+      val tokens = getTokens(file).map{t => enrichToken(file,t)}
+      
+      // TODO: Professional waiting for all futures. Set limit of 3sec??
+      logger.info("Awaiting results of token enrichment...")
+      Thread.sleep(5000)    
+            
+      tokens
+    } else {
+      logger.error("Not initialized correctly.")
+      scala.collection.mutable.ArrayBuffer[org.codeprose.api.Token]()
     }
+	}
+
+  /*
+   * Enriches the token with additional information obtained from ensime-server.
+   */
+	private def enrichToken(file: File, token: org.codeprose.api.Token) : org.codeprose.api.Token = {
+		  
+      import org.codeprose.api.ScalaLang._      
+      
+			val tokenTyp = token(tokenType)
+
+			tokenTyp match {
+			  case Some(tt) => {
+				  tt match {       
+				    case Tokens.VARID => { enrichToken_VARID(file,token) }
+				  case _ => { if(c.verbose){ logger.info("No information requested for " + tt) } }					
+				} 
+			}
+			case _ => { 
+				  logger.error("Oops: Not able to determine the token type of " + token.toPrettyString())
+				  //throw new Exception("Unknown to determine the token type! Token: " + token.toPrettyString())
+			  }
+			} 
+
+      token
+      
+	}
+
+  private def enrichToken_VARID(file: File, token: org.codeprose.api.Token) : org.codeprose.api.Token = {
+      import org.codeprose.api.ScalaLang._      
+      import org.codeprose.api.TokenProperties.SourcePosition    
     
-    println("[EnsimeProvider]:\t" +"Awaiting results ... ")
-    Thread.sleep(4000)
-    
-    return information
+      val typeInfo = ensimeClient.typeAtPoint(file, OffsetRange(token.offset))
+
+              typeInfo onSuccess({
+              case Some(tI) => {
+                if(!tI.pos.isDefined)
+                {
+                  token.set(fullName)(tI.fullName)
+                  token.set(typeId)(tI.typeId)
+                  token.set(declaredAs)(tI.declAs.toString)
+                }
+                else{
+                  token.set(fullName)(tI.fullName)
+                  token.set(typeId)(tI.typeId)
+                  token.set(declaredAs)(tI.declAs.toString)
+                  token.set(declaredAt)(new SourcePosition(tI.pos.get.asInstanceOf[org.ensime.model.OffsetSourcePosition].file.getAbsolutePath,
+                      tI.pos.get.asInstanceOf[org.ensime.model.OffsetSourcePosition].offset))
+                }
+              }       
+              })
+      token
   }
   
-  def getConnectionInfo() : Unit = {
-    val f = ensimeClient.connectionInfo()       
-    f onComplete {
-      case Success(c) => {println(c.toString())}
-      case Failure(c) => {println("boahhhh connection info failed!")}      
-    }          
-  }
   
-  
-  
+	private def getTokens(file: java.io.File) = {
+		logger.info("Getting raw tokens.")
+		import org.codeprose.util.FileUtil    
+		val srcContent = FileUtil.loadSrcFileContent(file)        
+		val tokens = org.codeprose.provider.ScalaTokenizer.tokenize(srcContent)
+		tokens
+	}
 }

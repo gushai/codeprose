@@ -17,39 +17,37 @@ object HelloWorld {
 }"""
     
     // Scalariform ScalaTokens
-    val tokens = org.codeprose.provider.Tokenizer.tokenize(text)
+    val otherTokens = scalariform.lexer.ScalaLexer.rawTokenise(text)
+    val tokens = org.codeprose.provider.ScalaTokenizer.tokenize(text)
+       
     
     it("should print all tokens"){
-      tokens.foreach { e => println(e.toString()) }
+      println("Available tokens:")
+      tokens.foreach { e => println(e.toPrettyString()) }
     }
     
     it("should generate a ..."){
-      import org.codeprose.api.ScalaLangKeys
+      
       import org.codeprose.api.ScalaLang._
       
-      val fileTokenInfo = scala.collection.mutable.Map[java.io.File,scala.collection.mutable.ArrayBuffer[(Int,TokenPropertyMap)]]()
       
+      assert(tokens.size == otherTokens.length)
       
-      val tokenInfo = scala.collection.mutable.ArrayBuffer[(Int,TokenPropertyMap)]()      
-      for(t<-tokens){
-        
-        val tpm = new TokenPropertyMap()
-        tpm.set(ScalaLangKeys.offset)(t.offset)
-        tpm.set(ScalaLangKeys.text)(t.rawText)
-        
-        //tpm.set(ScalaLangKeys.tokenType)()
-//        t match {
-//          case _ => ??? 
-//        }
-        
-        tokenInfo         
+      for (i <- 0 to tokens.size-1){
+        assert(tokens(i).offset == otherTokens(i).offset)    
+        assert(tokens(i).text == otherTokens(i).text)
+        tokens(i)(tokenType) match {
+          case Some(tt) => assert(tokens(i)(tokenType).get.toString == otherTokens(i).tokenType.toString)
+          case None => fail()
+        }        
+        //println(tokens(i)(tokenType).toString + " : " + otherTokens(i).tokenType.toString)
       }
-      
-      fileTokenInfo += (file -> tokenInfo)
-      
-      fail()           
+            
     }
     
+    it("should fail..."){
+     fail() 
+    }
   }
   
 }

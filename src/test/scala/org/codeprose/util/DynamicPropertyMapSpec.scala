@@ -2,14 +2,14 @@ package org.codeprose.util
 
 import org.scalatest.FunSpec
 
-  
+// Setup for key and extended keys
+// This simulates the DefaultLanguage and ScalaLang specifications in org.codeprose.api.Api
 trait DefaultSpec {
   trait TT {    
     val bar : String
   }
-
+  
   import org.codeprose.util.DynamicPropertyMap.Key    
-
   // Keys
   val tt = new Key('tokenType) { type Value <: TT }
   val bar = new Key('bar) { type Value = Int }
@@ -29,6 +29,7 @@ trait FancySpec extends DefaultSpec {
   // See in test. A String is not accepted in the DynamicPropertyMap.set(fullName)("foo")
   // val fullName = Key[String]('fullName)
 }
+
 object FancySpec extends FancySpec 
 
 
@@ -39,7 +40,7 @@ class DynamicPropertyMapSpec extends FunSpec {
   
   describe("A DynamicPropertyMap"){
     
-    it("should add and remove elements ... "){
+    it("should add and remove elements from FancySpec:"){
       
       import FancySpec._
       
@@ -51,8 +52,6 @@ class DynamicPropertyMapSpec extends FunSpec {
       assert(dpm.size() == 2)
       dpm.set(fullName)("name")
       assert(dpm.size() == 3)
-      // Fails "name" is not of the correct type!
-      // dpm.set(fullName)("name")  
       
       dpm.set(tt)(new FancyTT("bar"))
       assert(dpm.size() == 4)
@@ -88,13 +87,28 @@ class DynamicPropertyMapSpec extends FunSpec {
       dpm.remove(tt)
       assert(dpm.size() == 0)
       
+    }
+    
+    it("should be able to handle requests for key that are not in the DPM") {
+      
+      import FancySpec._
+      val dpm = DPM(42)
+      
+      assert(dpm(tt) == None)
+      assert(dpm(foo) == None)
+      assert(dpm(fullName) == None)
       
     }
     
-    it("should fail ") {
-      fail()
+    it("should print a information summary of the comonents"){
+      
+      import FancySpec._
+      val dpm = DPM(42)
+      dpm.set(bar)(314)
+      dpm.set(foo)("foo")
+      dpm.set(fullName)("name")           
+      println(dpm.toString())
     }
-    
   }
   
   

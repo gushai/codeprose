@@ -48,18 +48,23 @@ object StringUtil {
   /*
    * Groups files by path after removing the most common path
    */
-  def getUniqueShortFileNamesGroupedByDirectory(s: List[String]) : Map[String,List[String]] = {      
+  def getUniqueShortFileNamesGroupedByDirectory(s: List[String]) : Map[String,List[(Int,String)]] = {      
     if(s.size==0) { 
-      return Map[String,List[String]]()
+      return Map[String,List[(Int,String)]]()
     } 
     val files = s.toArray
     scala.util.Sorting.quickSort(files)
     val shortened = getUniqueShortFileNames(files.toList)
-   
-    shortened.map(e => {
-     val idx = e.lastIndexOf("/")
-     (e.slice(0,idx),e.slice(idx+1,e.length))
-    }).groupBy(e => e._1).mapValues(e => e.map(e => e._2))    
+    val shortenedWithId = shortened.zipWithIndex
+    shortenedWithId.map(e=> {
+      val idx = e._1.lastIndexOf("/")
+     (e._1.slice(0,idx),(e._2,e._1.slice(idx+1,e._1.length)))
+    }).groupBy(e => e._1).mapValues(e => e.map(e => (e._2._1,e._2._2)))
+    
+//    shortened.map(e => {
+//     val idx = e.lastIndexOf("/")
+//     (e.slice(0,idx),e.slice(idx+1,e.length))
+//    }).groupBy(e => e._1).mapValues(e => e.map(e => e._2))    
   }
   
   

@@ -104,7 +104,7 @@ class StringUtilSpec extends FunSpec {
       
       val input = List[String]("/path/to/file.scala")
       val filenames = StringUtil.getUniqueShortFileNamesGroupedByDirectory(input)
-      assert(filenames("/path/to").head == "file.scala")          
+      assert(filenames("/path/to").head == (0,"file.scala"))          
     }
 
     it("should group properly with all files sharing a commong path"){
@@ -117,9 +117,12 @@ class StringUtilSpec extends FunSpec {
           "/one/three/f3.scala")
 
       val filenames = StringUtil.getUniqueShortFileNamesGroupedByDirectory(input)
-      assert(filenames("/two").mkString(" ") == "a.scala b.scala c.scala")
-      assert(filenames("/three").mkString(" ") == "f1.scala f2.scala f3.scala")
-          
+      assert(filenames("/two").map(e => e._2).mkString(" ") == "a.scala b.scala c.scala")
+      assert(filenames("/two").map(e => e._1).mkString(" ") == "3 4 5") // Input is sorted!
+      
+      assert(filenames("/three").map(e => e._2).mkString(" ") == "f1.scala f2.scala f3.scala")
+      assert(filenames("/three").map(e => e._1).mkString(" ") == "0 1 2")
+                
     }
     
     it("should group properly without all files sharing a commong path"){
@@ -135,10 +138,10 @@ class StringUtilSpec extends FunSpec {
       )
 
       val filenames = StringUtil.getUniqueShortFileNamesGroupedByDirectory(input)
-      assert(filenames("/m/two").mkString(" ") == "a.scala b.scala")
-      assert(filenames("/m/three").mkString(" ") == "f1.scala f2.scala")
-      assert(filenames("/t/two").mkString(" ") == "a.scala b.scala")
-      assert(filenames("/t/three").mkString(" ") == "f1.scala f2.scala")
+      assert(filenames("/m/two").map(e => e._2).mkString(" ") == "a.scala b.scala")
+      assert(filenames("/m/three").map(e => e._2).mkString(" ") == "f1.scala f2.scala")
+      assert(filenames("/t/two").map(e => e._2).mkString(" ") == "a.scala b.scala")
+      assert(filenames("/t/three").map(e => e._2).mkString(" ") == "f1.scala f2.scala")
           
     }
     

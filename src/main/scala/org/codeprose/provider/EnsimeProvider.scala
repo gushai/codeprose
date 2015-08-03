@@ -2,17 +2,22 @@ package org.codeprose.provider
 
 import org.ensime.client.Client
 import java.io.File
-import org.ensime.model.OffsetRange
+import org.ensime.api.OffsetRange
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Success, Failure}
 import com.typesafe.scalalogging.LazyLogging
 import java.util.regex.Pattern.CIBackRef
-import org.ensime.server.ConnectionInfo
+import org.ensime.api.ConnectionInfo
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try
 import java.util.concurrent.TimeoutException
+import org.ensime.client.ClientContext
+import org.ensime.api.TypeInfo
+import org.ensime.api.BasicTypeInfo
+import org.ensime.api.ArrowTypeInfo
+import org.ensime.api.SymbolInfo
 
 trait TokenEnricher {
 	def initialize() : Unit 
@@ -38,7 +43,7 @@ class EnsimeProviderContext(
     
 class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher with LazyLogging {
 
-	private val ensimeClient = new Client(c.host,c.port)  
+	private val ensimeClient = new Client()(new ClientContext(c.host,c.port,false)) 
 	var isInitialized = false
   
 	/*
@@ -77,18 +82,19 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
 			ensimeClient.close()
 	}
 
-	def shutdownServer() : Unit = {
-			if(c.verbose)
-				logger.info("Shutting down ensime-server...")
-			ensimeClient.shutdownServer()
-				if(c.verbose)
-					logger.info("Done.")
-	}
+// TODO: Remove. Currently no ShutdownServerReq in org.ensime.api 
+//	def shutdownServer() : Unit = {
+//			if(c.verbose)
+//				logger.info("Shutting down ensime-server...")
+//			ensimeClient.shutdownServer()
+//				if(c.verbose)
+//					logger.info("Done.")
+//	}
 
 	def getEnrichedTokens(file: File) : scala.collection.mutable.ArrayBuffer[org.codeprose.api.Token] = {
     if(isInitialized){			
       if(c.verbose)
-				logger.info("Processing: \t" + file)
+				logger.info("\n\nProcessing: \t" + file)
 
       val tokens = getTokens(file).map{t => enrichToken(file,t)}
       
@@ -115,8 +121,13 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
 			tokenTyp match {
 			  case Some(tt) => {
 				  tt match {       
-				    case Tokens.VARID => { enrichToken_VARID(file,token) }
-				  case _ => { if(c.verbose){ logger.info("No information requested for " + tt) } }					
+				    case Tokens.VARID => { enrichToken_VARID(file,token) 
+          }
+				  case _ => { 
+            if(c.verbose){ 
+              //logger.info("No information requested for " + tt) 
+            } 
+          }					
 				} 
 			}
 			case _ => { 
@@ -132,26 +143,50 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
   private def enrichToken_VARID(file: File, token: org.codeprose.api.Token) : org.codeprose.api.Token = {
       import org.codeprose.api.ScalaLang._      
       import org.codeprose.api.TokenProperties.SourcePosition    
-    
+      //println(file + " - " + OffsetRange(token.offset) + token.text)
+      // TypeInfoReq
       val typeInfo = ensimeClient.typeAtPoint(file, OffsetRange(token.offset))
 
               typeInfo onSuccess({
-              case Some(tI) => {
-                if(!tI.pos.isDefined)
-                {
+               
+              //case Some(tI) => {
+                case tI : BasicTypeInfo => {
                   token.set(fullName)(tI.fullName)
                   token.set(typeId)(tI.typeId)
                   token.set(declaredAs)(tI.declAs.toString)
-                }
-                else{
+                  token.set(isArrowType)(false)
+                  if(tI.pos.isDefined && tI.pos.get.isInstanceOf[org.ensime.api.OffsetSourcePosition] ){
+                    token.set(declaredAt)(new SourcePosition(tI.pos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].file.getAbsolutePath,
+                        tI.pos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].offset))
+                  }
+              } 
+              case tI : ArrowTypeInfo => {
                   token.set(fullName)(tI.fullName)
                   token.set(typeId)(tI.typeId)
                   token.set(declaredAs)(tI.declAs.toString)
-                  token.set(declaredAt)(new SourcePosition(tI.pos.get.asInstanceOf[org.ensime.model.OffsetSourcePosition].file.getAbsolutePath,
-                      tI.pos.get.asInstanceOf[org.ensime.model.OffsetSourcePosition].offset))
-                }
-              }       
+                  token.set(isArrowType)(true)
+                  if(tI.pos.isDefined && tI.pos.get.isInstanceOf[org.ensime.api.OffsetSourcePosition]){
+                    token.set(declaredAt)(new SourcePosition(tI.pos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].file.getAbsolutePath,
+                        tI.pos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].offset))
+                  }
+              }        
+              
               })
+      
+       // SymbolInfoReq
+      val symbolInfo = ensimeClient.symbolAtPoint(file, token.offset)
+      symbolInfo.onSuccess({
+        case sI: SymbolInfo => {
+          println(sI)
+          if(sI.declPos.isDefined && sI.declPos.get.isInstanceOf[org.ensime.api.OffsetSourcePosition]){
+                    token.set(declaredAt)(
+                        new SourcePosition(sI.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].file.getAbsolutePath,
+                        sI.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].offset))
+            
+          }
+        }
+      })
+      
       token
   }
   

@@ -102,20 +102,30 @@ extends Consumer with LazyLogging {
 					else {              
 						tt match {                      
 						case Tokens.VARID => {
-
-							val typ = token(declaredAs)
+                  val tType = token(tokenType).get
+                  val tText = token.text
+                  
+							    val typ = token(declaredAs)
 									val name = token(fullName)                      
 									val typId = token(typeId)
-
+                 
 									if (typ == None || name == None || typId == None){
-										s""""""+ token.text
+										s"""<span title="TokenType: $tType">""" + tText + s"""</span>""" 
 									} else {
 
-										val typVal = token(declaredAs).get
-												val nameVal = token(fullName).get                 
-												val typIdVal = token(typeId).get
-
-												s"""<span class="$typVal" title="Name: $nameVal Declared-As: $typVal, ($typIdVal)">""" + token.text + "</span>"  
+                    if(!token(declaredAt).isDefined){
+										  val typVal = token(declaredAs).get
+										  val nameVal = token(fullName).get                 
+										  val typIdVal = token(typeId).get
+                      s"""<span class="$typVal" title="Name: $nameVal,\nDeclared-As: $typVal,\n($typIdVal),\nTokenType: $tType">""" + tText + "</span>"
+                    } else {
+                      val typVal = token(declaredAs).get
+                      val nameVal = token(fullName).get                 
+                      val typIdVal = token(typeId).get
+                      val declAtStr = token(declaredAt).get.toString()
+                      s"""<span class="$typVal" title="Name: $nameVal,\nDeclared-As: $typVal,\nDeclared-At: $declAtStr,\n($typIdVal),\nTokenType: $tType">""" + tText + "</span>"
+                    }
+                    
 									}        
 						}                         
 						case _ => {

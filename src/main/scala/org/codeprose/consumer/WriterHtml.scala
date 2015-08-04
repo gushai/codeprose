@@ -102,31 +102,22 @@ extends Consumer with LazyLogging {
 					else {              
 						tt match {                      
 						case Tokens.VARID => {
-                  val tType = token(tokenType).get
-                  val tText = token.text
-                  
-							    val typ = token(declaredAs)
-									val name = token(fullName)                      
-									val typId = token(typeId)
                  
-									if (typ == None || name == None || typId == None){
-										s"""<span title="TokenType: $tType">""" + tText + s"""</span>""" 
-									} else {
-
-                    if(!token(declaredAt).isDefined){
-										  val typVal = token(declaredAs).get
-										  val nameVal = token(fullName).get                 
-										  val typIdVal = token(typeId).get
-                      s"""<span class="$typVal" title="Name: $nameVal,\nDeclared-As: $typVal,\n($typIdVal),\nTokenType: $tType">""" + tText + "</span>"
-                    } else {
-                      val typVal = token(declaredAs).get
-                      val nameVal = token(fullName).get                 
-                      val typIdVal = token(typeId).get
-                      val declAtStr = token(declaredAt).get.toString()
-                      s"""<span class="$typVal" title="Name: $nameVal,\nDeclared-As: $typVal,\nDeclared-At: $declAtStr,\n($typIdVal),\nTokenType: $tType">""" + tText + "</span>"
-                    }
+                  // Text to be printed
+                  val tText = token.text
+                
+                  // Fill title information
+                  val tInfo = token.toString().replace(",", ",\n")
+                  
+                  // Determine span class
+                  val spanClass = token(symbolDesignation)
                     
-									}        
+                  if(spanClass!=None){
+                    s"""<span class="""" + spanClass.get + s"""" title="$tInfo">""" + tText + s"""</span>"""
+                  } else {
+                    s"""<span title="$tInfo">""" + tText + s"""</span>"""
+                  }
+                  
 						}                         
 						case _ => {
 							  token.text 
@@ -350,31 +341,31 @@ extends Consumer with LazyLogging {
     
 		tokenTyp match {
 		case CHARACTER_LITERAL => {
-			s"""<span class="stringLiteral" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
+			s"""<span class="stringLiteral" title="Name: """ + token(tokenType).get.toString +s"""">""" + token.text + "</span>"
 		}
 		case INTEGER_LITERAL => {
-			s"""<span class="numberLiteral" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
+			s"""<span class="numberLiteral" title="Name: """ + token(tokenType).get.toString +s"""">""" + token.text + "</span>"
 		}
 		case FLOATING_POINT_LITERAL => {
-			s"""<span class="numberLiteral" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
+			s"""<span class="numberLiteral" title="Name: """ + token(tokenType).get.toString +s"""">""" + token.text + "</span>"
 		}
 		case STRING_LITERAL => {
-			s"""<span class="stringLiteral" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
+			s"""<span class="stringLiteral" title="Name: """ + token(tokenType).get.toString +s"""">""" + token.text + "</span>"
 		}
 		case STRING_PART => {
-			s"""<span class="stringLiteral" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
+			s"""<span class="stringLiteral" title="Name: """ + token(tokenType).get.toString +s"""">""" + token.text + "</span>"
 		}
 		case SYMBOL_LITERAL => {
-			s"""<span class="literal" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
+			s"""<span class="literal" title="Name: """ + token(tokenType).get.toString +s"""">""" + token.text + "</span>"
 		}
 		case TRUE => {
-			s"""<span class="keyword" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
+			s"""<span class="keyword" title="Name: """ + token(tokenType).get.toString +s"""">""" + token.text + "</span>"
 		}
 		case FALSE => {
-			s"""<span class="keyword" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
+			s"""<span class="keyword" title="Name: """ + token(tokenType).get.toString +s"""">""" + token.text + "</span>"
 		}
 		case NULL => {
-			s"""<span class="keyword" title="Name: """ + token(tokenType).toString +s"""">""" + token.text + "</span>"
+			s"""<span class="keyword" title="Name: """ + token(tokenType).get.toString +s"""">""" + token.text + "</span>"
 		}
 
 		}

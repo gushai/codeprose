@@ -8,9 +8,7 @@ import org.codeprose.api.TokenProperties.SourcePosition
 class Token(val offset: Int, val text: String) extends DynamicPropertyMap {
 	val length = text.length
   val range = Range(offset,offset+length)
-  def toPrettyString() : String = {
-   s"""Token($text,$offset) w/ prop: """ + toString()   
-  }
+  def toPrettyString() : String = { s"""Token($text,$offset,$length) w/ prop: """ + toString() }
 }
 
 // Container of information exchange
@@ -38,27 +36,10 @@ trait ScalaLang extends DefaultLang {
   	import org.codeprose.api.ScalaLang.Tokens._
   	def isNewline = this == Tokens.NEWLINE || this == Tokens.NEWLINES
     
-    // TODO: Fix: Compiler error: type missmatch
-//[error]  found   : ScalaLang.this.ScalaTokenType
-//[error]  required: org.codeprose.api.ScalaLang.ScalaTokenType
-//[error]     def isKeyword = ScalaTokens.KEYWORDS contains this
     def isKeyword = Tokens.KEYWORDS contains this 
   	def isComment = Tokens.COMMENTS contains this
   	def isId = Tokens.IDS contains this
   	def isLiteral = Tokens.LITERALS contains this
-    
-//  def isKeyword = (this == ABSTRACT || this == CASE || this == CATCH || this == CLASS || this == DEF || 
-//        this == DO || this == ELSE || this == EXTENDS || this == FINAL || 
-//        this == FINALLY || this == FOR || this == FORSOME || this == IF || this == IMPLICIT || 
-//        this == IMPORT || this == LAZY || this == MATCH || this == NEW || 
-//        this == OBJECT || this == OVERRIDE || this == PACKAGE || this == PRIVATE || this == PROTECTED || 
-//        this == RETURN || this == SEALED || this == SUPER || this == THIS || 
-//        this == THROW || this == TRAIT || this == TRY || this == TYPE || 
-//        this == VAL || this == VAR || this == WHILE || this == WITH || this == YIELD)
-  //def isComment = (this == MULTILINE_COMMENT || this == LINE_COMMENT || this == XML_COMMENT)        
-  //def isId = (this == VARID || this == PLUS || this == MINUS || this == STAR || this == PIPE || this == TILDE || this == EXCLAMATION)
-  //def isLiteral = (this == CHARACTER_LITERAL || this == INTEGER_LITERAL || this == FLOATING_POINT_LITERAL || this == STRING_LITERAL || this == STRING_PART || this == SYMBOL_LITERAL || this == TRUE || this == FALSE || this == NULL)    
-  
     
   	override lazy val toString = name
   
@@ -188,6 +169,62 @@ object Tokens {
 }
   
   
+
+object SourceSymbol {
+  
+  sealed trait SourceSymbol
+
+  case object ObjectSymbol extends SourceSymbol
+  case object ClassSymbol extends SourceSymbol
+  case object TraitSymbol extends SourceSymbol
+  case object PackageSymbol extends SourceSymbol
+  case object ConstructorSymbol extends SourceSymbol
+  case object ImportedNameSymbol extends SourceSymbol
+  case object TypeParamSymbol extends SourceSymbol
+  case object ParamSymbol extends SourceSymbol
+  case object VarFieldSymbol extends SourceSymbol
+  case object ValFieldSymbol extends SourceSymbol
+  case object OperatorFieldSymbol extends SourceSymbol
+  case object VarSymbol extends SourceSymbol
+  case object ValSymbol extends SourceSymbol
+  case object FunctionCallSymbol extends SourceSymbol
+  case object ImplicitConversionSymbol extends SourceSymbol
+  case object ImplicitParamsSymbol extends SourceSymbol
+  case object DeprecatedSymbol extends SourceSymbol
+  
+  val allSymbols: List[SourceSymbol] = List(
+    ObjectSymbol, ClassSymbol, TraitSymbol, PackageSymbol, ConstructorSymbol, ImportedNameSymbol, TypeParamSymbol,
+    ParamSymbol, VarFieldSymbol, ValFieldSymbol, OperatorFieldSymbol, VarSymbol, ValSymbol, FunctionCallSymbol,
+    ImplicitConversionSymbol, ImplicitParamsSymbol, DeprecatedSymbol
+  )
+  
+  def mapEnsimeToCodeprose(sourceSym : org.ensime.api.SourceSymbol) : SourceSymbol = {
+    sourceSym match {
+      case org.ensime.api.ObjectSymbol => { return ObjectSymbol } 
+      case org.ensime.api.ClassSymbol => { return ClassSymbol } 
+      case org.ensime.api.TraitSymbol => { return TraitSymbol } 
+      case org.ensime.api.PackageSymbol => { return PackageSymbol } 
+      case org.ensime.api.ConstructorSymbol => { return ConstructorSymbol } 
+      case org.ensime.api.ImportedNameSymbol => { return ImportedNameSymbol } 
+      case org.ensime.api.TypeParamSymbol => { return TypeParamSymbol } 
+      case org.ensime.api.ParamSymbol => { return ParamSymbol } 
+      case org.ensime.api.VarFieldSymbol => { return VarFieldSymbol } 
+      case org.ensime.api.ValFieldSymbol => { return ValFieldSymbol } 
+      case org.ensime.api.OperatorFieldSymbol => { return OperatorFieldSymbol } 
+      case org.ensime.api.VarSymbol => { return VarSymbol } 
+      case org.ensime.api.ValSymbol => { return ValSymbol } 
+      case org.ensime.api.FunctionCallSymbol => { return FunctionCallSymbol } 
+      case org.ensime.api.ImplicitConversionSymbol => { return ImplicitConversionSymbol } 
+      case org.ensime.api.ImplicitParamsSymbol => { return ImplicitParamsSymbol } 
+      case org.ensime.api.DeprecatedSymbol => { return DeprecatedSymbol }
+      //case _ => { new Exception("Unknown SourceSymbol!") }
+    }
+    
+  }
+}
+
+
+
   
   // ScalaLang Keys
   // ============================================================================
@@ -200,6 +237,7 @@ object Tokens {
   val isArrowType = new Key('isArrowType) { type Value = Boolean }
   override val tokenType = new Key('tokenType) { type Value = ScalaTokenType }
   val typeId = new Key('typeId) { type Value = Int }
+  val symbolDesignation = new Key('symbolDesignation){ type Value = org.codeprose.api.ScalaLang.SourceSymbol.SourceSymbol }
   
   
   

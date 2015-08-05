@@ -362,33 +362,36 @@ extends Consumer with LazyLogging {
     import org.codeprose.api.ScalaLang._
     import org.codeprose.api.ScalaLang.Tokens._
     
+    val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
+               
+    
 		tokenTyp match {
 		case CHARACTER_LITERAL => {
-			s"""<span class="stringLiteral" title="Name: """ + token(tokenType).get.toString +s"""">""" + token.text + "</span>"
+			s"""<span class="stringLiteral" title="""" + tInfo +s"""">""" + token.text + "</span>"
 		}
 		case INTEGER_LITERAL => {
-			s"""<span class="numberLiteral" title="Name: """ + token(tokenType).get.toString +s"""">""" + token.text + "</span>"
+			s"""<span class="numberLiteral" title="""" + tInfo +s"""">""" + token.text + "</span>"
 		}
 		case FLOATING_POINT_LITERAL => {
-			s"""<span class="numberLiteral" title="Name: """ + token(tokenType).get.toString +s"""">""" + token.text + "</span>"
+			s"""<span class="numberLiteral" title="""" + tInfo +s"""">""" + token.text + "</span>"
 		}
 		case STRING_LITERAL => {
-			s"""<span class="stringLiteral" title="Name: """ + token(tokenType).get.toString +s"""">""" + token.text + "</span>"
+			s"""<span class="stringLiteral" title="""" + tInfo +s"""">""" + token.text + "</span>"
 		}
 		case STRING_PART => {
-			s"""<span class="stringLiteral" title="Name: """ + token(tokenType).get.toString +s"""">""" + token.text + "</span>"
+			s"""<span class="stringLiteral" title="""" + tInfo +s"""">""" + token.text + "</span>"
 		}
 		case SYMBOL_LITERAL => {
-			s"""<span class="literal" title="Name: """ + token(tokenType).get.toString +s"""">""" + token.text + "</span>"
+			s"""<span class="literal" title="""" + tInfo +s"""">""" + token.text + "</span>"
 		}
 		case TRUE => {
-			s"""<span class="keyword" title="Name: """ + token(tokenType).get.toString +s"""">""" + token.text + "</span>"
+			s"""<span class="keyword" title="""" + tInfo +s"""">""" + token.text + "</span>"
 		}
 		case FALSE => {
-			s"""<span class="keyword" title="Name: """ + token(tokenType).get.toString +s"""">""" + token.text + "</span>"
+			s"""<span class="keyword" title="""" + tInfo +s"""">""" + token.text + "</span>"
 		}
 		case NULL => {
-			s"""<span class="keyword" title="Name: """ + token(tokenType).get.toString +s"""">""" + token.text + "</span>"
+			s"""<span class="keyword" title="""" + tInfo +s"""">""" + token.text + "</span>"
 		}
 
 		}

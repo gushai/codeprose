@@ -2,27 +2,21 @@ package org.codeprose.provider
 
 import org.ensime.client.Client
 import java.io.File
-import org.ensime.api.OffsetRange
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Success, Failure}
 import com.typesafe.scalalogging.LazyLogging
 import java.util.regex.Pattern.CIBackRef
-import org.ensime.api.ConnectionInfo
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try
 import java.util.concurrent.TimeoutException
 import org.ensime.client.ClientContext
-import org.ensime.api.TypeInfo
-import org.ensime.api.BasicTypeInfo
-import org.ensime.api.ArrowTypeInfo
-import org.ensime.api.SymbolInfo
 import scala.collection.mutable.ArrayBuffer
 import org.codeprose.api.Token
-import org.ensime.api.SymbolDesignations
-import org.ensime.api.BasicTypeInfo
-import org.ensime.api.ImplicitInfo
+import org.ensime.api._
+import org.codeprose.api.TokenProperties.SourcePosition
+
 
 trait TokenEnricher {
 	def initialize() : Unit 
@@ -78,7 +72,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
 			val connectionInfo = ensimeClient.connectionInfo()
 			val serverReady = try {
 				val cIResult= Await.result(connectionInfo,  Duration(c.timeout_ConnectionInfoReq, MILLISECONDS))
-						logger.info("[Ensime Server Connection]\t Successfully completed." + "Server details:" + cIResult)
+						logger.info("[Ensime Server Connection]\t Successfully completed. " + "Server details: " + cIResult)
 						true
 			}  catch {
 			case timeout : TimeoutException => { 
@@ -97,11 +91,12 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
 	def getEnrichedTokens(file: File) : scala.collection.mutable.ArrayBuffer[org.codeprose.api.Token] = {
     if(isInitialized){			
       if(c.verbose)
-				logger.info("\n\nProcessing: \t" + file)
+				logger.info("\n\nProcessing: \t" + file + "\n======================================================")
 
       val rawTokens = getTokens(file)  
       val rawTokensWithSymbolDesignations = getSymbolDesignations(file,rawTokens)
-
+      val rawTokensWithImplicitInformation = getImplicitInformation(file,rawTokensWithSymbolDesignations)
+      
       val tokens = rawTokens.map{t => enrichToken(file,t)}
       
  
@@ -145,8 +140,12 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
     tokens
   } 
   
-  private def getImplicitInformation(file: File, start: Int, end: Int) : Unit = {
-    val implicitInfo = ensimeClient.implicitInfoReq(file,OffsetRange(start,end))
+  private def getImplicitInformation(file: File, tokens: ArrayBuffer[Token]) : ArrayBuffer[Token] = {
+    
+    logger.info("Adding ImplicitInformation ... ")
+    
+    val end = tokens.last.offset + tokens.last.length
+    val implicitInfo = ensimeClient.implicitInfoReq(file,OffsetRange(0,end))
     
     try {
       val resultImplicitInfo = Await.result(implicitInfo,  Duration(c.timeout_ImplicitInfoReq, MILLISECONDS))
@@ -159,13 +158,12 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
     
     implicitInfo.onSuccess({
       
-      case implInfo : ImplicitInfo => {
-        logger.info("Adding ImplicitInformation ... ")
-        println(implInfo)
-        //enrichTokensWithSymbolDesignations(tokens,symDes)
-      }
-      
- 
+      case implInfo : ImplicitInfos => {
+         enrichTokensWithImplicitInformation(tokens, implInfo)
+       }
+      case _ => {
+          (logger.error("ImplicitInfoReq failed! "))
+        }
       
     })
     
@@ -173,7 +171,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
         case t => {(logger.error("ImplicitInfoReq failed! " + t))}
       })
     
-    
+    tokens
   }
   
   
@@ -280,12 +278,50 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
 		
     logger.info("Getting raw tokens.")
 		import org.codeprose.util.FileUtil    
-		val srcContent = FileUtil.loadSrcFileContent(file)        
+		val srcContent = FileUtil.loadSrcFileContent(file) 
 		val tokens = org.codeprose.provider.ScalaTokenizer.tokenize(srcContent)
 		tokens
 	}
   
-  
+  private def enrichTokensWithImplicitInformation(
+      tokens: ArrayBuffer[Token], 
+      implicitInfos: ImplicitInfos) : ArrayBuffer[Token] = {
+    
+    import org.codeprose.api.ScalaLang._
+    
+    implicitInfos.infos.foreach( { implicitInfo => {
+      
+      implicitInfo match {
+         case info : ImplicitConversionInfo => {
+           // Affected token
+           val idx = tokens.indexWhere({ t =>
+             val idx = t.offset+t.length/2
+             info.start <= idx && info.end > idx
+            },0)
+            
+           // Save information
+          if(idx != -1){
+            
+            tokens(idx).set(implicitConversion_fullName)(info.fun.name)
+            if(info.fun.declPos.isDefined && info.fun.declPos.get.isInstanceOf[org.ensime.api.OffsetSourcePosition]){
+             tokens(idx).set(implicitConversion_sourcePosition)( new SourcePosition(
+                 info.fun.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].file.getAbsolutePath,
+                 info.fun.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].offset)
+             )
+            }
+          } else {
+            logger.error("[ImpicitConverionInfo]\t" + "Failed to determine affected token. " + info)
+          }
+        }
+        case info : ImplicitParamInfo => {
+          logger.error("ImplicitParamInfo: Not yet collected!")
+        }
+      }
+      
+      } 
+    })  
+    tokens    
+  }
   
   private def enrichTokensWithSymbolDesignations(
       tokens: ArrayBuffer[Token], 

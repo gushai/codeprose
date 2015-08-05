@@ -17,21 +17,18 @@ object Api {
   type MetaInfoContainer = scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.ArrayBuffer[String])]
 }
 
+
+class MetaFile() extends DynamicPropertyMap
+class MetaProject() extends DynamicPropertyMap
+
+
 // DefaultLang
 trait DefaultLang {
 	import DynamicPropertyMap._
 	trait TokenType {}
   
   // Keys
-	val tokenType = new Key('tokenType){ type Value <: TokenType }
-  
-  // Debugging keys - BEGIN
-  
-  val debug_SymbolInfoReq_requested = new Key('debug_SymbolInfoReq_requested){ type Value = Boolean }
-  val debug_SymbolInfoReq_received = new Key('debug_SymbolInfoReq_received){ type Value = Boolean }
-  
-  // Debugging keys - END
-  
+	val tokenType = new Key('tokenType){ type Value <: TokenType }  
 
 }
 
@@ -245,12 +242,29 @@ object SourceSymbol {
   val isArrowType = new Key('isArrowType) { type Value = Boolean }
   override val tokenType = new Key('tokenType) { type Value = ScalaTokenType }
   val typeId = new Key('typeId) { type Value = Int }
+  val outerTypeId = new Key('outerTypeId) { type Value = Int }
+  
+  val args = new Key('args){ type Value = String }
+  val typeArgs = new Key('typeArgs){ type Value = String }
+  val members = new Key('members){ type Value = String }
+  
   val symbolDesignation = new Key('symbolDesignation){ type Value = org.codeprose.api.ScalaLang.SourceSymbol.SourceSymbol }
   
   
-  
-  
+  // Keys MetaFile
+  // ============================================================================
+  object KeysMetaFile {
+//    val imlicitParameter = new Key('declaredAs) { type Value = ArrayBuffer[] }
+//    val imlicitConversion = new Key('declaredAs) { type Value = ArrayBuffer[] }
+//    
+  }
 
+  // Keys MetaProject
+  // ============================================================================
+  object KeysMetaProject {
+    
+  }
+  
 }
 
 object ScalaLang extends ScalaLang

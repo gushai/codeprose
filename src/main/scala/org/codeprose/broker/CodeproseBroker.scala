@@ -16,7 +16,7 @@ import com.typesafe.scalalogging.LazyLogging
 import org.codeprose.provider.ProviderContext
 import org.codeprose.provider.EnsimeProvider
 import org.codeprose.provider.EnsimeProviderContext
-import org.codeprose.consumer.WriterHtmlContext
+import org.codeprose.consumer.WriterContextHtml
 
 
 object CodeproseBroker extends LazyLogging {
@@ -154,7 +154,9 @@ class CodeproseBroker()(implicit bc: BrokerContext)
 
   private def initializeWriter() : Consumer = {
     if(bc.outputType == "html") {
-      val c = new WriterHtmlContext(true)
+      
+      val c = new WriterContextHtml(true)
+      
       new WriterHtml(bc.outputPath)(c)     
     } else {
       throw new Exception("Unknown OutputWriter requested!")

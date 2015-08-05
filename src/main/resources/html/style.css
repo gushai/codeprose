@@ -1,0 +1,179 @@
+
+body{
+	font-size:0.8em;
+}
+
+.header {
+	width:800px;
+	height:30px; 
+	border-bottom:1px solid;	
+	margin:0px auto;
+}
+
+.footer {
+	width:800px;
+	border-top:1px solid;
+	text-align:right;
+	margin-top:30px;
+	margin-bottom:30px;
+	font-size:0.8em;
+	padding-top:3px;
+}
+
+a:link {
+	text-decoration: none;
+}
+
+.textframe{
+	width:800px;
+}
+
+.textboxinfo{
+	margin-top:auto;
+	width:75px;
+}
+
+.textbox{
+	width:675px;	
+	text-align:left;
+	margin-top:25px;	
+}
+
+code{
+	font-family: Consolas,"Liberation Mono",Menlo,Courier,monospace;
+	text-align:left;
+	background: #EEE;
+	margin-left: 5px;
+	margin-right: 5px;
+	padding-left: 5px;
+	padding-right: 5px;
+}
+
+.codebox{
+
+	font-family: Consolas,"Liberation Mono",Menlo,Courier,monospace;
+	width:650px;	
+	text-align:left;
+	margin-top:5px;
+	margin-left:5px;
+	padding:5px;
+	background: #EEE;
+	font-size:1.2em;
+}
+
+
+.commentspan{
+	color:green;
+}
+
+.packageSummary{
+	width:675px;	
+	text-align:left;
+	margin-top:25px;
+}
+
+.comment{
+	color:green;
+}
+
+.keyword {
+	color: #7F0055;
+	font-weight: bold;
+}
+
+.return {
+	color: #7F0055;
+	font-weight: bold;
+}
+
+.stringLiteral {
+	color: #2A00FF;
+}
+.numberLiteral {
+	color: #C48CFF;
+}
+.class{
+	color: #329399;	
+}
+.object {
+	color: #329399;
+}
+.trait{
+	color: #329399;
+}
+.package{
+	color: #006E04;
+}
+.scaladoc{
+	color: #3F5FBF;
+}
+
+/* SymbolDesignations for sematic highlighting */
+ .ObjectSymbol{
+	color: black;
+}
+
+.ClassSymbol{
+	color: black;
+}
+
+.TraitSymbol{
+	color: black;
+}
+
+.PackageSymbol{
+	color: black;
+}
+
+.ConstructorSymbol{
+	color: black;
+}
+
+.ImportedNameSymbol{
+	color: black;
+}
+
+.TypeParamSymbol{
+	color: black;
+}
+
+.ParamSymbol{
+	color: black;
+}
+
+.VarFieldSymbol{
+	color: black;
+}
+
+.ValFieldSymbol{
+	color: black;
+}
+
+.OperatorFieldSymbol{
+	color: black;
+}
+
+.VarSymbol{
+	color: black;
+}
+
+.ValSymbol{
+	color: black;
+}
+
+.FunctionCallSymbol{
+	color: black;
+}
+
+.ImplicitConversionSymbol{
+	color: black;
+}
+
+.ImplicitParamsSymbol{
+	color: black;
+}
+
+.DeprecatedSymbol{
+	color: black;
+}
+

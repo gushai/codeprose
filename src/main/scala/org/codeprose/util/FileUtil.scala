@@ -31,6 +31,11 @@ object FileUtil {
   def loadSrcFileContent(file: File) : String = {
     scala.io.Source.fromFile(file.getAbsolutePath(), "utf-8").getLines.mkString("\n")
   }
+  
+  def createDirectory(path: File) : Unit = {
+    path.mkdir()
+  }
+  
 }
 
 // Imported from 

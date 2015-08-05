@@ -1,29 +1,34 @@
 package org.codeprose.consumer
 
 import java.io.File
-
 import org.codeprose.api.ScalaLang._
 import org.codeprose.api.Token
 import org.codeprose.consumer.util.CommentUtil
 import org.codeprose.consumer.util.MarkdownConverter
 import org.codeprose.util.FileUtil
 import org.codeprose.util.StringUtil
-
 import com.typesafe.scalalogging.LazyLogging
+import org.codeprose.consumer.util.OutputContextSetter
 
-
+class ResourceRelPaths(val base: String, val target: String)
 
 trait WriterContext {
   val verbose: Boolean
+  
 }
 
-class WriterHtmlContext(
+class WriterContextHtml(
     val verbose: Boolean
-    ) extends WriterContext {    
+    ) extends WriterContext {
+  
+  val outputFolders = List("content","js","style")
+  val styleSheetRelPath = new ResourceRelPaths("/html/style.css","style/style.css") 
+  val filesToCoy = List[ResourceRelPaths](styleSheetRelPath)
 }
 
 
-class WriterHtml(outputPath: File)(implicit c: WriterHtmlContext)
+
+class WriterHtml(outputPath: File)(implicit c: WriterContextHtml)
 extends Consumer with LazyLogging {
  
   
@@ -37,6 +42,10 @@ extends Consumer with LazyLogging {
       
       logger.info("Generating output ...")					
 
+      // Output context
+      setupOutputContext(outputPath)
+      
+      
       generateIndexFile(info.map(e => e._1.getAbsolutePath()).toList,filenamesShorted,outputFilenames)
       
 			var idx=0
@@ -68,7 +77,7 @@ extends Consumer with LazyLogging {
       if(c.verbose)
         logger.info(srcFile + " ... ")
       
-			val htmlFrame = new HtmlContext(srcFile.getAbsolutePath(),getPackageInformationForFile(srcFile))
+			val htmlFrame = new HtmlContext(srcFile.getAbsolutePath(),getPackageInformationForFile(srcFile,info))
 
 			val htmlEntries = generateHtmlEntries(info)
 
@@ -77,9 +86,23 @@ extends Consumer with LazyLogging {
 			FileUtil.writeToFile(outputFile,htmlFrame.begin + outputArray.mkString("") + htmlFrame.end)    
 	}
 
-  /// TODO: Use meta file information.
-  private def getPackageInformationForFile(file: File) : String = {
-    "org.codeprose.rational"
+  // TODO: Use meta file information.
+  private def getPackageInformationForFile(file: File,tokens: scala.collection.mutable.ArrayBuffer[Token]) : String = {
+    import org.codeprose.api.ScalaLang._
+    val beg = tokens.indexWhere { t => t(tokenType).get == Tokens.PACKAGE }
+    var notFound=false
+    val packageStr = if(beg != -1){
+      val end = tokens.indexWhere({ t => t(tokenType).get == Tokens.WS && t.text.contains("\n")},beg)
+      if(end != 1){
+        tokens.slice(beg+1, end).map(e=> e.text).mkString.trim()
+      } else {
+        ""
+      }
+      
+    } else {
+      ""
+    }
+    packageStr
   }
   
 	private def generateHtmlEntries(
@@ -369,6 +392,12 @@ extends Consumer with LazyLogging {
 		}
 
 		}
+	}
+
+  private def setupOutputContext(outputPath: File) : Unit = {
+    val setter = new OutputContextSetter(outputPath)
+    setter.setFolderStructure(c.outputFolders)
+    c.filesToCoy.foreach({ f => setter.copyResource(f.base, new File(outputPath,f.target)) }) 
 	}
 }
 

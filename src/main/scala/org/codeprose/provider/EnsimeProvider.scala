@@ -22,6 +22,7 @@ import scala.collection.mutable.ArrayBuffer
 import org.codeprose.api.Token
 import org.ensime.api.SymbolDesignations
 import org.ensime.api.BasicTypeInfo
+import org.ensime.api.ImplicitInfo
 
 trait TokenEnricher {
 	def initialize() : Unit 
@@ -46,13 +47,14 @@ class EnsimeProviderContext(
   val timeout_ConnectionInfoReq = 200
   val timeout_SymbolInfoReq = 200
   val timeout_SymbolDesignationsReq = 500
+  val timeout_ImplicitInfoReq = 200
 }
 
 
     
 class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher with LazyLogging {
 
-	private val ensimeClient = new Client()(new ClientContext(c.host,c.port,true)) 
+	private val ensimeClient = new Client()(new ClientContext(c.host,c.port,false)) 
 	var isInitialized = false
   
 	/*
@@ -102,15 +104,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
 
       val tokens = rawTokens.map{t => enrichToken(file,t)}
       
-// TODO: Professional waiting for all futures. Set limit of 3sec??
-      //
-      // Commented out as all requests are awaited!!!
-      //
-//      logger.info("Awaiting results of token enrichment...")
-//      Thread.sleep(10000)    
-       
-      //tokens.filter { t => t(org.codeprose.api.ScalaLang.symbolDesignation).isDefined }.foreach { t => println(t.toPrettyString()) }
-      
+ 
       tokens
     } else {
       logger.error("Not initialized correctly.")
@@ -118,6 +112,8 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
     }
 	}
 
+  
+  
   
   private def getSymbolDesignations(file: File, tokens: ArrayBuffer[Token]) : ArrayBuffer[Token] = {
     val end = tokens.last.offset + tokens.last.length
@@ -129,6 +125,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
     case timeout : TimeoutException => { 
     	logger.error("SymbolDesignationsReq:\t" + timeout.getMessage)     	
       }
+ 
     }
 
     
@@ -147,6 +144,39 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
     
     tokens
   } 
+  
+  private def getImplicitInformation(file: File, start: Int, end: Int) : Unit = {
+    val implicitInfo = ensimeClient.implicitInfoReq(file,OffsetRange(start,end))
+    
+    try {
+      val resultImplicitInfo = Await.result(implicitInfo,  Duration(c.timeout_ImplicitInfoReq, MILLISECONDS))
+    }  catch {
+    case timeout : TimeoutException => { 
+      logger.error("ImplicitInfoReq:\t" + timeout.getMessage)       
+      }
+ 
+    }
+    
+    implicitInfo.onSuccess({
+      
+      case implInfo : ImplicitInfo => {
+        logger.info("Adding ImplicitInformation ... ")
+        println(implInfo)
+        //enrichTokensWithSymbolDesignations(tokens,symDes)
+      }
+      
+ 
+      
+    })
+    
+     implicitInfo.onFailure({
+        case t => {(logger.error("ImplicitInfoReq failed! " + t))}
+      })
+    
+    
+  }
+  
+  
   
   /*
    * Enriches the token with additional information obtained from ensime-server.
@@ -183,7 +213,6 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
       import org.codeprose.api.TokenProperties.SourcePosition    
       //println(file + " - " + OffsetRange(token.offset) + token.text)
      
-      token.set(debug_SymbolInfoReq_requested)(true)
         
       // SymbolInfoReq
       val symbolInfo = ensimeClient.symbolAtPoint(file, token.offset)
@@ -194,7 +223,6 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
         val cIResult= Await.result(symbolInfo,  Duration(c.timeout_SymbolInfoReq, MILLISECONDS))
       } catch {
         case timeout : TimeoutException => {
-          token.set(debug_SymbolInfoReq_received)(false)
           logger.error("[RequestError] \tSymbolInfosReq:\t" + timeout.getMessage)       
         }
      
@@ -204,20 +232,28 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
       
       symbolInfo.onSuccess({
         case sI: SymbolInfo => {
-          println(sI)
-          token.set(fullName)(sI.name)
-          token.set(debug_SymbolInfoReq_received)(true)
+          
+         
           val typeInfo = sI.tpe
+          if(typeInfo.outerTypeId.isDefined)
+            token.set(outerTypeId)(typeInfo.outerTypeId.get)
           
+          token.set(fullName)(typeInfo.fullName)
           
+          token.set(typeId)(typeInfo.typeId)
+          token.set(declaredAs)(typeInfo.declAs.toString)
+          
+          if(typeInfo.args.size>0)                      
+            token.set(args)(typeInfo.args.mkString(","))
+          if(typeInfo.members.size >0)  
+            token.set(members)(typeInfo.members.mkString(","))
+          if(typeInfo.typeArgs.size > 0)
+            token.set(typeArgs)(typeInfo.typeArgs.mkString(","))
+                    
           // TypeInfo
-          if(typeInfo.isInstanceOf[BasicTypeInfo]){
-            token.set(typeId)(typeInfo.typeId)
-            token.set(declaredAs)(typeInfo.declAs.toString)
+          if(typeInfo.isInstanceOf[BasicTypeInfo]){    
             token.set(isArrowType)(false)
-          } else if (typeInfo.isInstanceOf[ArrowTypeInfo]){
-            token.set(typeId)(typeInfo.typeId)
-            token.set(declaredAs)(typeInfo.declAs.toString)
+          } else if (typeInfo.isInstanceOf[ArrowTypeInfo]){        
             token.set(isArrowType)(false)
           }
           
@@ -232,7 +268,6 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
       
        symbolInfo.onFailure({
         case t => {
-          token.set(debug_SymbolInfoReq_received)(false)
           (logger.error("[RequestError] \tSymbolInfoReq failed! " + t))
           }
       })
@@ -250,13 +285,11 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
 		tokens
 	}
   
+  
+  
   private def enrichTokensWithSymbolDesignations(
       tokens: ArrayBuffer[Token], 
       symDesignations: SymbolDesignations) : ArrayBuffer[Token] = {
-    
-//    println("\n--------------------")
-//    symDesignations.syms.foreach { e => println(e) }
-//    println("\n--------------------")
     
     import org.codeprose.api.ScalaLang._
     

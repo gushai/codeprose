@@ -24,6 +24,14 @@ trait DefaultLang {
   
   // Keys
 	val tokenType = new Key('tokenType){ type Value <: TokenType }
+  
+  // Debugging keys - BEGIN
+  
+  val debug_SymbolInfoReq_requested = new Key('debug_SymbolInfoReq_requested){ type Value = Boolean }
+  val debug_SymbolInfoReq_received = new Key('debug_SymbolInfoReq_received){ type Value = Boolean }
+  
+  // Debugging keys - END
+  
 
 }
 

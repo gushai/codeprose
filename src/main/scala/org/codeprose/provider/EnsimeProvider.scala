@@ -40,14 +40,19 @@ trait ProviderContext { val verbose: Boolean }
 class EnsimeProviderContext(
 		val host: String,
 		val port: Int,
-		val verbose: Boolean
-		) extends ProviderContext
+		val verbose: Boolean    
+		) extends ProviderContext {
+  
+  val timeout_ConnectionInfoReq = 200
+  val timeout_SymbolInfoReq = 200
+  val timeout_SymbolDesignationsReq = 500
+}
 
 
     
 class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher with LazyLogging {
 
-	private val ensimeClient = new Client()(new ClientContext(c.host,c.port,false)) 
+	private val ensimeClient = new Client()(new ClientContext(c.host,c.port,true)) 
 	var isInitialized = false
   
 	/*
@@ -70,7 +75,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
 			logger.info("[Ensime Server Connection]\t Testing connection to ensime-server ...")
 			val connectionInfo = ensimeClient.connectionInfo()
 			val serverReady = try {
-				val cIResult= Await.result(connectionInfo,  Duration(1500, MILLISECONDS))
+				val cIResult= Await.result(connectionInfo,  Duration(c.timeout_ConnectionInfoReq, MILLISECONDS))
 						logger.info("[Ensime Server Connection]\t Successfully completed." + "Server details:" + cIResult)
 						true
 			}  catch {
@@ -97,9 +102,12 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
 
       val tokens = rawTokens.map{t => enrichToken(file,t)}
       
-      // TODO: Professional waiting for all futures. Set limit of 3sec??
-      logger.info("Awaiting results of token enrichment...")
-      Thread.sleep(5000)    
+// TODO: Professional waiting for all futures. Set limit of 3sec??
+      //
+      // Commented out as all requests are awaited!!!
+      //
+//      logger.info("Awaiting results of token enrichment...")
+//      Thread.sleep(10000)    
        
       //tokens.filter { t => t(org.codeprose.api.ScalaLang.symbolDesignation).isDefined }.foreach { t => println(t.toPrettyString()) }
       
@@ -115,9 +123,8 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
     val end = tokens.last.offset + tokens.last.length
     val symbolDesignations = ensimeClient.symbolDesignations(file, 0, end, org.ensime.api.SourceSymbol.allSymbols) 
     
-    val serverReady = try {
-    	val cIResult= Await.result(symbolDesignations,  Duration(500, MILLISECONDS))
-    			
+    try {
+    	val cIResult= Await.result(symbolDesignations,  Duration(c.timeout_SymbolDesignationsReq, MILLISECONDS))
     }  catch {
     case timeout : TimeoutException => { 
     	logger.error("SymbolDesignationsReq:\t" + timeout.getMessage)     	
@@ -128,7 +135,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
     symbolDesignations.onSuccess({
       
       case symDes : SymbolDesignations => {
-        logger.info("Adding SymbolDesignations")
+        logger.info("Adding SymbolDesignations ... ")
         enrichTokensWithSymbolDesignations(tokens,symDes)
       }
       
@@ -176,50 +183,30 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
       import org.codeprose.api.TokenProperties.SourcePosition    
       //println(file + " - " + OffsetRange(token.offset) + token.text)
      
-      // TypeInfoReq
-//      val typeInfo = ensimeClient.typeAtPoint(file, OffsetRange(token.offset))
-//
-//              typeInfo onSuccess({
-//               
-//              //case Some(tI) => {
-//                case tI : BasicTypeInfo => {
-//                  //println(tI)
-//                  token.set(fullName)(tI.fullName)
-//                  token.set(typeId)(tI.typeId)
-//                  token.set(declaredAs)(tI.declAs.toString)
-//                  token.set(isArrowType)(false)
-//                  if(tI.pos.isDefined && tI.pos.get.isInstanceOf[org.ensime.api.OffsetSourcePosition] ){
-//                    token.set(declaredAt)(new SourcePosition(tI.pos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].file.getAbsolutePath,
-//                        tI.pos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].offset))
-//                  }
-//              } 
-//              case tI : ArrowTypeInfo => {
-//                
-//                  //println(tI)
-//                  token.set(fullName)(tI.fullName)
-//                  token.set(typeId)(tI.typeId)
-//                  token.set(declaredAs)(tI.declAs.toString)
-//                  token.set(isArrowType)(true)
-//                  
-//                  if(tI.pos.isDefined && tI.pos.get.isInstanceOf[org.ensime.api.OffsetSourcePosition]){
-//                    token.set(declaredAt)(new SourcePosition(tI.pos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].file.getAbsolutePath,
-//                        tI.pos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].offset))
-//                  }
-//              }        
-//              
-//              })
-//      
-//      typeInfo.onFailure({
-//        case t => {(logger.error("[RequestError] \tTypeInfoReq failed! " + t))}
-//      })
-//      
-       // SymbolInfoReq
+      token.set(debug_SymbolInfoReq_requested)(true)
+        
+      // SymbolInfoReq
       val symbolInfo = ensimeClient.symbolAtPoint(file, token.offset)
+      
+      
+      // Awaiting the symbolInfo
+      try {
+        val cIResult= Await.result(symbolInfo,  Duration(c.timeout_SymbolInfoReq, MILLISECONDS))
+      } catch {
+        case timeout : TimeoutException => {
+          token.set(debug_SymbolInfoReq_received)(false)
+          logger.error("[RequestError] \tSymbolInfosReq:\t" + timeout.getMessage)       
+        }
+     
+      }
+     // 
+      
+      
       symbolInfo.onSuccess({
         case sI: SymbolInfo => {
-          
+          println(sI)
           token.set(fullName)(sI.name)
-          
+          token.set(debug_SymbolInfoReq_received)(true)
           val typeInfo = sI.tpe
           
           
@@ -244,7 +231,10 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
       })
       
        symbolInfo.onFailure({
-        case t => {(logger.error("[RequestError] \tSymbolInfoReq failed! " + t))}
+        case t => {
+          token.set(debug_SymbolInfoReq_received)(false)
+          (logger.error("[RequestError] \tSymbolInfoReq failed! " + t))
+          }
       })
       
       token
@@ -260,12 +250,20 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
 		tokens
 	}
   
-  private def enrichTokensWithSymbolDesignations(tokens: ArrayBuffer[Token], symDesignations: SymbolDesignations) : ArrayBuffer[Token] = {
+  private def enrichTokensWithSymbolDesignations(
+      tokens: ArrayBuffer[Token], 
+      symDesignations: SymbolDesignations) : ArrayBuffer[Token] = {
+    
+//    println("\n--------------------")
+//    symDesignations.syms.foreach { e => println(e) }
+//    println("\n--------------------")
+    
     import org.codeprose.api.ScalaLang._
+    
     symDesignations.syms.foreach { symDes => {
       val idx = tokens.indexWhere({ t =>
          val idx = t.offset+t.length/2
-         symDes.start < idx && symDes.end > idx
+         symDes.start <= idx && symDes.end > idx
         },0)
         if(idx != -1){
           tokens(idx).set(symbolDesignation)(SourceSymbol.mapEnsimeToCodeprose(symDes.symType))

@@ -107,7 +107,7 @@ extends Consumer with LazyLogging {
                   val tText = token.text
                 
                   // Fill title information
-                  val tInfo = token.toString().replace(",", ",\n")
+                  val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
                   
                   // Determine span class
                   val spanClass = token(symbolDesignation)

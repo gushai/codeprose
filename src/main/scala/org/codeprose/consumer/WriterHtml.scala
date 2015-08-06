@@ -130,7 +130,7 @@ extends Consumer with LazyLogging {
                   val tText = token.text
                 
                   // Fill title information
-                  val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
+                  val tInfo = token.toString().replace(";", ";\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
                   
                   // Determine span class
                   val spanClass = token(symbolDesignation)
@@ -141,7 +141,10 @@ extends Consumer with LazyLogging {
                     s"""<span title="$tInfo">""" + tText + s"""</span>"""
                   }
                   
-						}                         
+						}
+            case Tokens.WS => {
+              token.text
+            }
 						case _ => {
               val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
 							s"""<span title=""""+ tInfo + s"""">""" + token.text + s"""</span>"""
@@ -150,8 +153,7 @@ extends Consumer with LazyLogging {
 					}
 				} 
 				case _ => {
-			  		val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
-            s"""<span title=""""+ tInfo + s"""">""" + token.text + s"""</span>"""
+            token.text
 			  	} 
 				}
 
@@ -177,7 +179,7 @@ extends Consumer with LazyLogging {
         s
        }        
        case _ => {          
-        val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
+        val tInfo = token.toString().replace(";",";\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
         s"""<span class="comment" title="""" + tInfo + s"""">""" + token.text + "</span>"
        }        
     }

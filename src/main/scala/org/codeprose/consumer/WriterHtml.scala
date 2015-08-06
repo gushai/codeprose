@@ -45,7 +45,6 @@ extends Consumer with LazyLogging {
       // Output context
       setupOutputContext(outputPath)
       
-      
       generateIndexFile(info.map(e => e._1.getAbsolutePath()).toList,filenamesShorted,outputFilenames)
       
 			var idx=0
@@ -77,13 +76,13 @@ extends Consumer with LazyLogging {
       if(c.verbose)
         logger.info(srcFile + " ... ")
       
-			val htmlFrame = new HtmlContext(srcFile.getAbsolutePath(),getPackageInformationForFile(srcFile,info))
+			val htmlContext = new HtmlContext(srcFile.getAbsolutePath(),getPackageInformationForFile(srcFile,info))
 
-			val htmlEntries = generateHtmlEntries(info)
+			val htmlEntries = generateHtmlEntries(info)(htmlContext)
 
-			val outputArray = combineHtmlEntriesInContainer(info,htmlEntries)
-
-			FileUtil.writeToFile(outputFile,htmlFrame.begin + outputArray.mkString("") + htmlFrame.end)    
+//			val outputArray = combineHtmlEntriesInContainer(info,htmlEntries)
+        val outputArray = htmlEntries
+			FileUtil.writeToFile(outputFile,htmlContext.begin + outputArray.mkString("") + htmlContext.end)    
 	}
 
   // TODO: Use meta file information.
@@ -106,60 +105,194 @@ extends Consumer with LazyLogging {
   }
   
 	private def generateHtmlEntries(
-			infoSorted: scala.collection.mutable.ArrayBuffer[Token]) : Iterable[String] = {
+			infoSorted: scala.collection.mutable.ArrayBuffer[Token])(implicit htmlContext: HtmlContext)
+  : Iterable[String] = {
 
-			val htmlEntries = infoSorted.map(token => {
+    // Group entries into: List[List[Token]] where each List contains a line of text or a MultilineComment
+    import org.codeprose.api.ScalaLang._
+    
+    var idx_toProcess_Beg = 0;
+    var idx_toProcess_End = 0;
+    var currentLine = 0
+    val htmlEntries = scala.collection.mutable.ArrayBuffer[String]()
+    
+    while(idx_toProcess_End<infoSorted.length){
+      
+      // Find section to process next
+     
+      do { idx_toProcess_End += 1 }  while(idx_toProcess_End<infoSorted.length &&
+          infoSorted(idx_toProcess_End)(tokenType).isDefined && 
+          infoSorted(idx_toProcess_End)(tokenType).get != Tokens.MULTILINE_COMMENT && 
+          !infoSorted(idx_toProcess_End).text.contains("\n"))
+      
+      // Process subsection of tokens
+      val toProcess = infoSorted.slice(idx_toProcess_Beg, idx_toProcess_End)
+      //print("\n------------------\n" + toProcess.map(t=>t.text).mkString("") )
+     
+      
+      // Many tiles of tokens span several lines!!
+      val entries = if(toProcess.length == 1 && toProcess(0).text.contains("\n")){
+        val token = toProcess(0) 
+        // to TEXT-Entry
+        val ret = if(token(tokenType).isDefined && 
+            token(tokenType).get == Tokens.MULTILINE_COMMENT && 
+            !CommentUtil.isScalaDocComment(token.text)){
+            
+            currentLine += token.text.count(_ == '\n') 
+            
+            (htmlContext.textTable_getBegin() + 
+            htmlContext.textTable_getEntry("", MarkdownConverter.apply(CommentUtil.cleanMultilineComment(token.text))) + 
+            htmlContext.textTable_getEnd()) 
+            
+            
 
-				import org.codeprose.api.ScalaLang._
+          
+        } else if ( !token(tokenType).isDefined || (token(tokenType).isDefined && token(tokenType).get == Tokens.WS)) {
+          // to CODE-Entry
+          val lines = token.text.split("\n")
+          val r = lines.map(
+            e => {              
+              val out = (htmlContext.codeTable_getBegin() + 
+              htmlContext.codeTable_getEntry(currentLine, "", e) + 
+              htmlContext.codeTable_getEnd())
+              currentLine+=1
+              out
+          })
+          
+          r.mkString("\n")
+          
+        } else {
+          // TOKENTYPE IS DEFINED HERE!!!
+          // to CODE-Entry
+          token.text
+        }
+        ret
+        
+      } else {
+        val str = toProcess.map({ t => t.text }).mkString("")
+        currentLine += str.count( _ == '\n' )
+        str
+      }
+      
+      //val rawEntry = toProcess.map({ t => t.text }).mkString("")
+      
+//   val rawEntry = toProcess.map(token => {
+//
+//        import org.codeprose.api.ScalaLang._
+//
+//        val tokenTyp = token(tokenType)
+//        tokenTyp match {
+//        case Some(tt) => {
+//          if(tt.isKeyword){
+//            handleKeywords(token,tt)             
+//          } else if(tt.isLiteral) {
+//            handleLiterals(token,tt)
+//          } else if(tt.isComment) {
+//            handleComments(token,tt)
+//          }
+//          else {              
+//            tt match {                      
+//            case Tokens.VARID => {
+//                 
+//                  // Text to be printed
+//                  val tText = token.text
+//                
+//                  // Fill title information
+//                  val tInfo = token.toString().replace(";", ";\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
+//                  
+//                  // Determine span class
+//                  val spanClass = token(symbolDesignation)
+//                    
+//                  if(spanClass!=None){
+//                    s"""<span class="""" + spanClass.get + s"""" title="$tInfo">""" + tText + s"""</span>"""
+//                  } else {
+//                    s"""<span title="$tInfo">""" + tText + s"""</span>"""
+//                  }
+//                  
+//            }
+//            case Tokens.WS => {
+//              token.text
+//            }
+//            case _ => {
+//              val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
+//              s"""<span title=""""+ tInfo + s"""">""" + token.text + s"""</span>"""
+//              }
+//            }
+//          }
+//        } 
+//        case _ => {
+//            token.text
+//          } 
+//        }
+//
+//
+//      })
+      
+      
+      htmlEntries+= entries
+      
+      idx_toProcess_Beg = idx_toProcess_End  
+    }
+    
+    htmlEntries
+    
 
-				val tokenTyp = token(tokenType)
-				tokenTyp match {
-				case Some(tt) => {
-					if(tt.isKeyword){
-						handleKeywords(token,tt)             
-					} else if(tt.isLiteral) {
-						handleLiterals(token,tt)
-					} else if(tt.isComment) {
-						handleComments(token,tt)
-					}
-					else {              
-						tt match {                      
-						case Tokens.VARID => {
-                 
-                  // Text to be printed
-                  val tText = token.text
-                
-                  // Fill title information
-                  val tInfo = token.toString().replace(";", ";\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
-                  
-                  // Determine span class
-                  val spanClass = token(symbolDesignation)
-                    
-                  if(spanClass!=None){
-                    s"""<span class="""" + spanClass.get + s"""" title="$tInfo">""" + tText + s"""</span>"""
-                  } else {
-                    s"""<span title="$tInfo">""" + tText + s"""</span>"""
-                  }
-                  
-						}
-            case Tokens.WS => {
-              token.text
-            }
-						case _ => {
-              val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
-							s"""<span title=""""+ tInfo + s"""">""" + token.text + s"""</span>"""
-						  }
-						}
-					}
-				} 
-				case _ => {
-            token.text
-			  	} 
-				}
-
-
-			}) 
-			htmlEntries
+    
+    // ----------------------------------------------------------- 
+    // Old - begin
+    // -----------------------------------------------------------
+//			val htmlEntries = infoSorted.map(token => {
+//
+//				import org.codeprose.api.ScalaLang._
+//
+//				val tokenTyp = token(tokenType)
+//				tokenTyp match {
+//				case Some(tt) => {
+//					if(tt.isKeyword){
+//						handleKeywords(token,tt)             
+//					} else if(tt.isLiteral) {
+//						handleLiterals(token,tt)
+//					} else if(tt.isComment) {
+//						handleComments(token,tt)
+//					}
+//					else {              
+//						tt match {                      
+//						case Tokens.VARID => {
+//                 
+//                  // Text to be printed
+//                  val tText = token.text
+//                
+//                  // Fill title information
+//                  val tInfo = token.toString().replace(";", ";\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
+//                  
+//                  // Determine span class
+//                  val spanClass = token(symbolDesignation)
+//                    
+//                  if(spanClass!=None){
+//                    s"""<span class="""" + spanClass.get + s"""" title="$tInfo">""" + tText + s"""</span>"""
+//                  } else {
+//                    s"""<span title="$tInfo">""" + tText + s"""</span>"""
+//                  }
+//                  
+//						}
+//            case Tokens.WS => {
+//              token.text
+//            }
+//						case _ => {
+//              val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
+//							s"""<span title=""""+ tInfo + s"""">""" + token.text + s"""</span>"""
+//						  }
+//						}
+//					}
+//				} 
+//				case _ => {
+//            token.text
+//			  	} 
+//				}
+//
+//
+//			}) 
+//			htmlEntries
 	}
 
   
@@ -415,7 +548,7 @@ extends Consumer with LazyLogging {
 
 class HtmlContext(filename: String, packag: String) {
 
-	val fileNameWithoutPath =  filename.slice(filename.lastIndexOf("/")+1, filename.length())  
+	    val fileNameWithoutPath =  filename.slice(filename.lastIndexOf("/")+1, filename.length())  
 			val fileNameWithoutPathAndEnding = fileNameWithoutPath.slice(0,fileNameWithoutPath.lastIndexOf("."))		
 			val fileNameEnding = fileNameWithoutPath.slice(fileNameWithoutPath.lastIndexOf(".")+1,fileNameWithoutPath.length)
 
@@ -440,8 +573,34 @@ class HtmlContext(filename: String, packag: String) {
 			val end  = s"""<div class="footer">generated by codeprose. help and support on <a href="http://github.com/sth/codeprose" target="blank">github</a>.</div>
 			</div></div></body></html>"""
 
+      
+      def textTable_getBegin() : String = { s"""<table class="table-text">""" } 
 
+      def textTable_getEnd() : String = { s"""</table>\n\n""" } 
+      
+      def textTable_getEntry(comment: String, mainText: String) : String = {
+        s"""<tr>
+<td class="table-text-comment">$comment</td>
+<td class="table-text-text">$mainText</td>
+</tr>"""
+      } 
 
+      def codeTable_getBegin() : String = { """<table class="table-code">""" }
+      
+      
+      def codeTable_getEntry(lineNumber: Int, comment: String, code: String) : String = {
+        val lineNumStr = lineNumber.toString()
+        s"""<tr>
+<td id="LCOM$lineNumStr" class="table-code-comment">$comment</td>
+<td id="L$lineNumStr" class="table-code-linenumber" data-line-number="$lineNumStr">$lineNumStr</td>
+<td id="LC$lineNumStr" class="table-code-code">
+<pre>$code</pre>
+</td>
+</tr>""" 
+      }
+      
+      def codeTable_getEnd() : String = { s"""</table>\n\n""" }
+      
 }
 
 class HtmlIndexContext(){

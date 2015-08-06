@@ -80,7 +80,7 @@ object CodeproseBroker extends LazyLogging {
 
     // TODO: Extend to include several folders
     val filesToProcess = FileUtil.getAllScalaFilesIncludingSubDir(mainSrcFolder)        
-    return new BrokerContext(host,port,ensimeFile,filesToProcess,outputPath,outputType,verbose)   
+    return new BrokerContext(host,port,ensimeFile,List(mainSrcFolder.getAbsolutePath),filesToProcess,outputPath,outputType,verbose)   
   }
        
 }
@@ -93,6 +93,7 @@ class BrokerContext(
     val host: String,
     val port: Int,
     val ensimeFile: File,
+    val srcMainFolders : List[String],
     val filesToProcess: Array[File],
     val outputPath: File,
     val outputType: String,
@@ -117,7 +118,7 @@ class CodeproseBroker()(implicit bc: BrokerContext)
   private val consumer = initializeWriter()
     
   private def initializeProvider() : EnsimeProvider = {
-      val pc = new EnsimeProviderContext(bc.host,bc.port,bc.verbose)
+      val pc = new EnsimeProviderContext(bc.host,bc.port,bc.verbose,bc.srcMainFolders)
       val p = new EnsimeProvider()(pc)
       p.initialize()
       return p

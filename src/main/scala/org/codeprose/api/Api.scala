@@ -3,6 +3,7 @@ package org.codeprose.api
 import scala.collection.mutable.ArrayBuffer
 import org.codeprose.util.DynamicPropertyMap
 import org.codeprose.api.TokenProperties.SourcePosition
+import org.codeprose.api.TokenProperties.ERangePosition
 
 // Token
 class Token(val offset: Int, val text: String) extends DynamicPropertyMap {
@@ -254,7 +255,7 @@ object SourceSymbol {
   val implicitConversion_fullName = new Key('implicitConversion_fullName){ type Value = String }
   val implicitConversion_argNames = new Key('implicitConversion_fullName){ type Value = String }
   
- 
+  val whereUsed = new Key('whereUsed){ type Value = List[ERangePosition]}
   
   // Keys MetaFile
   // ============================================================================

@@ -143,13 +143,15 @@ extends Consumer with LazyLogging {
                   
 						}                         
 						case _ => {
-							  token.text 
+              val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
+							s"""<span title=""""+ tInfo + s"""">""" + token.text + s"""</span>"""
 						  }
 						}
 					}
 				} 
 				case _ => {
-			  		token.text 
+			  		val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
+            s"""<span title=""""+ tInfo + s"""">""" + token.text + s"""</span>"""
 			  	} 
 				}
 
@@ -174,8 +176,9 @@ extends Consumer with LazyLogging {
         }
         s
        }        
-       case _ => {            
-        s"""<span class="comment">""" + token.text + "</span>"
+       case _ => {          
+        val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
+        s"""<span class="comment" title="""" + tInfo + s"""">""" + token.text + "</span>"
        }        
     }
   }
@@ -357,7 +360,7 @@ extends Consumer with LazyLogging {
 				outputArray
 	}
   
-	def handleLiterals(token: Token, tokenTyp: org.codeprose.api.ScalaLang.ScalaTokenType) : String = {
+	private def handleLiterals(token: Token, tokenTyp: org.codeprose.api.ScalaLang.ScalaTokenType) : String = {
     
     import org.codeprose.api.ScalaLang._
     import org.codeprose.api.ScalaLang.Tokens._

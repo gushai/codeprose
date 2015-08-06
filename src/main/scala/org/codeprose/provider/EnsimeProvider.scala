@@ -35,13 +35,15 @@ trait ProviderContext { val verbose: Boolean }
 class EnsimeProviderContext(
 		val host: String,
 		val port: Int,
-		val verbose: Boolean    
+		val verbose: Boolean,
+    val inputFolders: List[String]
 		) extends ProviderContext {
   
   val timeout_ConnectionInfoReq = 200
   val timeout_SymbolInfoReq = 200
   val timeout_SymbolDesignationsReq = 500
   val timeout_ImplicitInfoReq = 200
+  val timeout_UsesOfSymbolAtPointReq = 200
 }
 
 
@@ -226,8 +228,6 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
      
       }
      // 
-      
-      
       symbolInfo.onSuccess({
         case sI: SymbolInfo => {
           
@@ -269,6 +269,53 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
           (logger.error("[RequestError] \tSymbolInfoReq failed! " + t))
           }
       })
+      
+      // ==================================
+      // Uses of Symbol
+      
+      
+      val usesOfSymbol = ensimeClient.usesOfSymAtPoint(file, token.offset)
+      
+      
+      // Awaiting the symbolInfo
+      try {
+        val cIResult= Await.result(usesOfSymbol,  Duration(c.timeout_SymbolInfoReq, MILLISECONDS))
+      } catch {
+        case timeout : TimeoutException => {
+          logger.error("[RequestError] \tUsesOfSymbolAtPointReq:\t" + timeout.getMessage)       
+        }
+     
+      }
+      
+      usesOfSymbol.onSuccess({
+        case uOS: ERangePositions => {
+          
+          // Filters the references that are not in the input folders!
+          val posToSave = uOS.positions.filter(srcPos =>
+            c.inputFolders.map( folder => srcPos.file.startsWith(folder)).reduce(_ || _)            
+            )
+          if(posToSave.size > 0){
+          token.set(whereUsed)(posToSave.map({
+            srcPos => 
+                new org.codeprose.api.TokenProperties.ERangePosition(
+                srcPos.file,
+                srcPos.offset,
+                srcPos.start,
+                srcPos.end
+                )}
+            )
+            )  
+          }   
+        } 
+      })
+      
+       usesOfSymbol.onFailure({
+        case t => {
+          (logger.error("[RequestError] \tUsesOfSymbolAtPointReq failed! " + t))
+          }
+      })
+      
+      
       
       token
   }

@@ -34,7 +34,7 @@ trait DynamicPropertyMap {
   }
   
   override def toString() : String = {
-    data.map(e=>e._1.key + " -> " + e._2).mkString(", ")
+    data.map(e=>e._1.key + " -> " + e._2).mkString("; ")
   }
   
 }

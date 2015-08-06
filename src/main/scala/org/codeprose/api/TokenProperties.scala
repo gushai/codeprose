@@ -6,9 +6,17 @@ class SourcePosition(val filename: String, val offset: Int){
   }
 }
 
+class ERangePosition(val filename: String, val offset: Int, val start: Int, val end: Int){
+  override def toString() : String = {
+    s"""($filename,$offset,$start,$end)"""
+  }
+}
+
+
 class ArgumentList(){
   ???
 }
+
 
 
   

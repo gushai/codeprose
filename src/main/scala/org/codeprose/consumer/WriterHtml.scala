@@ -12,6 +12,7 @@ import org.codeprose.consumer.util.OutputContextSetter
 import scala.collection.mutable.ArrayBuffer
 
 
+
 class ResourceRelPaths(val base: String, val target: String)
 
 trait WriterContext {
@@ -120,6 +121,7 @@ extends Consumer with LazyLogging {
     var codeTableClose = true
     val htmlEntries = scala.collection.mutable.ArrayBuffer[String]()
     
+    // TODO: Unsave!!!!
     while(idx_toProcess_End<infoSorted.length){
       
       // Find section to process next
@@ -140,6 +142,8 @@ extends Consumer with LazyLogging {
       codeTableOpen=codeTableOpenUpdate
       idx_toProcess_Beg = idx_toProcess_End  
     }
+    
+   // htmlEntries.foreach(t=>println(t))
     
     htmlEntries
     
@@ -176,21 +180,26 @@ extends Consumer with LazyLogging {
     var currentLineUpdate = currentLine
     var codeTableOpenUpdate = codeTableOpen
       
+    
+    
     val entries = if(toTextEntry(toProcess)){
-      
+    
       // Close code table and update variables
       codeTableOpenUpdate = false
       
       currentLineUpdate += toProcess(0).text.count(_ == '\n') 
-            
+      
+      val (wrap_beg,wrap_end) = TokenToOutputEntry.getTokenEntry(toProcess(0))
+    
       Array(htmlContext.textTable_getBegin() + 
-      htmlContext.textTable_getEntry("", MarkdownConverter.apply(CommentUtil.cleanMultilineComment(toProcess(0).text))) + 
+      htmlContext.textTable_getEntry("", wrap_beg+ wrap_end) + 
       htmlContext.textTable_getEnd())
        
       
     } else {
+     
       
-      val (beg,end) = if(!codeTableOpen && !codeTableClose){
+      val (table_beg,table_end) = if(!codeTableOpen && !codeTableClose){
         (htmlContext.codeTable_getBegin(),"")
       } else if (!codeTableOpen && codeTableClose){
         (htmlContext.codeTable_getBegin(), htmlContext.codeTable_getEnd())
@@ -200,20 +209,79 @@ extends Consumer with LazyLogging {
         ("",htmlContext.codeTable_getEnd())
       }
       
+      // Get html token wrapper
+      val wrapper = toProcess.map(t=>{
+        TokenToOutputEntry.getTokenEntry(t)
+      })
+      
+      
+     
+      
       // Determine (a) all tokens in one line (b) parts of tokens to be split over lines
+      val totalLineUpdate = toProcess.map(t=>t.text).mkString("").count(_ == '\n')
       
-      val rawEntries = Array(htmlContext.codeTable_getEntry(currentLineUpdate, "", toProcess.map(t=>t.text).mkString("")))
+      val tmp = ArrayBuffer[String]()
+      var str = ""
+      
+      for(i<- 0 to (toProcess.length-1)){
+        val t = toProcess(i)
+        val (beg,end) = wrapper(i)
+        
+        //print(str)
+        
+        if(t.text.contains('\n')){
+          
+          if(t(tokenType).isDefined && t(tokenType).get == Tokens.WS){
+            val numNewLines = t.text.count(_ == '\n')
+            val idx_FirstNewLine = t.text.indexOf("\n")
+            val idx_LastNewLine = t.text.lastIndexOf("\n")
+            str = str + (beg + t.text.slice(0,idx_FirstNewLine) + "aa" + end)
+            tmp.append(str) 
+            
+            if(numNewLines>2){
+              for(k<- 3 to numNewLines){
+                tmp.append("empty")
+              }
+            } 
+            
+            if(idx_LastNewLine < (t.text.length-1)){
+              str = (beg + t.text.slice(idx_LastNewLine+1,t.text.length) +"[XX]" + end)
+            }
+            
+          } else {
+            // TODO: Improve for multiline STRING_LITERALS etc.
+            str = str + (beg + t.text + end)
+            tmp.append(str) 
+            str = ""
+          }
+          
+          
+        } else {
+          str = str + (beg + t.text + end)
+        }
+        
+      }
+      
+      if(str.length!=0){
+        tmp.append(str)
+      }
+      
+      //tmp.foreach(e => print(e))
+      val rawEntries = tmp.map( l => {
+        val o = htmlContext.codeTable_getEntry(currentLineUpdate, "", l)
+        currentLineUpdate+=1
+        o
+      }).toArray
       
       
       
-      currentLineUpdate+=toProcess.map(t=>t.text).mkString("").count(_ == '\n')
-      
-      val packagedEntries = Array(beg) ++ rawEntries ++ Array(end)
+      val packagedEntries = Array(table_beg) ++ rawEntries ++ Array(table_end)
+//      packagedEntries.foreach(e=>println(e))
       packagedEntries
     }
     
     
-    
+    //entries.foreach(x=>print(x))
     
     (entries,currentLineUpdate,codeTableOpenUpdate)
     
@@ -588,13 +656,304 @@ class HtmlIndexContext(){
 
 object TokenToOutputEntry {
   
-  def getTokenEntry_WithInformation(token: Token) : String = {
-    token.text
-  }
+   private def getTokenEntry_WithInformation(token: Token) : (String,String) = {
+    val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
+    (s"""<span title=""""+ tInfo + s"""">""",s"""</span>""")
+   }
   
-  def getTokenEntry_WithOutInformation(token: Token) : String = {
-     token.text 
+   private def getTokenEntry_WithOutInformation(token: Token) : String = {
+     token.text
   }
+   
+   def getTokenEntry(token: Token) : (String,String) = {
+   
+     import org.codeprose.api.ScalaLang._
+     
+     val out = token(tokenType) match {
+       case Some(tt) => {
+          val text = if(tt.isKeyword){
+            handleKeywords(token,tt)             
+          } else if(tt.isLiteral) {
+            handleLiterals(token,tt)
+          } else if(tt.isComment) {
+            handleComments(token,tt)
+          }
+          else {        
+            
+            tt match {
+              case Tokens.VARID => {
+                handleVARID(token)
+              }
+              case Tokens.WS => {
+                handleWS(token)
+              }
+              case _ => {
+                ("","")
+              }
+            }
+            
+          }
+          text
+       }
+       case None => {
+         ("","")
+       }
+       
+     }
+     out 
+   }
+ 
+
+   private def handleComments(token: Token, tt: ScalaTokenType) : (String,String) = {
+		   import org.codeprose.consumer.util.MarkdownConverter
+		   import org.codeprose.consumer.util.CommentUtil
+
+
+		   tt match{ 
+		   case Tokens.MULTILINE_COMMENT => {
+			   val s = if(CommentUtil.isScalaDocComment(token.text)){
+				   (s"""<span class="scaladoc">""","</span>")
+			   } else {
+				   (MarkdownConverter.apply(CommentUtil.cleanMultilineComment(token.text)),"") 
+			   }
+			   s
+		   }        
+		   case _ => {          
+			   //val tInfo = token.toString().replace(";",";\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
+				 //	   s"""<span class="comment" title="""" + tInfo + s"""">""" + token.text + "</span>"
+         (s"""<span class="comment">""", "</span>")
+		   }        
+		   }
+   }
   
+  
+   /**
+    * 
+    */
+   private def handleKeywords(token: Token, tt: ScalaTokenType) : (String,String) = {
+      import org.codeprose.api.ScalaLang.Tokens._
+      
+      val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
+    
+      
+      tt match {
+      case ABSTRACT => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case CASE => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case CATCH => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case CLASS => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case DEF => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case DO => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case ELSE => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case EXTENDS => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case FINAL => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case FINALLY => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case FOR => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case FORSOME => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case IF => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case IMPLICIT => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case IMPORT => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case LAZY => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case MATCH => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case NEW => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case OBJECT => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case OVERRIDE => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case PACKAGE => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case PRIVATE => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case PROTECTED => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case RETURN => {
+        (s"""<span class="return" title="$tInfo">""", "</span>") 
+      }
+      case SEALED => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case SUPER => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case THIS => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case THROW => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case TRAIT => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case TRY => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case TYPE => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case VAL => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case VAR => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case WHILE => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case WITH => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
+      }
+      case YIELD => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>")
+      }
+      case _ => {
+        (s"""<span class="keyword" title="$tInfo">""", "</span>")
+      }
+     }
+   }
+   private def handleLiterals(token: Token, tt: ScalaTokenType) : (String,String) = {
+    import org.codeprose.api.ScalaLang.Tokens._
+    
+    val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
+    
+    tt match {
+    case CHARACTER_LITERAL => {
+      (s"""<span class="stringLiteral" title="""" + tInfo +s"""">""", "</span>")
+    }
+    case INTEGER_LITERAL => {
+      (s"""<span class="numberLiteral" title="""" + tInfo +s"""">""", "</span>")
+    }
+    case FLOATING_POINT_LITERAL => {
+      (s"""<span class="numberLiteral" title="""" + tInfo +s"""">""", "</span>")
+    }
+    case STRING_LITERAL => {
+      (s"""<span class="stringLiteral" title="""" + tInfo +s"""">""", "</span>")
+    }
+    case STRING_PART => {
+      (s"""<span class="stringLiteral" title="""" + tInfo +s"""">""", "</span>")
+    }
+    case SYMBOL_LITERAL => {
+      (s"""<span class="literal" title="""" + tInfo +s"""">""", "</span>")
+    }
+    case TRUE => {
+      (s"""<span class="keyword" title="""" + tInfo +s"""">""", "</span>")
+    }
+    case FALSE => {
+      (s"""<span class="keyword" title="""" + tInfo +s"""">""", "</span>")
+    }
+    case NULL => {
+      (s"""<span class="keyword" title="""" + tInfo +s"""">""", "</span>")
+    }
+
+    }
+   }
+   
+  private def handleVARID(token: Token) : (String,String) = {
+
+		// Fill title information
+		val tInfo = token.toString().replace(";", ";\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
+
+		// Determine span class
+    token(symbolDesignation) match {
+      case Some(spanClass) => {
+        (s"""<span class="""" + spanClass + s"""" title="$tInfo">""",s"""</span>""")
+      } 
+      case None => {
+        (s"""<span title="$tInfo">""", s"""</span>""")
+      }
+    } 
+   }
+   
+   private def handleWS(token: Token) : (String,String) = {
+     
+     ("","")
+   }
+   
 }
 
+//val tokenTyp = token(tokenType)
+//        tokenTyp match {
+//        case Some(tt) => {
+//          if(tt.isKeyword){
+//            handleKeywords(token,tt)             
+//          } else if(tt.isLiteral) {
+//            handleLiterals(token,tt)
+//          } else if(tt.isComment) {
+//            handleComments(token,tt)
+//          }
+//          else {              
+//            tt match {                      
+//            case Tokens.VARID => {
+//                 
+//                  // Text to be printed
+//                  val tText = token.text
+//                
+//                  // Fill title information
+//                  val tInfo = token.toString().replace(";", ";\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
+//                  
+//                  // Determine span class
+//                  val spanClass = token(symbolDesignation)
+//                    
+//                  if(spanClass!=None){
+//                    s"""<span class="""" + spanClass.get + s"""" title="$tInfo">""" + tText + s"""</span>"""
+//                  } else {
+//                    s"""<span title="$tInfo">""" + tText + s"""</span>"""
+//                  }
+//                  
+//            }
+//            case Tokens.WS => {
+//              token.text
+//            }
+//            case _ => {
+//              val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
+//              s"""<span title=""""+ tInfo + s"""">""" + token.text + s"""</span>"""
+//              }
+//            }
+//          }
+//        } 
+//        case _ => {
+//            token.text
+//          } 
+//        }
+//
+//
+//      })

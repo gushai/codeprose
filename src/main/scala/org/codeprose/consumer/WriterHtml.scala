@@ -9,6 +9,8 @@ import org.codeprose.util.FileUtil
 import org.codeprose.util.StringUtil
 import com.typesafe.scalalogging.LazyLogging
 import org.codeprose.consumer.util.OutputContextSetter
+import scala.collection.mutable.ArrayBuffer
+
 
 class ResourceRelPaths(val base: String, val target: String)
 
@@ -114,123 +116,28 @@ extends Consumer with LazyLogging {
     var idx_toProcess_Beg = 0;
     var idx_toProcess_End = 0;
     var currentLine = 0
+    var codeTableOpen = false
+    var codeTableClose = true
     val htmlEntries = scala.collection.mutable.ArrayBuffer[String]()
     
     while(idx_toProcess_End<infoSorted.length){
       
       // Find section to process next
+      idx_toProcess_End = determineGroupOfTokensToBeProcessedNext(infoSorted,idx_toProcess_End)
      
-      do { idx_toProcess_End += 1 }  while(idx_toProcess_End<infoSorted.length &&
-          infoSorted(idx_toProcess_End)(tokenType).isDefined && 
-          infoSorted(idx_toProcess_End)(tokenType).get != Tokens.MULTILINE_COMMENT && 
-          !infoSorted(idx_toProcess_End).text.contains("\n"))
+      // Update codeTableClose?  
+      codeTableClose = updateCodeTableClose(infoSorted,idx_toProcess_End)  
       
       // Process subsection of tokens
-      val toProcess = infoSorted.slice(idx_toProcess_Beg, idx_toProcess_End)
+      val toProcess = infoSorted.slice(idx_toProcess_Beg, idx_toProcess_End).toArray
       //print("\n------------------\n" + toProcess.map(t=>t.text).mkString("") )
      
+      val (entries,currentLineUpdate,codeTableOpenUpdate) = processGroupsOfTokens(toProcess, currentLine, codeTableOpen, codeTableClose)
       
-      // Many tiles of tokens span several lines!!
-      val entries = if(toProcess.length == 1 && toProcess(0).text.contains("\n")){
-        val token = toProcess(0) 
-        // to TEXT-Entry
-        val ret = if(token(tokenType).isDefined && 
-            token(tokenType).get == Tokens.MULTILINE_COMMENT && 
-            !CommentUtil.isScalaDocComment(token.text)){
-            
-            currentLine += token.text.count(_ == '\n') 
-            
-            (htmlContext.textTable_getBegin() + 
-            htmlContext.textTable_getEntry("", MarkdownConverter.apply(CommentUtil.cleanMultilineComment(token.text))) + 
-            htmlContext.textTable_getEnd()) 
-            
-            
-
-          
-        } else if ( !token(tokenType).isDefined || (token(tokenType).isDefined && token(tokenType).get == Tokens.WS)) {
-          // to CODE-Entry
-          val lines = token.text.split("\n")
-          val r = lines.map(
-            e => {              
-              val out = (htmlContext.codeTable_getBegin() + 
-              htmlContext.codeTable_getEntry(currentLine, "", e) + 
-              htmlContext.codeTable_getEnd())
-              currentLine+=1
-              out
-          })
-          
-          r.mkString("\n")
-          
-        } else {
-          // TOKENTYPE IS DEFINED HERE!!!
-          // to CODE-Entry
-          token.text
-        }
-        ret
-        
-      } else {
-        val str = toProcess.map({ t => t.text }).mkString("")
-        currentLine += str.count( _ == '\n' )
-        str
-      }
-      
-      //val rawEntry = toProcess.map({ t => t.text }).mkString("")
-      
-//   val rawEntry = toProcess.map(token => {
-//
-//        import org.codeprose.api.ScalaLang._
-//
-//        val tokenTyp = token(tokenType)
-//        tokenTyp match {
-//        case Some(tt) => {
-//          if(tt.isKeyword){
-//            handleKeywords(token,tt)             
-//          } else if(tt.isLiteral) {
-//            handleLiterals(token,tt)
-//          } else if(tt.isComment) {
-//            handleComments(token,tt)
-//          }
-//          else {              
-//            tt match {                      
-//            case Tokens.VARID => {
-//                 
-//                  // Text to be printed
-//                  val tText = token.text
-//                
-//                  // Fill title information
-//                  val tInfo = token.toString().replace(";", ";\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
-//                  
-//                  // Determine span class
-//                  val spanClass = token(symbolDesignation)
-//                    
-//                  if(spanClass!=None){
-//                    s"""<span class="""" + spanClass.get + s"""" title="$tInfo">""" + tText + s"""</span>"""
-//                  } else {
-//                    s"""<span title="$tInfo">""" + tText + s"""</span>"""
-//                  }
-//                  
-//            }
-//            case Tokens.WS => {
-//              token.text
-//            }
-//            case _ => {
-//              val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
-//              s"""<span title=""""+ tInfo + s"""">""" + token.text + s"""</span>"""
-//              }
-//            }
-//          }
-//        } 
-//        case _ => {
-//            token.text
-//          } 
-//        }
-//
-//
-//      })
-      
-      
-      htmlEntries+= entries
-      
+                 
+      htmlEntries+= entries.mkString("\n")
+      currentLine = currentLineUpdate
+      codeTableOpen=codeTableOpenUpdate
       idx_toProcess_Beg = idx_toProcess_End  
     }
     
@@ -238,62 +145,92 @@ extends Consumer with LazyLogging {
     
 
     
-    // ----------------------------------------------------------- 
-    // Old - begin
-    // -----------------------------------------------------------
-//			val htmlEntries = infoSorted.map(token => {
-//
-//				import org.codeprose.api.ScalaLang._
-//
-//				val tokenTyp = token(tokenType)
-//				tokenTyp match {
-//				case Some(tt) => {
-//					if(tt.isKeyword){
-//						handleKeywords(token,tt)             
-//					} else if(tt.isLiteral) {
-//						handleLiterals(token,tt)
-//					} else if(tt.isComment) {
-//						handleComments(token,tt)
-//					}
-//					else {              
-//						tt match {                      
-//						case Tokens.VARID => {
-//                 
-//                  // Text to be printed
-//                  val tText = token.text
-//                
-//                  // Fill title information
-//                  val tInfo = token.toString().replace(";", ";\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
-//                  
-//                  // Determine span class
-//                  val spanClass = token(symbolDesignation)
-//                    
-//                  if(spanClass!=None){
-//                    s"""<span class="""" + spanClass.get + s"""" title="$tInfo">""" + tText + s"""</span>"""
-//                  } else {
-//                    s"""<span title="$tInfo">""" + tText + s"""</span>"""
-//                  }
-//                  
-//						}
-//            case Tokens.WS => {
-//              token.text
-//            }
-//						case _ => {
-//              val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
-//							s"""<span title=""""+ tInfo + s"""">""" + token.text + s"""</span>"""
-//						  }
-//						}
-//					}
-//				} 
-//				case _ => {
-//            token.text
-//			  	} 
-//				}
-//
-//
-//			}) 
-//			htmlEntries
 	}
+
+  
+  private def determineGroupOfTokensToBeProcessedNext(
+      tokens: ArrayBuffer[Token],
+      idxLastTokenToProcessedNow: Int) : Int = {
+    var idx = idxLastTokenToProcessedNow
+    do { idx += 1 }  while(
+        idx<tokens.length &&
+        tokens(idx)(tokenType).isDefined && 
+        tokens(idx)(tokenType).get != Tokens.MULTILINE_COMMENT && 
+        !tokens(idx).text.contains("\n"))
+      idx
+  }
+      
+  
+  private def updateCodeTableClose(tokens: ArrayBuffer[Token], idxLastTokenToProcessedNow: Int) : Boolean = {
+    true
+  }
+  
+  
+  private def processGroupsOfTokens(
+      toProcess: Array[Token],
+      currentLine: Int,
+      codeTableOpen: Boolean,
+      codeTableClose: Boolean
+      )(implicit htmlContext: HtmlContext) : (Array[String],Int,Boolean) = {
+    
+    var currentLineUpdate = currentLine
+    var codeTableOpenUpdate = codeTableOpen
+      
+    val entries = if(toTextEntry(toProcess)){
+      
+      // Close code table and update variables
+      codeTableOpenUpdate = false
+      
+      currentLineUpdate += toProcess(0).text.count(_ == '\n') 
+            
+      Array(htmlContext.textTable_getBegin() + 
+      htmlContext.textTable_getEntry("", MarkdownConverter.apply(CommentUtil.cleanMultilineComment(toProcess(0).text))) + 
+      htmlContext.textTable_getEnd())
+       
+      
+    } else {
+      
+      val (beg,end) = if(!codeTableOpen && !codeTableClose){
+        (htmlContext.codeTable_getBegin(),"")
+      } else if (!codeTableOpen && codeTableClose){
+        (htmlContext.codeTable_getBegin(), htmlContext.codeTable_getEnd())
+      } else if (codeTableOpen && !codeTableClose){
+        ("","")
+      } else {
+        ("",htmlContext.codeTable_getEnd())
+      }
+      
+      // Determine (a) all tokens in one line (b) parts of tokens to be split over lines
+      
+      val rawEntries = Array(htmlContext.codeTable_getEntry(currentLineUpdate, "", toProcess.map(t=>t.text).mkString("")))
+      
+      
+      
+      currentLineUpdate+=toProcess.map(t=>t.text).mkString("").count(_ == '\n')
+      
+      val packagedEntries = Array(beg) ++ rawEntries ++ Array(end)
+      packagedEntries
+    }
+    
+    
+    
+    
+    (entries,currentLineUpdate,codeTableOpenUpdate)
+    
+  }
+  
+ 
+  private def toTextEntry(toProcess: Array[Token]) : Boolean = {
+   if(toProcess.length==1 && 
+       toProcess(0)(tokenType).isDefined &&
+       toProcess(0)(tokenType).get == Tokens.MULTILINE_COMMENT && 
+       !CommentUtil.isScalaDocComment(toProcess(0).text)
+       ){
+     true
+   } else { 
+     false 
+   }
+  }
 
   
   private def handleComments(token: Token, tokenTyp: org.codeprose.api.ScalaLang.ScalaTokenType) : String = {
@@ -647,3 +584,17 @@ class HtmlIndexContext(){
 	}
 
 }
+
+
+object TokenToOutputEntry {
+  
+  def getTokenEntry_WithInformation(token: Token) : String = {
+    token.text
+  }
+  
+  def getTokenEntry_WithOutInformation(token: Token) : String = {
+     token.text 
+  }
+  
+}
+

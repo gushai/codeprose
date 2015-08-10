@@ -6,6 +6,12 @@ class SourcePosition(val filename: String, val offset: Int){
   }
 }
 
+class SourcePositionWithTokenId(val filename: String, val tokenId: Int){
+override def toString() : String = {
+    s"""($filename,$tokenId)"""
+  }
+}
+
 class ERangePosition(val filename: String, val offset: Int, val start: Int, val end: Int){
   override def toString() : String = {
     s"""($filename,$offset,$start,$end)"""
@@ -16,6 +22,7 @@ class ERangePosition(val filename: String, val offset: Int, val start: Int, val 
 class ArgumentList(){
   ???
 }
+
 
 
 

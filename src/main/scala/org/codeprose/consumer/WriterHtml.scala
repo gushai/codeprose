@@ -10,6 +10,7 @@ import org.codeprose.util.StringUtil
 import com.typesafe.scalalogging.LazyLogging
 import org.codeprose.consumer.util.OutputContextSetter
 import scala.collection.mutable.ArrayBuffer
+import org.codeprose.api.TokenProperties._
 
 
 
@@ -118,11 +119,11 @@ extends Consumer with LazyLogging {
     var idx_toProcess_End = 0;
     var currentLine = 0
     var codeTableOpen = false
-    var codeTableClose = true
+    var codeTableClose = false
     val htmlEntries = scala.collection.mutable.ArrayBuffer[String]()
     
-    // TODO: Unsave!!!!
-    while(idx_toProcess_End<infoSorted.length){
+    // TODO: Unsave???
+    while(idx_toProcess_End<(infoSorted.length-1)){
       
       // Find section to process next
       idx_toProcess_End = determineGroupOfTokensToBeProcessedNext(infoSorted,idx_toProcess_End)
@@ -132,12 +133,13 @@ extends Consumer with LazyLogging {
       
       // Process subsection of tokens
       val toProcess = infoSorted.slice(idx_toProcess_Beg, idx_toProcess_End).toArray
-      //print("\n------------------\n" + toProcess.map(t=>t.text).mkString("") )
+      //print("\n------------------\n" + toProcess.map(t=>t.text).mkString(";") )
      
       val (entries,currentLineUpdate,codeTableOpenUpdate) = processGroupsOfTokens(toProcess, currentLine, codeTableOpen, codeTableClose)
       
                  
       htmlEntries+= entries.mkString("\n")
+      
       currentLine = currentLineUpdate
       codeTableOpen=codeTableOpenUpdate
       idx_toProcess_Beg = idx_toProcess_End  
@@ -166,7 +168,24 @@ extends Consumer with LazyLogging {
       
   
   private def updateCodeTableClose(tokens: ArrayBuffer[Token], idxLastTokenToProcessedNow: Int) : Boolean = {
-    true
+    
+    val lastIdx = tokens.length-1
+
+    if(idxLastTokenToProcessedNow >= lastIdx){
+      true  
+    } else {
+    	val nextIdx = idxLastTokenToProcessedNow+1
+ 			val nextToken = tokens(nextIdx)
+ 			val nextTokenType = nextToken(tokenType)
+
+     if (nextTokenType.isDefined && 
+        nextTokenType.get == Tokens.MULTILINE_COMMENT &&
+        !CommentUtil.isScalaDocComment(nextToken.text)){ 
+      true
+    } else {
+      false
+    }
+    }
   }
   
   
@@ -190,22 +209,31 @@ extends Consumer with LazyLogging {
       currentLineUpdate += toProcess(0).text.count(_ == '\n') 
       
       val (wrap_beg,wrap_end) = TokenToOutputEntry.getTokenEntry(toProcess(0))
-    
-      Array(htmlContext.textTable_getBegin() + 
-      htmlContext.textTable_getEntry("", wrap_beg+ wrap_end) + 
-      htmlContext.textTable_getEnd())
-       
+      if(codeTableOpen){
+        Array(htmlContext.codeTable_getEnd() + 
+            htmlContext.textTable_getBegin() + 
+            htmlContext.textTable_getEntry("", wrap_beg+ wrap_end) + 
+            htmlContext.textTable_getEnd())
+      } else {
+        Array(htmlContext.textTable_getBegin() + 
+        htmlContext.textTable_getEntry("", wrap_beg+ wrap_end) + 
+        htmlContext.textTable_getEnd())
+      }
       
     } else {
      
       
       val (table_beg,table_end) = if(!codeTableOpen && !codeTableClose){
+        codeTableOpenUpdate = true
         (htmlContext.codeTable_getBegin(),"")
       } else if (!codeTableOpen && codeTableClose){
+        codeTableOpenUpdate = false
         (htmlContext.codeTable_getBegin(), htmlContext.codeTable_getEnd())
       } else if (codeTableOpen && !codeTableClose){
+        codeTableOpenUpdate = true
         ("","")
       } else {
+        codeTableOpenUpdate = false
         ("",htmlContext.codeTable_getEnd())
       }
       
@@ -223,36 +251,54 @@ extends Consumer with LazyLogging {
       val tmp = ArrayBuffer[String]()
       var str = ""
       
-      for(i<- 0 to (toProcess.length-1)){
+      for(i<- 0 until toProcess.length){
         val t = toProcess(i)
         val (beg,end) = wrapper(i)
-        
-        //print(str)
-        
+                     
         if(t.text.contains('\n')){
           
           if(t(tokenType).isDefined && t(tokenType).get == Tokens.WS){
+            
+    
+            
             val numNewLines = t.text.count(_ == '\n')
             val idx_FirstNewLine = t.text.indexOf("\n")
             val idx_LastNewLine = t.text.lastIndexOf("\n")
-            str = str + (beg + t.text.slice(0,idx_FirstNewLine) + "aa" + end)
-            tmp.append(str) 
+            //str = str + (beg + t.text.slice(0,idx_FirstNewLine) + "[a]" + end)
+            
+            //println("WS" + t.offset + " - NL: " + numNewLines + " WSL: " + t.length)
+            
+            //tmp.append(str)
+            str = ""
             
             if(numNewLines>2){
               for(k<- 3 to numNewLines){
-                tmp.append("empty")
+                tmp.append("")
               }
             } 
             
             if(idx_LastNewLine < (t.text.length-1)){
-              str = (beg + t.text.slice(idx_LastNewLine+1,t.text.length) +"[XX]" + end)
+              str = (beg + t.text.slice(idx_LastNewLine+1,t.text.length) + end)
             }
             
           } else {
-            // TODO: Improve for multiline STRING_LITERALS etc.
-            str = str + (beg + t.text + end)
-            tmp.append(str) 
-            str = ""
+            val splitted = t.text.split('\n')
+            
+            val numNewLines = t.text.count(_ == '\n')
+            val idx_FirstNewLine = t.text.indexOf("\n")
+            val idx_LastNewLine = t.text.lastIndexOf("\n")
+            
+            for (k <- 0 until (splitted.length-1)){
+              str = str + (beg + splitted(k) + end)
+              tmp.append(str) 
+              str = ""
+            }
+            
+            str = (beg + splitted.last + end)
+            if(idx_LastNewLine==t.text.length-1){
+              tmp.append(str)
+              str=""
+            }
           }
           
           
@@ -891,16 +937,39 @@ object TokenToOutputEntry {
 
 		// Fill title information
 		val tInfo = token.toString().replace(";", ";\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
-
-		// Determine span class
-    token(symbolDesignation) match {
-      case Some(spanClass) => {
-        (s"""<span class="""" + spanClass + s"""" title="$tInfo">""",s"""</span>""")
-      } 
-      case None => {
-        (s"""<span title="$tInfo">""", s"""</span>""")
-      }
-    } 
+    
+    val iTIdHtmlElement = token(internalTokenId) match {
+      case Some(id) => {s""" id="T$id" """}
+      case None => s""" """
+    }
+        
+    val (linkToDeclaredAt_beg,linkToDeclaredAt_end) = if(token(declaredAt_TokenIdSrcPos).isDefined){
+      
+      val srcPos = token(declaredAt_TokenIdSrcPos).get
+      
+      // Get full file to output translation
+      val outputFileRelPath=srcPos.filename
+      val tId = srcPos.tokenId
+      val link = outputFileRelPath + "#" + "T" + tId.toString
+      
+      (s"""<a href="$link" class="in-code">""","</a>")      
+    } else{
+       ("","")
+    }
+    
+    val spanClass = token(symbolDesignation) match {
+      case Some(spClass) => {s""" class="$spClass" """}
+      case None => " "
+    }
+    
+    if(linkToDeclaredAt_beg.length()!=0){
+      (linkToDeclaredAt_beg + s"""<span""" + spanClass + iTIdHtmlElement + s""" title="$tInfo">""", s"""</span>"""+linkToDeclaredAt_end)
+    } else {
+      
+      (s"""<span """ + spanClass + iTIdHtmlElement + s""" title="$tInfo">""", s"""</span>""")
+    }
+    
+		
    }
    
    private def handleWS(token: Token) : (String,String) = {
@@ -909,51 +978,3 @@ object TokenToOutputEntry {
    }
    
 }
-
-//val tokenTyp = token(tokenType)
-//        tokenTyp match {
-//        case Some(tt) => {
-//          if(tt.isKeyword){
-//            handleKeywords(token,tt)             
-//          } else if(tt.isLiteral) {
-//            handleLiterals(token,tt)
-//          } else if(tt.isComment) {
-//            handleComments(token,tt)
-//          }
-//          else {              
-//            tt match {                      
-//            case Tokens.VARID => {
-//                 
-//                  // Text to be printed
-//                  val tText = token.text
-//                
-//                  // Fill title information
-//                  val tInfo = token.toString().replace(";", ";\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
-//                  
-//                  // Determine span class
-//                  val spanClass = token(symbolDesignation)
-//                    
-//                  if(spanClass!=None){
-//                    s"""<span class="""" + spanClass.get + s"""" title="$tInfo">""" + tText + s"""</span>"""
-//                  } else {
-//                    s"""<span title="$tInfo">""" + tText + s"""</span>"""
-//                  }
-//                  
-//            }
-//            case Tokens.WS => {
-//              token.text
-//            }
-//            case _ => {
-//              val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
-//              s"""<span title=""""+ tInfo + s"""">""" + token.text + s"""</span>"""
-//              }
-//            }
-//          }
-//        } 
-//        case _ => {
-//            token.text
-//          } 
-//        }
-//
-//
-//      })

@@ -2,8 +2,7 @@ package org.codeprose.api
 
 import scala.collection.mutable.ArrayBuffer
 import org.codeprose.util.DynamicPropertyMap
-import org.codeprose.api.TokenProperties.SourcePosition
-import org.codeprose.api.TokenProperties.ERangePosition
+import org.codeprose.api.TokenProperties._
 
 // Token
 class Token(val offset: Int, val text: String) extends DynamicPropertyMap {
@@ -30,6 +29,7 @@ trait DefaultLang {
   
   // Keys
 	val tokenType = new Key('tokenType){ type Value <: TokenType }  
+  
 
 }
 
@@ -236,8 +236,13 @@ object SourceSymbol {
   // ============================================================================
   import DynamicPropertyMap._
   
+  val internalTokenId = new Key('internalTokenId){ type Value = Int }
+  
   val declaredAs = new Key('declaredAs) { type Value = String }
   val declaredAt = new Key('declaredAt) { type Value = SourcePosition }
+  
+  val declaredAt_TokenIdSrcPos = new Key('declaredAt_TokenIdSrcPos){ type Value = SourcePositionWithTokenId }
+  
   
   val fullName = new Key('fullName) { type Value = String }  
   val isArrowType = new Key('isArrowType) { type Value = Boolean }

@@ -296,7 +296,26 @@ code {
 }
 
 
+a.in-code{
+text-decoration: none;
+}
 
+
+a.in-code:link {
+    text-decoration: none;
+}
+
+a.in-code:visited {
+    text-decoration: none;
+}
+
+a.in-code:hover {
+text-decoration: none;
+}
+
+a.in-code:active {
+text-decoration: none;
+}
 
 
 

@@ -39,11 +39,11 @@ class EnsimeProviderContext(
     val inputFolders: List[String]
 		) extends ProviderContext {
   
-  val timeout_ConnectionInfoReq = 200
+  val timeout_ConnectionInfoReq = 500
   val timeout_SymbolInfoReq = 200
   val timeout_SymbolDesignationsReq = 500
-  val timeout_ImplicitInfoReq = 200
-  val timeout_UsesOfSymbolAtPointReq = 200
+  val timeout_ImplicitInfoReq = 500
+  val timeout_UsesOfSymbolAtPointReq = 500
 }
 
 
@@ -52,6 +52,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
 
 	private val ensimeClient = new Client()(new ClientContext(c.host,c.port,false)) 
 	var isInitialized = false
+  var tokenId = 0
   
 	/*
 	 * Initializes the ensime client and tests the connection to the server.
@@ -94,8 +95,12 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
     if(isInitialized){			
       if(c.verbose)
 				logger.info("\n\nProcessing: \t" + file + "\n======================================================")
-
-      val rawTokens = getTokens(file)  
+        import org.codeprose.api.ScalaLang._
+      val rawTokens = getTokens(file).map(t=>  {t.set(internalTokenId)(tokenId)
+        tokenId += 1
+        t
+      }) 
+      
       val rawTokensWithSymbolDesignations = getSymbolDesignations(file,rawTokens)
       val rawTokensWithImplicitInformation = getImplicitInformation(file,rawTokensWithSymbolDesignations)
       

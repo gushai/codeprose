@@ -44,6 +44,8 @@ extends Consumer with LazyLogging {
 			val filenamesShorted = StringUtil.getUniqueShortFileNames(info.map(e => e._1.getAbsolutePath).toList)
 			val outputFilenames = filenamesShorted.map(s => outputPath + "/content/" + s.replace("/","_") + ".html")
       
+      val filenamesOriginalToOutput =  info.map(e => e._1.getAbsolutePath).zip(outputFilenames).toArray
+      
       logger.info("Generating output ...")					
 
       // Output context
@@ -53,7 +55,7 @@ extends Consumer with LazyLogging {
       
 			var idx=0
 			for(i<-info){     
-			  generateOutputFile(new File(outputFilenames(idx)),i._1,i._2)
+			  generateOutputFile(new File(outputFilenames(idx)),i._1,i._2,filenamesOriginalToOutput)
 				idx+=1
       }
 			logger.info("Done.")
@@ -73,19 +75,22 @@ extends Consumer with LazyLogging {
 	private def generateOutputFile(
 			outputFile: File, 
 			srcFile: File, 
-			info: scala.collection.mutable.ArrayBuffer[Token]
+			info: scala.collection.mutable.ArrayBuffer[Token],
+      filenamesOriginalToOutputNames : Array[(String,String)]
       ) : Unit = {
 
       logger.info("Individual pages ... ")
       if(c.verbose)
         logger.info(srcFile + " ... ")
       
-			val htmlContext = new HtmlContext(srcFile.getAbsolutePath(),getPackageInformationForFile(srcFile,info))
+			val htmlContext = new HtmlContext(
+          srcFile.getAbsolutePath(),
+          getPackageInformationForFile(srcFile,info),
+          filenamesOriginalToOutputNames)
 
 			val htmlEntries = generateHtmlEntries(info)(htmlContext)
 
-//			val outputArray = combineHtmlEntriesInContainer(info,htmlEntries)
-        val outputArray = htmlEntries
+      val outputArray = htmlEntries
 			FileUtil.writeToFile(outputFile,htmlContext.begin + outputArray.mkString("") + htmlContext.end)    
 	}
 
@@ -208,7 +213,7 @@ extends Consumer with LazyLogging {
       
       currentLineUpdate += toProcess(0).text.count(_ == '\n') 
       
-      val (wrap_beg,wrap_end) = TokenToOutputEntry.getTokenEntry(toProcess(0))
+      val (wrap_beg,wrap_end) = htmlContext.tokenToHtmlEntry.getTokenEntry(toProcess(0))
       if(codeTableOpen){
         Array(htmlContext.codeTable_getEnd() + 
             htmlContext.textTable_getBegin() + 
@@ -239,7 +244,7 @@ extends Consumer with LazyLogging {
       
       // Get html token wrapper
       val wrapper = toProcess.map(t=>{
-        TokenToOutputEntry.getTokenEntry(t)
+        htmlContext.tokenToHtmlEntry.getTokenEntry(t)
       })
       
       
@@ -357,12 +362,17 @@ extends Consumer with LazyLogging {
 
 
 
-class HtmlContext(filename: String, packag: String) {
+class HtmlContext(filename: String, packag: String, 
+    val filenamesOriginalToOutputNames : Array[(String,String)]) {
 
+    val tokenToHtmlEntry = new TokenToOutputEntry(filenamesOriginalToOutputNames)
+
+  
 	    val fileNameWithoutPath =  filename.slice(filename.lastIndexOf("/")+1, filename.length())  
 			val fileNameWithoutPathAndEnding = fileNameWithoutPath.slice(0,fileNameWithoutPath.lastIndexOf("."))		
 			val fileNameEnding = fileNameWithoutPath.slice(fileNameWithoutPath.lastIndexOf(".")+1,fileNameWithoutPath.length)
 
+      
 			val begin =s"""<!doctype HTML>
 			<html lang="en">
 			<head>
@@ -460,7 +470,7 @@ class HtmlIndexContext(){
 }
 
 
-object TokenToOutputEntry {
+class TokenToOutputEntry(val filenamesOriginalToOutputNames: Array[(String,String)]){
   
    private def getTokenEntry_WithInformation(token: Token) : (String,String) = {
     val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
@@ -708,14 +718,16 @@ object TokenToOutputEntry {
       val srcPos = token(declaredAt_TokenIdSrcPos).get
       
       // Get full file to output translation
-      val outputFileRelPath=srcPos.filename
-      val tId = srcPos.tokenId
-      val link = outputFileRelPath + "#" + "T" + tId.toString
-      
-      (s"""<a href="$link" class="in-code">""","</a>")      
-    } else{
-       ("","")
-    }
+      val outputFileRelPath = filenamesOriginalToOutputNames.filter( e => e._1 == srcPos.filename).map(e => "./" + e._2)
+      if(outputFileRelPath.length>0){
+        val tId = srcPos.tokenId
+        val idx = outputFileRelPath(0).lastIndexOf("/")
+        val link = "." + outputFileRelPath(0).slice(idx,outputFileRelPath(0).length) + "#" + "T" + tId.toString
+        (s"""<a href="$link" class="in-code">""","</a>")
+      } else {
+        ("","")
+      }
+    } else { ("","") }
     
     val spanClass = token(symbolDesignation) match {
       case Some(spClass) => {s""" class="$spClass" """}

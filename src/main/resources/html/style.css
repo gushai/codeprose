@@ -310,12 +310,28 @@ a.in-code:visited {
 }
 
 a.in-code:hover {
-text-decoration: none;
+    text-decoration: none;
 }
 
 a.in-code:active {
-text-decoration: none;
+    text-decoration: none;
 }
 
 
 
+
+/* For highlight on selection with fade */
+:target {
+    -webkit-animation: target-fade 5s 1;
+    -moz-animation: target-fade 5s 1;
+}
+
+@-webkit-keyframes target-fade {
+    0% { background-color: rgba(255,255,0,1); }
+    100% { background-color: rgba(255,255,0,1); }
+}
+
+@-moz-keyframes target-fade {
+    0% { background-color: rgba(255,255,0,1); }
+    100% { background-color: rgba(255,255,0,1); }
+}

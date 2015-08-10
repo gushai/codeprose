@@ -6,7 +6,6 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Success, Failure}
 import com.typesafe.scalalogging.LazyLogging
-import java.util.regex.Pattern.CIBackRef
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try
@@ -15,13 +14,15 @@ import org.ensime.client.ClientContext
 import scala.collection.mutable.ArrayBuffer
 import org.codeprose.api.Token
 import org.ensime.api._
-import org.codeprose.api.TokenProperties.SourcePosition
+import org.codeprose.api.TokenProperties._
 
 
 trait TokenEnricher {
 	def initialize() : Unit 
 	def close() : Unit    
-	def getEnrichedTokens(file : File) : scala.collection.mutable.ArrayBuffer[org.codeprose.api.Token]
+	//def getEnrichedTokens(file : File) : scala.collection.mutable.ArrayBuffer[org.codeprose.api.Token]
+  def getEnrichedTokens(files : Array[File]) : 
+  ArrayBuffer[(File,ArrayBuffer[org.codeprose.api.Token])]
 }
 
 // TODO: Do clearer specification of meta information specification
@@ -48,7 +49,8 @@ class EnsimeProviderContext(
 
 
     
-class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher with LazyLogging {
+class EnsimeProvider(implicit c: EnsimeProviderContext )
+    extends TokenEnricher with LazyLogging {
 
 	private val ensimeClient = new Client()(new ClientContext(c.host,c.port,false)) 
 	var isInitialized = false
@@ -91,27 +93,45 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
 	}
 
 
-	def getEnrichedTokens(file: File) : scala.collection.mutable.ArrayBuffer[org.codeprose.api.Token] = {
+	def getEnrichedTokens(files: Array[File]) : 
+  ArrayBuffer[(File,ArrayBuffer[org.codeprose.api.Token])] = {
+   
+    val out = ArrayBuffer[(File,ArrayBuffer[org.codeprose.api.Token])]()
     if(isInitialized){			
-      if(c.verbose)
-				logger.info("\n\nProcessing: \t" + file + "\n======================================================")
+      
+      
+     for(file <- files){
+        
+        logger.info("Getting tokens: ")
+        if(c.verbose)
+				  logger.info("\n\nProcessing: \t" + file + "\n======================================================")
+     
         import org.codeprose.api.ScalaLang._
-      val rawTokens = getTokens(file).map(t=>  {t.set(internalTokenId)(tokenId)
-        tokenId += 1
-        t
-      }) 
+        val rawTokens = getTokens(file).map(t=>  {t.set(internalTokenId)(tokenId)
+          tokenId += 1
+          t
+        }) 
+        
       
-      val rawTokensWithSymbolDesignations = getSymbolDesignations(file,rawTokens)
-      val rawTokensWithImplicitInformation = getImplicitInformation(file,rawTokensWithSymbolDesignations)
-      
-      val tokens = rawTokens.map{t => enrichToken(file,t)}
+        val rawTokensWithSymbolDesignations = getSymbolDesignations(file,rawTokens)
+        val rawTokensWithImplicitInformation = getImplicitInformation(file,rawTokensWithSymbolDesignations)
+        
+        val tokens = rawTokensWithImplicitInformation.map{t => enrichToken(file,t)}
       
  
-      tokens
+        out += ((file,tokens))
+      }
+     
+     // Translation of sourcePostions file offset to file Token id
+     logger.info("Updating declared at source positions ... ")
+     includeTokenBasedSourcePostion(out)
+     
+     
+     
     } else {
       logger.error("Not initialized correctly.")
-      scala.collection.mutable.ArrayBuffer[org.codeprose.api.Token]()
     }
+    out
 	}
 
   
@@ -356,7 +376,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
             
             tokens(idx).set(implicitConversion_fullName)(info.fun.name)
             if(info.fun.declPos.isDefined && info.fun.declPos.get.isInstanceOf[org.ensime.api.OffsetSourcePosition]){
-             tokens(idx).set(implicitConversion_sourcePosition)( new SourcePosition(
+             tokens(idx).set(implicitConversion_sourcePosition)( new org.codeprose.api.TokenProperties.SourcePosition(
                  info.fun.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].file.getAbsolutePath,
                  info.fun.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].offset)
              )
@@ -393,5 +413,62 @@ class EnsimeProvider(implicit c: EnsimeProviderContext) extends TokenEnricher wi
     }    
     tokens    
   }
+ 
+  
+  private def includeTokenBasedSourcePostion(info : ArrayBuffer[(File,ArrayBuffer[Token])]) : 
+  ArrayBuffer[(File,ArrayBuffer[Token])] = {
+    import org.codeprose.api.ScalaLang._
+    
+    
+   info.map(e =>{
+     val file = e._1
+     val tokens = e._2
+
+     
+     tokens.map(t => {
+       if(t(declaredAt).isDefined){
+         val srcPos = t(declaredAt).get
+         val tId = findInternalTokenIdToOffset(srcPos,info)
+         if(tId != -1){
+          t.set(declaredAt_TokenIdSrcPos)( new SourcePositionWithTokenId(srcPos.filename,tId))
+         }
+         t
+       } else {
+         t
+       }
+     })
+     
+     (file,tokens)
+   })
+        
+  }
+
+  private def findInternalTokenIdToOffset(
+      srcPos: org.codeprose.api.TokenProperties.SourcePosition, 
+      info: ArrayBuffer[(File,ArrayBuffer[Token])]) : Int = {
+	 
+    import org.codeprose.api.ScalaLang._
+  
+    val tokens = info.filter({e => e._1.getAbsolutePath == srcPos.filename}).map(e=>e._2)
+    
+    val id = if(tokens.length==0){
+      -1
+    } else {
+      
+      val t = tokens(0).filter(t => {
+        t.offset == srcPos.offset
+      })
+    
+      val ret = if(t.length>0 && t(0)(internalTokenId).isDefined){
+        t(0)(internalTokenId).get
+      } else {
+         logger.error("[findInternalTokenIdToOffset]\t" + "Could not determine internalTokenId." )
+        -1
+      }
+      ret
+    }
+    id 
+   
+	}
   
 }

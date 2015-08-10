@@ -129,15 +129,18 @@ class CodeproseBroker()(implicit bc: BrokerContext)
     // For each file get tokens and enrich them
     import org.codeprose.api.Api
     logger.info("Analysing source code ... ")
-    val out = new Api.TokenInfoContainer()
-
-    for(f <- bc.filesToProcess){
-      if(bc.verbose)
-        logger.info(f.toString())
-        
-      val tokens = provider.getEnrichedTokens(f)                                    
-     out += ((f,tokens))
-    } 
+//    val out = new Api.TokenInfoContainer()
+//
+//    for(f <- bc.filesToProcess){
+//      if(bc.verbose)
+//        logger.info(f.toString())
+//        
+//     val tokens = provider.getEnrichedTokens(f)                                    
+//     out += ((f,tokens))
+//    }
+    
+    val out = provider.getEnrichedTokens(bc.filesToProcess)
+    
     out
   }
   

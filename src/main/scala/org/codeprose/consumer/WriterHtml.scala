@@ -379,6 +379,7 @@ class HtmlContext(filename: String, packag: String,
 			<meta http-equiv="content-type" content="text/html; charset=utf-8" />
 			<link rel="stylesheet" type="text/css" href="../style/style.css" media="screen" />
 			<title>$fileNameWithoutPath</title>
+      <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
 			<script type="text/javascript">
 			</script>
 			</head>
@@ -400,7 +401,7 @@ class HtmlContext(filename: String, packag: String,
       def textTable_getEnd() : String = { s"""</table>\n\n""" } 
       
       def textTable_getEntry(comment: String, mainText: String) : String = {
-        s"""<tr>
+        s"""<tr class="table-text-line">
 <td class="table-text-comment">$comment</td>
 <td class="table-text-text">$mainText</td>
 </tr>"""
@@ -411,7 +412,7 @@ class HtmlContext(filename: String, packag: String,
       
       def codeTable_getEntry(lineNumber: Int, comment: String, code: String) : String = {
         val lineNumStr = lineNumber.toString()
-        s"""<tr>
+        s"""<tr id="LCONT$lineNumStr" class="table-code-line" >
 <td id="LCOM$lineNumStr" class="table-code-comment">$comment</td>
 <td id="L$lineNumStr" class="table-code-linenumber" data-line-number="$lineNumStr">$lineNumStr</td>
 <td id="LC$lineNumStr" class="table-code-code">
@@ -432,6 +433,7 @@ class HtmlIndexContext(){
 			<meta http-equiv="content-type" content="text/html; charset=utf-8" />
 			<link rel="stylesheet" type="text/css" href="./style/style.css" media="screen" />
 			<title>Overview</title>
+      <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
 			<script type="text/javascript">
 			</script>
 			</head>

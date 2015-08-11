@@ -211,7 +211,7 @@ extends Consumer with LazyLogging {
       // Close code table and update variables
       codeTableOpenUpdate = false
       
-      currentLineUpdate += toProcess(0).text.count(_ == '\n') 
+      currentLineUpdate += toProcess(0).text.count(_ == '\n') + 1
       
       val (wrap_beg,wrap_end) = htmlContext.tokenToHtmlEntry.getTokenEntry(toProcess(0))
       if(codeTableOpen){
@@ -458,13 +458,18 @@ class HtmlIndexContext(){
 			val frameBeg = s"""<div class="textbox">"""
 			val frameEnd = s"""</div>\n"""
 			val beg = "<h2>" + "Files" +"</h2>"                 
-					
+			
+      
+      val dataAttributesPrefix = "data-cp-"
+      
       var entries = (originalFilenames zip ( labels zip links)).map{e => (e._1,e._2._1,e._2._2)}
 
 			frameBeg+ beg + "<ul>" + entries.map({e => 
 			s"""<li><a href="""" + 
 			e._3 + s"""" title="Originial filename:""" +e._1 + s"""">""" +
-			e._2 + s"""</a></li>"""}).mkString("\n") + "</ul>\n" + frameEnd  
+			e._2 + s"""</a></li>"""}).mkString("\n") + "</ul>\n" + frameEnd
+      
+      
 	}
 
 }
@@ -493,13 +498,12 @@ class TokenToOutputEntry(val filenamesOriginalToOutputNames: Array[(String,Strin
             handleLiterals(token,tt)
           } else if(tt.isComment) {
             handleComments(token,tt)
+          } else if(tt.isId){
+            handleIds(token,tt)
           }
           else {        
             
             tt match {
-              case Tokens.VARID => {
-                handleVARID(token)
-              }
               case Tokens.WS => {
                 handleWS(token)
               }
@@ -703,6 +707,42 @@ class TokenToOutputEntry(val filenamesOriginalToOutputNames: Array[(String,Strin
     }
    }
    
+   private def handleIds(token: Token, tt: ScalaTokenType) : (String,String) = {
+    
+     val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
+     val titleElem = s""" title="$tInfo" """
+     
+     import org.codeprose.api.ScalaLang.Tokens._ 
+     
+     tt match {
+       case VARID => {
+           handleVARID(token)
+         } 
+        case PLUS => {
+          hanldeID(token)
+         } 
+        case MINUS => {
+          hanldeID(token)
+         } 
+        case STAR => {
+          hanldeID(token)
+         } 
+        case PIPE => {
+          hanldeID(token)
+         } 
+        case TILDE => {
+          hanldeID(token)
+         } 
+        case EXCLAMATION => {
+          hanldeID(token)
+         } 
+         case _ => {
+           (s"""<span $titleElem>""","</span>")
+         }
+     }
+   }
+   
+   
   private def handleVARID(token: Token) : (String,String) = {
 
 		// Fill title information
@@ -734,19 +774,121 @@ class TokenToOutputEntry(val filenamesOriginalToOutputNames: Array[(String,Strin
       case None => " "
     }
     
-    if(linkToDeclaredAt_beg.length()!=0){
-      (linkToDeclaredAt_beg + s"""<span""" + spanClass + iTIdHtmlElement + s""" title="$tInfo">""", s"""</span>"""+linkToDeclaredAt_end)
-    } else {
-      
-      (s"""<span """ + spanClass + iTIdHtmlElement + s""" title="$tInfo">""", s"""</span>""")
-    }
+    // Data attributes 
+    val dataAttributes = getHtmlDataAttributes(token,"data-cp-").map(e=> e._1 + "=" + e._2).mkString(" "," "," ")
     
+    // Set output 
+    val spanElementBeg = s"""<span""" + spanClass + iTIdHtmlElement + dataAttributes + s""" title="$tInfo">"""
+    val spanElementEnd = "</span>"
+      
+    if(linkToDeclaredAt_beg.length()!=0){
+      (linkToDeclaredAt_beg + spanElementBeg, spanElementEnd + linkToDeclaredAt_end)
+    } else {
+      (spanElementBeg,spanElementEnd)
+    }
 		
    }
    
+   private def hanldeID(token: Token) : (String, String) = {
+     // Fill title information
+    val tInfo = token.toString().replace(";", ";\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
+    
+    val iTIdHtmlElement = token(internalTokenId) match {
+      case Some(id) => {s""" id="T$id" """}
+      case None => s""" """
+    }
+    // Link elements to declared_At   
+    val (linkToDeclaredAt_beg,linkToDeclaredAt_end) = if(token(declaredAt_TokenIdSrcPos).isDefined){
+      
+      val srcPos = token(declaredAt_TokenIdSrcPos).get
+      
+      // Get full file to output translation
+      val outputFileRelPath = filenamesOriginalToOutputNames.filter( e => e._1 == srcPos.filename).map(e => "./" + e._2)
+      if(outputFileRelPath.length>0){
+        val tId = srcPos.tokenId
+        val idx = outputFileRelPath(0).lastIndexOf("/")
+        val link = "." + outputFileRelPath(0).slice(idx,outputFileRelPath(0).length) + "#" + "T" + tId.toString
+        (s"""<a href="$link" class="in-code">""","</a>")
+      } else {
+        ("","")
+      }
+    } else { ("","") }
+    
+    val spanClass = token(symbolDesignation) match {
+      case Some(spClass) => {s""" class="$spClass" """}
+      case None => " "
+    }
+    
+   
+        
+     // Data attributes 
+    val dataAttributes = getHtmlDataAttributes(token,"data-cp-").map(e=> e._1 + "=" + e._2).mkString(" "," "," ")
+    
+    // Set output 
+    val spanElementBeg = s"""<span""" + spanClass + iTIdHtmlElement + dataAttributes + s""" title="$tInfo">"""
+    val spanElementEnd = "</span>"
+      
+    if(linkToDeclaredAt_beg.length()!=0){
+      (linkToDeclaredAt_beg + spanElementBeg, spanElementEnd + linkToDeclaredAt_end)
+    } else {
+      (spanElementBeg,spanElementEnd)
+    }
+    
+   }
+  
    private def handleWS(token: Token) : (String,String) = {
-     
      ("","")
+   }
+   
+   private def getHtmlDataAttributes(token: Token, dataAttributesPrefix: String) : ArrayBuffer[(String,String)] = {
+     
+     
+     
+     token(tokenType) match {
+       case Some(tt) => {
+         
+         if(tt.isId){
+           getHtmlDataAttributesIds(token: Token, dataAttributesPrefix: String)
+         } else if (tt.isKeyword) {
+           ArrayBuffer[(String,String)]()
+         } else if (tt.isXml) {
+           ArrayBuffer[(String,String)]()
+         } else if (tt.isComment){
+           ArrayBuffer[(String,String)]()
+         } else {
+           ArrayBuffer[(String,String)]()
+         }
+         
+       }
+       case None => {
+         ArrayBuffer[(String,String)]()
+       }
+     }
+   } 
+   
+   private def getHtmlDataAttributesIds(token: Token, dataAttributesPrefix: String) : ArrayBuffer[(String,String)] = {
+    val dataAttributes = ArrayBuffer[(String,String)]()
+  
+    token.get(fullName) match {
+      case Some(name) => { dataAttributes +=  ((dataAttributesPrefix + "fullname",s""""""" + name.toString + s""""""")) } 
+      case None => {}
+    } 
+    
+    token.get(typeId) match {
+      case Some(id) => { dataAttributes += ((dataAttributesPrefix + "typeid",s""""""" + id.toString + s""""""")) }
+      case None => {}
+    }
+     
+    token.get(internalTokenId) match {
+      case Some(id) => { dataAttributes += ((dataAttributesPrefix + "internaltokenid",s""""""" + id.toString + s""""""")) }
+      case None => {}
+    } 
+    
+    token.get(internalTokenId) match {
+      case Some(id) => { dataAttributes += ((dataAttributesPrefix + "internaltokenid",s""""""" + id.toString + s""""""")) }
+      case None => {}
+    } 
+    dataAttributes
    }
    
 }

@@ -41,10 +41,10 @@ class EnsimeProviderContext(
 		) extends ProviderContext {
   
   val timeout_ConnectionInfoReq = 500
-  val timeout_SymbolInfoReq = 200
-  val timeout_SymbolDesignationsReq = 500
-  val timeout_ImplicitInfoReq = 500
-  val timeout_UsesOfSymbolAtPointReq = 500
+  val timeout_SymbolInfoReq = 250
+  val timeout_SymbolDesignationsReq =700
+  val timeout_ImplicitInfoReq = 700
+  val timeout_UsesOfSymbolAtPointReq = 700
 }
 
 
@@ -124,8 +124,8 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
      
      // Translation of sourcePostions file offset to file Token id
      logger.info("Updating declared at source positions ... ")
-     includeTokenBasedSourcePostion(out)
-     
+     includeTokenBasedSourcePostion_declaredAt(out)
+     includeTokenBasedSourcePostion_whereUsedWithinFile(out)
      
      
     } else {
@@ -214,14 +214,26 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
 
 			tokenTyp match {
 			  case Some(tt) => {
+          
+          if(tt.isId){
+            tt match {
+             case Tokens.VARID => { 
+               enrichToken_VARID(file,token)              
+             } 
+             case _ => {
+               enrichToken_Id(file,token)
+             }
+            }
+            
+          } else {
+          
 				  tt match {       
-				    case Tokens.VARID => { enrichToken_VARID(file,token) 
-          }
-				  case _ => { 
+				    case _ => { 
             if(c.verbose){ 
               //logger.info("No information requested for " + tt) 
             } 
-          }					
+          }
+         }
 				} 
 			}
 			case _ => { 
@@ -320,7 +332,8 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
             c.inputFolders.map( folder => srcPos.file.startsWith(folder)).reduce(_ || _)            
             )
           if(posToSave.size > 0){
-          token.set(whereUsed)(posToSave.map({
+            // Raw where used data (contains uses in other files)
+            token.set(whereUsed)(posToSave.map({
             srcPos => 
                 new org.codeprose.api.TokenProperties.ERangePosition(
                 srcPos.file,
@@ -329,7 +342,11 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
                 srcPos.end
                 )}
             )
-            )  
+            )
+            
+            
+            
+            
           }   
         } 
       })
@@ -345,6 +362,123 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       token
   }
   
+  private def enrichToken_Id(file: File, token: org.codeprose.api.Token) : org.codeprose.api.Token = {
+      import org.codeprose.api.ScalaLang._      
+      import org.codeprose.api.TokenProperties.SourcePosition    
+      
+      //println(file + " - " + OffsetRange(token.offset) + token.text)
+     
+        
+      // SymbolInfoReq
+      val symbolInfo = ensimeClient.symbolAtPoint(file, token.offset)
+      
+      
+      // Awaiting the symbolInfo
+      try {
+        val cIResult= Await.result(symbolInfo,  Duration(c.timeout_SymbolInfoReq, MILLISECONDS))
+      } catch {
+        case timeout : TimeoutException => {
+          logger.error("[RequestError] \tSymbolInfosReq:\t" + timeout.getMessage)       
+        }
+     
+      }
+     // 
+      symbolInfo.onSuccess({
+        case sI: SymbolInfo => {
+          
+         
+          val typeInfo = sI.tpe
+          if(typeInfo.outerTypeId.isDefined)
+            token.set(outerTypeId)(typeInfo.outerTypeId.get)
+          
+          token.set(fullName)(typeInfo.fullName)
+          
+          token.set(typeId)(typeInfo.typeId)
+          token.set(declaredAs)(typeInfo.declAs.toString)
+          
+          if(typeInfo.args.size>0)                      
+            token.set(args)(typeInfo.args.mkString(","))
+          if(typeInfo.members.size >0)  
+            token.set(members)(typeInfo.members.mkString(","))
+          if(typeInfo.typeArgs.size > 0)
+            token.set(typeArgs)(typeInfo.typeArgs.mkString(","))
+                    
+          // TypeInfo
+          if(typeInfo.isInstanceOf[BasicTypeInfo]){    
+            token.set(isArrowType)(false)
+          } else if (typeInfo.isInstanceOf[ArrowTypeInfo]){        
+            token.set(isArrowType)(false)
+          }
+          
+          if(sI.declPos.isDefined && sI.declPos.get.isInstanceOf[org.ensime.api.OffsetSourcePosition]){
+                    token.set(declaredAt)(
+                        new SourcePosition(sI.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].file.getAbsolutePath,
+                        sI.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].offset))
+            
+          }
+        }
+      })
+      
+       symbolInfo.onFailure({
+        case t => {
+          (logger.error("[RequestError] \tSymbolInfoReq failed! " + t))
+          }
+      })
+      
+      // ==================================
+      // Uses of Symbol
+      
+      
+      val usesOfSymbol = ensimeClient.usesOfSymAtPoint(file, token.offset)
+      
+      
+      // Awaiting the symbolInfo
+      try {
+        val cIResult= Await.result(usesOfSymbol,  Duration(c.timeout_SymbolInfoReq, MILLISECONDS))
+      } catch {
+        case timeout : TimeoutException => {
+          logger.error("[RequestError] \tUsesOfSymbolAtPointReq:\t" + timeout.getMessage)       
+        }
+     
+      }
+      
+      usesOfSymbol.onSuccess({
+        case uOS: ERangePositions => {
+          
+          // Filters the references that are not in the input folders!
+          val posToSave = uOS.positions.filter(srcPos =>
+            c.inputFolders.map( folder => srcPos.file.startsWith(folder)).reduce(_ || _)            
+            )
+          if(posToSave.size > 0){
+            // Raw where used data (contains uses in other files)
+            token.set(whereUsed)(posToSave.map({
+            srcPos => 
+                new org.codeprose.api.TokenProperties.ERangePosition(
+                srcPos.file,
+                srcPos.offset,
+                srcPos.start,
+                srcPos.end
+                )}
+            )
+            )
+            
+            
+            
+            
+          }   
+        } 
+      })
+      
+       usesOfSymbol.onFailure({
+        case t => {
+          (logger.error("[RequestError] \tUsesOfSymbolAtPointReq failed! " + t))
+          }
+      })
+      
+      
+      
+      token
+  }
   
 	private def getTokens(file: java.io.File) : ArrayBuffer[Token]= {
 		
@@ -415,7 +549,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   }
  
   
-  private def includeTokenBasedSourcePostion(info : ArrayBuffer[(File,ArrayBuffer[Token])]) : 
+  private def includeTokenBasedSourcePostion_declaredAt(info : ArrayBuffer[(File,ArrayBuffer[Token])]) : 
   ArrayBuffer[(File,ArrayBuffer[Token])] = {
     import org.codeprose.api.ScalaLang._
     
@@ -443,6 +577,35 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
         
   }
 
+   private def includeTokenBasedSourcePostion_whereUsedWithinFile(info : ArrayBuffer[(File,ArrayBuffer[Token])]) : 
+  ArrayBuffer[(File,ArrayBuffer[Token])] = {
+    import org.codeprose.api.ScalaLang._
+    
+    
+   info.map(e =>{
+     val file = e._1
+     val tokens = e._2
+
+     
+     tokens.map(t => {
+       if(t(whereUsed).isDefined){
+         
+         val srcPosList = t(whereUsed).get
+         val tIds = srcPosList.filter(srcPos => srcPos.filename == file.getAbsolutePath()).map( srcPos => findInternalTokenIdToOffset(srcPos,info))
+         if(tIds.length >0){
+           t.set(whereUsed_WithinFileTokenIdSrcPos)(tIds.map(id => new SourcePositionWithTokenId(file.getAbsolutePath,id)))
+         }
+         t
+       } else {
+         t
+       }
+     })
+     
+     (file,tokens)
+   })
+        
+  }
+  
   private def findInternalTokenIdToOffset(
       srcPos: org.codeprose.api.TokenProperties.SourcePosition, 
       info: ArrayBuffer[(File,ArrayBuffer[Token])]) : Int = {
@@ -470,5 +633,33 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     id 
    
 	}
+  
+   private def findInternalTokenIdToOffset(
+      srcPos: org.codeprose.api.TokenProperties.ERangePosition, 
+      info: ArrayBuffer[(File,ArrayBuffer[Token])]) : Int = {
+   
+    import org.codeprose.api.ScalaLang._
+  
+    val tokens = info.filter({e => e._1.getAbsolutePath == srcPos.filename}).map(e=>e._2)
+    
+    val id = if(tokens.length==0){
+      -1
+    } else {
+      
+      val t = tokens(0).filter(t => {
+        t.offset == srcPos.offset
+      })
+    
+      val ret = if(t.length>0 && t(0)(internalTokenId).isDefined){
+        t(0)(internalTokenId).get
+      } else {
+         logger.error("[findInternalTokenIdToOffset]\t" + "Could not determine internalTokenId." )
+        -1
+      }
+      ret
+    }
+    id 
+   
+  }
   
 }

@@ -261,6 +261,8 @@ object SourceSymbol {
   val implicitConversion_argNames = new Key('implicitConversion_fullName){ type Value = String }
   
   val whereUsed = new Key('whereUsed){ type Value = List[ERangePosition]}
+  val whereUsed_WithinFileTokenIdSrcPos = new Key('whereUsed_WithinFileTokenIdSrcPos){ type Value = List[SourcePositionWithTokenId]}
+  
   
   // Keys MetaFile
   // ============================================================================

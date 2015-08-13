@@ -730,15 +730,11 @@ class TokenToOutputEntry(val filenamesOriginalToOutputNames: Array[(String,Strin
      token(internalTokenId) match {
        case Some(id) => {
          
-         scriptElements.append(s"""$$("#T""" + id + s"""").hover( 
-          function(){ 
-            toHighlight = $$(this).data("cp-whereusedinfile")
-            $$(toHighlight).css("background-color","yellow");  
-          },function(){
-            toHighlight = $$(this).data("cp-whereusedinfile")
-            $$(toHighlight).css("background-color","#F8F8F8"); 
-          });""")
-
+         scriptElements.append(
+             s"""$$("#T""" + id + s"""").hover( 
+          function(){ toHighlight = $$(this).data("cp-whereusedinfile"); $$(toHighlight).css("background-color","yellow"); },
+          function(){ toHighlight = $$(this).data("cp-whereusedinfile"); $$(toHighlight).css("background-color","#F8F8F8"); }
+          );""")
        }
        case None => {}
      }

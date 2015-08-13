@@ -45,6 +45,7 @@ class EnsimeProviderContext(
   val timeout_SymbolDesignationsReq =700
   val timeout_ImplicitInfoReq = 700
   val timeout_UsesOfSymbolAtPointReq = 700
+  val timeout_InspectTypeByIdReq = 500
 }
 
 
@@ -52,9 +53,11 @@ class EnsimeProviderContext(
 class EnsimeProvider(implicit c: EnsimeProviderContext )
     extends TokenEnricher with LazyLogging {
 
-	private val ensimeClient = new Client()(new ClientContext(c.host,c.port,false)) 
+	private val ensimeClient = new Client()(new ClientContext(c.host,c.port,true)) 
 	var isInitialized = false
   var tokenId = 0
+  var occuringTypeIds = scala.collection.mutable.SortedSet[Int]()
+ 
   
 	/*
 	 * Initializes the ensime client and tests the connection to the server.
@@ -122,6 +125,11 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
         out += ((file,tokens))
       }
      
+     // Inspect types occuring in the project
+     
+     getDetailedTypeInformation()
+     
+     
      // Translation of sourcePostions file offset to file Token id
      logger.info("Updating declared at source positions ... ")
      includeTokenBasedSourcePostion_declaredAt(out)
@@ -135,6 +143,86 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
 	}
 
   
+  private def getDetailedTypeInformation() : Unit = {
+    
+    println("Occuring Type Ids: " + occuringTypeIds + "\n")
+    
+    occuringTypeIds.map(typeId => {
+      (typeId,performInspectTypeByIdReq(typeId))
+      }).foreach(e=> { 
+        println(e._1 + ": " + e._2 +"\n")
+      }) 
+    
+    
+  }
+  
+  private def performInspectTypeByIdReq(typeId: Int) : String = {
+    val typeInspectInfo = ensimeClient.inspectTypeById(typeId) 
+    
+    try {
+      val result = Await.result(typeInspectInfo,  Duration(c.timeout_InspectTypeByIdReq, MILLISECONDS))
+      println("InspectTypeById: got result, companionId: " + result.companionId + " - numInterfaces: " + result.interfaces.size)
+      
+    }  catch {
+    case timeout : TimeoutException => { 
+      logger.error("InspectTypeByIdReq:\t" + timeout.getMessage)       
+      }
+    }
+    
+    var s=""
+    
+    typeInspectInfo.onSuccess({
+      
+      case iTI : TypeInspectInfo => {
+        val siz = iTI.supers.size
+        val typ = iTI.`type`
+        val inter = iTI.interfaces.toList
+        println(inter)
+        s = typ.toString()
+        //s=iTI.toString() + "\n__" + siz
+      }
+      
+    })
+    
+     typeInspectInfo.onFailure({
+        case t => {(logger.error("SymbolDesignationsReq failed! " + t))}
+      })
+      
+     s
+  }
+  
+  private def performInspectTypeAtPoint(file: File, range: OffsetRange) : String = {
+//    
+//    val typeInspectInfo = ensimeClient.inspectTypeAtPoint(file, range) 
+//    
+//    try {
+//      val result = Await.result(typeInspectInfo,  Duration(c.timeout_InspectTypeByIdReq, MILLISECONDS))
+//      
+//      
+//    }  catch {
+//    case timeout : TimeoutException => { 
+//      logger.error("InspectTypeByIdReq:\t" + timeout.getMessage)       
+//      }
+//    }
+//    
+//    var s=""
+//    
+//    typeInspectInfo.onSuccess({
+//      
+//      case iTI : TypeInspectInfo => {
+//        println("InspectTypeById: got result, companionId: " + iTI.companionId + " - numInterfaces: " + iTI.interfaces.size)
+//         s=iTI.toString()
+//      }
+//      
+//    })
+//    
+//     typeInspectInfo.onFailure({
+//        case t => {(logger.error("SymbolDesignationsReq failed! " + t))}
+//      })
+//      
+//     s
+    ???
+  }
   
   
   private def getSymbolDesignations(file: File, tokens: ArrayBuffer[Token]) : ArrayBuffer[Token] = {
@@ -276,6 +364,16 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
           token.set(fullName)(typeInfo.fullName)
           
           token.set(typeId)(typeInfo.typeId)
+          /* Inspect Type Stuff - Beg */
+          
+//          if(!occuringTypeIds.contains(typeInfo.typeId)){
+//            println(typeInfo.typeId + ": " + performInspectTypeAtPoint(file, OffsetRange(token.offset,token.offset)))
+//          }
+          /* Inspect Type Stuff - End */
+          
+          occuringTypeIds += typeInfo.typeId
+          
+          
           token.set(declaredAs)(typeInfo.declAs.toString)
           
           if(typeInfo.args.size>0)                      
@@ -394,6 +492,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
           token.set(fullName)(typeInfo.fullName)
           
           token.set(typeId)(typeInfo.typeId)
+          occuringTypeIds += typeInfo.typeId
           token.set(declaredAs)(typeInfo.declAs.toString)
           
           if(typeInfo.args.size>0)                      

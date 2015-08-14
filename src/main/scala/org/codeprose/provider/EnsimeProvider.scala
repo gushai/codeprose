@@ -53,10 +53,10 @@ class EnsimeProviderContext(
 class EnsimeProvider(implicit c: EnsimeProviderContext )
     extends TokenEnricher with LazyLogging {
 
-	private val ensimeClient = new Client()(new ClientContext(c.host,c.port,true)) 
+	private val ensimeClient = new Client()(new ClientContext(c.host,c.port,false)) 
 	var isInitialized = false
   var tokenId = 0
-  var occuringTypeIds = scala.collection.mutable.SortedSet[Int]()
+  var occuringTypeIds = scala.collection.mutable.SortedSet[(Int,String)]()
  
   
 	/*
@@ -145,15 +145,25 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   
   private def getDetailedTypeInformation() : Unit = {
     
-    println("Occuring Type Ids: " + occuringTypeIds + "\n")
+    println("Occuring Type Ids: [ALL] " + occuringTypeIds.map(e => e._1 + ": " + e._2).mkString("\n") + "\n")
     
-    occuringTypeIds.map(typeId => {
-      (typeId,performInspectTypeByIdReq(typeId))
-      }).foreach(e=> { 
-        println(e._1 + ": " + e._2 +"\n")
-      }) 
+    val occurIdFiltered = occuringTypeIds.filter(e => (e._2.contains("rational")))
+    println("Occuring Type Ids: [RATIONAL]" + occurIdFiltered.map(e => e._1 + ": " + e._2).mkString("\n") + "\n")
+
     
+//    occurIdFiltered.map(e=>e._1).map(typeId => {
+//      (typeId,performInspectTypeByIdReq(typeId))
+//      }).foreach(e=> { 
+//        println(e._1 + ": " + e._2 +"\n")
+//      }) 
     
+      // 
+      
+      println("Individual Req: 1 [XXX]\n " + performInspectTypeByIdReq(7) + "\n\n")
+      Thread.sleep(2000)
+      println("Individual Req: 2 " +performInspectTypeByIdReq(7))
+      Thread.sleep(2000)
+      println("Individual Req: 3 " +performInspectTypeByIdReq(7))
   }
   
   private def performInspectTypeByIdReq(typeId: Int) : String = {
@@ -163,6 +173,24 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       val result = Await.result(typeInspectInfo,  Duration(c.timeout_InspectTypeByIdReq, MILLISECONDS))
       println("InspectTypeById: got result, companionId: " + result.companionId + " - numInterfaces: " + result.interfaces.size)
       
+      println("===================== - Beg\n")
+      println("compID: " + result.companionId)
+      println("\n")
+      println("typeInfo: " + result.`type`)
+      println("\n")
+      val interStr = result.supers.map( e => "TypeInfo: " + 
+          "\tname: \t" + e.`type`.name + "\n" +
+          "\ttypeid: \t" + e.`type`.typeId + "\n" +
+          "\tdeclAs: \t" + e.`type`.declAs + "\n" +
+          "\tfullName: \t" + e.`type`.fullName + "\n" +
+          "\ttypeArgs: \t" + e.`type`.typeArgs + "\n" +
+          "\tmembers: \t\n" + e.`type`.members.map(e => e.toString() +"\t\t").mkString("\n") + "\n" +
+          "\tpos: \t" + e.`type`.pos + "\n" +
+          "\touterTypeId: \t" + e.`type`.outerTypeId + "\n" +
+          "\n\nViaView: " + e.viaView + "\n----------\n" )
+      println("interfaces:\n" + interStr.mkString("\n"))
+      
+      println("\n===================== - End:\n")
     }  catch {
     case timeout : TimeoutException => { 
       logger.error("InspectTypeByIdReq:\t" + timeout.getMessage)       
@@ -177,9 +205,9 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
         val siz = iTI.supers.size
         val typ = iTI.`type`
         val inter = iTI.interfaces.toList
-        println(inter)
-        s = typ.toString()
-        //s=iTI.toString() + "\n__" + siz
+       // println(inter)
+       // s = typ.toString()
+        s=iTI.toString() + "\n__" + siz
       }
       
     })
@@ -362,7 +390,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
             token.set(outerTypeId)(typeInfo.outerTypeId.get)
           
           token.set(fullName)(typeInfo.fullName)
-          
+            
           token.set(typeId)(typeInfo.typeId)
           /* Inspect Type Stuff - Beg */
           
@@ -371,15 +399,16 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
 //          }
           /* Inspect Type Stuff - End */
           
-          occuringTypeIds += typeInfo.typeId
+          occuringTypeIds += ((typeInfo.typeId,typeInfo.fullName))
           
           
           token.set(declaredAs)(typeInfo.declAs.toString)
           
           if(typeInfo.args.size>0)                      
             token.set(args)(typeInfo.args.mkString(","))
-          if(typeInfo.members.size >0)  
+          if(typeInfo.members.size >0) 
             token.set(members)(typeInfo.members.mkString(","))
+          
           if(typeInfo.typeArgs.size > 0)
             token.set(typeArgs)(typeInfo.typeArgs.mkString(","))
                     
@@ -492,7 +521,8 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
           token.set(fullName)(typeInfo.fullName)
           
           token.set(typeId)(typeInfo.typeId)
-          occuringTypeIds += typeInfo.typeId
+          occuringTypeIds += ((typeInfo.typeId,typeInfo.fullName))
+          
           token.set(declaredAs)(typeInfo.declAs.toString)
           
           if(typeInfo.args.size>0)                      
@@ -606,7 +636,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
             
            // Save information
           if(idx != -1){
-            
+            tokens(idx).set(implicitConversion_indicator)(true)
             tokens(idx).set(implicitConversion_fullName)(info.fun.name)
             if(info.fun.declPos.isDefined && info.fun.declPos.get.isInstanceOf[org.ensime.api.OffsetSourcePosition]){
              tokens(idx).set(implicitConversion_sourcePosition)( new org.codeprose.api.TokenProperties.SourcePosition(
@@ -619,6 +649,14 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
           }
         }
         case info : ImplicitParamInfo => {
+          println("[--------------------------------------------]")
+          println(info + "\n")
+          println("start:\t\t" + info.start)
+          println("end:\t\t" + info.end)
+          println("fun:\t\t" + info.fun)
+          println("params:\t\t " + info.params)
+          println("funIsImplicit:\t\t" + info.funIsImplicit)
+          println("[--------------------------------------------]\n")
           logger.error("ImplicitParamInfo: Not yet collected!")
         }
       }

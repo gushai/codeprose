@@ -375,7 +375,29 @@ class HtmlContext(filename: String, packag: String,
       
 			def getBegin() : String = {
       
-      val scriptString = tokenToHtmlEntry.scriptElements.mkString("\n", "\n\n", "\n")
+      val perTokenScripts = tokenToHtmlEntry.scriptElements.mkString("\n", "\n\n", "\n")
+      
+      
+      val perFileScripts = List(
+      s"""
+        // Highlight implicit conversions and parameters
+      function highlightImplicitConversionsAndParameters(){
+
+        // Implicit conversions
+        $$('*[data-cp-implicitconversion=true]').toggleClass("highlightImplicitConversion");
+
+        // Implicit parameters
+        // Color to use highlightImplicitParameter
+      }""",
+      s"""   
+      $$(document).keypress(function(e){
+        // i
+        if(e.keyCode == 105){
+          highlightImplicitConversionsAndParameters()
+        }     
+      });"""
+      ).mkString("\n", "\n\n", "\n")
+      
       
       s"""<!doctype HTML>
 			<html lang="en">
@@ -385,7 +407,10 @@ class HtmlContext(filename: String, packag: String,
 			<title>$fileNameWithoutPath</title>
       <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
 			<script type="text/javascript">
-      $$(document).ready(function(){ """ + scriptString + s"""});
+      $$(document).ready(function(){ """ +
+      perFileScripts +
+      perTokenScripts + 
+      s"""\n});
 			</script>
 			</head>
 			<body>
@@ -690,33 +715,36 @@ class TokenToOutputEntry(val filenamesOriginalToOutputNames: Array[(String,Strin
     
     val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
     
+    val dataAttributes = getHtmlDataAttributes(token,"data-cp-").map(e=> e._1 + "=" + e._2).mkString(" "," "," ")
+    
+    
     tt match {
     case CHARACTER_LITERAL => {
-      (s"""<span class="stringLiteral" title="""" + tInfo +s"""">""", "</span>")
+      (s"""<span class="stringLiteral" $dataAttributes title="""" + tInfo +s"""">""", "</span>")
     }
     case INTEGER_LITERAL => {
-      (s"""<span class="numberLiteral" title="""" + tInfo +s"""">""", "</span>")
+      (s"""<span class="numberLiteral" $dataAttributes title="""" + tInfo +s"""">""", "</span>")
     }
     case FLOATING_POINT_LITERAL => {
-      (s"""<span class="numberLiteral" title="""" + tInfo +s"""">""", "</span>")
+      (s"""<span class="numberLiteral" $dataAttributes title="""" + tInfo +s"""">""", "</span>")
     }
     case STRING_LITERAL => {
-      (s"""<span class="stringLiteral" title="""" + tInfo +s"""">""", "</span>")
+      (s"""<span class="stringLiteral" $dataAttributes title="""" + tInfo +s"""">""", "</span>")
     }
     case STRING_PART => {
-      (s"""<span class="stringLiteral" title="""" + tInfo +s"""">""", "</span>")
+      (s"""<span class="stringLiteral" $dataAttributes title="""" + tInfo +s"""">""", "</span>")
     }
     case SYMBOL_LITERAL => {
-      (s"""<span class="literal" title="""" + tInfo +s"""">""", "</span>")
+      (s"""<span class="literal" $dataAttributes title="""" + tInfo +s"""">""", "</span>")
     }
     case TRUE => {
-      (s"""<span class="keyword" title="""" + tInfo +s"""">""", "</span>")
+      (s"""<span class="keyword" $dataAttributes title="""" + tInfo +s"""">""", "</span>")
     }
     case FALSE => {
-      (s"""<span class="keyword" title="""" + tInfo +s"""">""", "</span>")
+      (s"""<span class="keyword" $dataAttributes title="""" + tInfo +s"""">""", "</span>")
     }
     case NULL => {
-      (s"""<span class="keyword" title="""" + tInfo +s"""">""", "</span>")
+      (s"""<span class="keyword" $dataAttributes title="""" + tInfo +s"""">""", "</span>")
     }
 
     }
@@ -727,6 +755,8 @@ class TokenToOutputEntry(val filenamesOriginalToOutputNames: Array[(String,Strin
      val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
      val titleElem = s""" title="$tInfo" """
      
+     
+     // Script element for highlight where used within file
      token(internalTokenId) match {
        case Some(id) => {
          
@@ -739,7 +769,8 @@ class TokenToOutputEntry(val filenamesOriginalToOutputNames: Array[(String,Strin
        case None => {}
      }
      
-     // Generate associated script element
+     
+     
      
      
      
@@ -879,13 +910,15 @@ class TokenToOutputEntry(val filenamesOriginalToOutputNames: Array[(String,Strin
        case Some(tt) => {
          
          if(tt.isId){
-           getHtmlDataAttributesIds(token: Token, dataAttributesPrefix: String)
+           getHtmlDataAttributesIds(token, dataAttributesPrefix)
          } else if (tt.isKeyword) {
            ArrayBuffer[(String,String)]()
          } else if (tt.isXml) {
            ArrayBuffer[(String,String)]()
          } else if (tt.isComment){
            ArrayBuffer[(String,String)]()
+         } else if (tt.isLiteral) {
+           getHtmlDataAttributesLiterals(token, dataAttributesPrefix)
          } else {
            ArrayBuffer[(String,String)]()
          }
@@ -920,7 +953,32 @@ class TokenToOutputEntry(val filenamesOriginalToOutputNames: Array[(String,Strin
         dataAttributes += ((dataAttributesPrefix + "whereusedinfile",s""""""" + tokenIds + s""""""")) }
       case None => {}
     } 
+    
+    token.get(implicitConversion_indicator) match {
+      case Some(name) => { 
+        dataAttributes += ((dataAttributesPrefix + "implicitconversion",s""""""" + true + s""""""")) 
+        // Add others: Name and Tokenbased source position 
+      }
+      case None => { } 
+    }
+    
     dataAttributes
+   }
+   
+   private def getHtmlDataAttributesLiterals(token: Token, dataAttributesPrefix: String) : ArrayBuffer[(String,String)] = {
+     
+   val dataAttributes = ArrayBuffer[(String,String)]()
+  
+    token.get(implicitConversion_indicator) match {
+      case Some(name) => { 
+        dataAttributes += ((dataAttributesPrefix + "implicitconversion",s""""""" + true + s""""""")) 
+        // Add others: Name and Tokenbased source position 
+      }
+      case None => { } 
+    }
+    
+    dataAttributes
+     
    }
    
 }

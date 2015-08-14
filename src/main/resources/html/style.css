@@ -317,7 +317,16 @@ a.in-code:active {
     text-decoration: none;
 }
 
+/* Highlights */
 
+.highlightImplicitConversion {
+	background-color:yellow;
+}
+
+
+.highlightImplicitParameter {
+	background-color:green;
+}
 
 
 /* For highlight on selection with fade */

@@ -18,8 +18,10 @@ object Api {
 }
 
 
-class MetaFile() extends DynamicPropertyMap
-class MetaProject() extends DynamicPropertyMap
+// Container for project specific information
+class Project() extends DynamicPropertyMap
+
+
 
 
 // DefaultLang
@@ -29,8 +31,7 @@ trait DefaultLang {
   
   // Keys
 	val tokenType = new Key('tokenType){ type Value <: TokenType }  
-  
-
+ 
 }
 
 // ScalaLang 
@@ -256,9 +257,10 @@ object SourceSymbol {
   
   val symbolDesignation = new Key('symbolDesignation){ type Value = org.codeprose.api.ScalaLang.SourceSymbol.SourceSymbol }
   
+  val implicitConversion_indicator = new Key('implicitConversion_indicaor){ type Value = Boolean }
   val implicitConversion_sourcePosition = new Key('implicitConversion_sourcePosition){ type Value = SourcePosition }
   val implicitConversion_fullName = new Key('implicitConversion_fullName){ type Value = String }
-  val implicitConversion_argNames = new Key('implicitConversion_fullName){ type Value = String }
+  val implicitConversion_argNames = new Key('implicitConversion_argNamesName){ type Value = String }
   
   val whereUsed = new Key('whereUsed){ type Value = List[ERangePosition]}
   val whereUsed_WithinFileTokenIdSrcPos = new Key('whereUsed_WithinFileTokenIdSrcPos){ type Value = List[SourcePositionWithTokenId]}
@@ -266,17 +268,8 @@ object SourceSymbol {
   
   // Keys MetaFile
   // ============================================================================
-  object KeysMetaFile {
-//    val imlicitParameter = new Key('declaredAs) { type Value = ArrayBuffer[] }
-//    val imlicitConversion = new Key('declaredAs) { type Value = ArrayBuffer[] }
-//    
-  }
-
-  // Keys MetaProject
-  // ============================================================================
-  object KeysMetaProject {
-    
-  }
+  
+  
   
 }
 

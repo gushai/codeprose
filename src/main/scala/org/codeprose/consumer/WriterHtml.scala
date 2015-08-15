@@ -380,6 +380,12 @@ class HtmlContext(filename: String, packag: String,
       
       val perFileScripts = List(
       s"""
+        // Highlight where used within file
+        $$("[id^='T']").hover( 
+          function(){ toHighlight = $$(this).data("cp-whereusedinfile"); $$(toHighlight).toggleClass("highlightWhereUsedWithinFile"); },
+          function(){ toHighlight = $$(this).data("cp-whereusedinfile"); $$(toHighlight).toggleClass("highlightWhereUsedWithinFile"); }
+        );""",    
+      s"""
         // Highlight implicit conversions and parameters
       function highlightImplicitConversionsAndParameters(){
 
@@ -389,7 +395,8 @@ class HtmlContext(filename: String, packag: String,
         // Implicit parameters
         // Color to use highlightImplicitParameter
       }""",
-      s"""   
+      s"""
+      // Key events     
       $$(document).keypress(function(e){
         // i
         if(e.keyCode == 105){
@@ -757,6 +764,10 @@ class TokenToOutputEntry(val filenamesOriginalToOutputNames: Array[(String,Strin
      
      
      // Script element for highlight where used within file
+     
+     // TODO: REMOVE - BEGIN
+     // Replaced by one script per file
+     /*
      token(internalTokenId) match {
        case Some(id) => {
          
@@ -767,7 +778,8 @@ class TokenToOutputEntry(val filenamesOriginalToOutputNames: Array[(String,Strin
           );""")
        }
        case None => {}
-     }
+     } */
+     // REMOVE - END
      
      
      

@@ -328,6 +328,11 @@ a.in-code:active {
 	background-color:green;
 }
 
+.highlightWhereUsedWithinFile {
+	background-color:yellow;
+}
+
+
 
 /* For highlight on selection with fade */
 :target {

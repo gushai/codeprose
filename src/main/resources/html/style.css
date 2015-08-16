@@ -333,6 +333,10 @@ a.in-code:active {
 }
 
 
+.cp-tooltip{
+	font-size:0.8em;
+}
+
 
 /* For highlight on selection with fade */
 :target {

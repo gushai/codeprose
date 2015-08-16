@@ -24,6 +24,17 @@ class ArgumentList(){
 }
 
 
+class ImplicitConversion(
+    val fullname: String,
+    val typeId: Int,
+    val args: String,
+    val typeArgs: String,
+    val whereUsedWithinFile_OffsetBased: SourcePosition,
+    var whereUsedWithinFile_TokenBase: SourcePositionWithTokenId
+    ) {
+  
+}
+
 
 
   

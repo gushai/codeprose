@@ -402,7 +402,31 @@ class HtmlContext(filename: String, packag: String,
         if(e.keyCode == 105){
           highlightImplicitConversionsAndParameters()
         }     
-      });"""
+      });""",
+      s"""
+        // Tooltip
+        // $$("[id^='T']").tooltip({
+        $$('*[data-cp-tooltipdisplay=true]').tooltip({
+        content: function () {           
+         return $$(this).data("cp-tooltipinformation");
+        },
+        show: null,
+        disabled: false,
+       // position: {of: $$("#LCOM0"), at: "left"},
+        close: function (event, ui) {
+            ui.tooltip.hover(
+
+            function () {
+                $$(this).stop(true).fadeTo(400, 1);
+            },
+
+            function () {
+                $$(this).fadeOut("100", function () {
+                    $$(this).remove();
+                })
+            });
+        }
+    });"""
       ).mkString("\n", "\n\n", "\n")
       
       
@@ -411,8 +435,10 @@ class HtmlContext(filename: String, packag: String,
 			<head>
 			<meta http-equiv="content-type" content="text/html; charset=utf-8" />
 			<link rel="stylesheet" type="text/css" href="../style/style.css" media="screen" />
+      <link rel="stylesheet" type="text/css" href="http://ajax.aspnetcdn.com/ajax/jquery.ui/1.10.0/themes/black-tie/jquery-ui.css" media="screen" />
 			<title>$fileNameWithoutPath</title>
       <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
+      <script src="http://ajax.aspnetcdn.com/ajax/jquery.ui/1.10.0/jquery-ui.js"></script>
 			<script type="text/javascript">
       $$(document).ready(function(){ """ +
       perFileScripts +
@@ -973,6 +999,21 @@ class TokenToOutputEntry(val filenamesOriginalToOutputNames: Array[(String,Strin
       }
       case None => { } 
     }
+    
+    // Information for Tooltip
+    
+    dataAttributes += ((dataAttributesPrefix + "tooltipdisplay",s""""""" + true + s"""""""))
+    val tooltip = s"""
+      <div class='cp-tooltip'><b>org.codeprose.fullname</b><br><br> 
+      <a href='#'>Implicit conversion</a> 
+      <a href='#'>Declaration</a><br>
+      <a href='#'>Definition</a><br>
+      <a href='#'>Where used in file</a><br>
+      <a href='#'>Where used in project</a>
+      </div>
+      """
+    dataAttributes += ((dataAttributesPrefix + "tooltipinformation",s""""""" + tooltip + s"""""""))
+    
     
     dataAttributes
    }

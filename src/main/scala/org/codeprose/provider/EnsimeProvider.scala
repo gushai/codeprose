@@ -636,6 +636,19 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
             
            // Save information
           if(idx != -1){
+            // TODO: Upgrade to ImplicitConversion to include more information, like:
+            //   - Type id
+            //   - Argument names ...
+            //   - ...
+            println("[--------------------------------")
+            println(info.fun.`type`.fullName)
+            println(info.fun.`type`.name)
+            println(info.fun.`type`.args)
+            println(info.fun.`type`.typeArgs)
+            println(info.fun.`type`.declaredAs)
+            println(info.fun.`type`.declAs)
+            println(info.fun.`type`.typeId)
+            println("[--------------------------------")
             tokens(idx).set(implicitConversion_indicator)(true)
             tokens(idx).set(implicitConversion_fullName)(info.fun.name)
             if(info.fun.declPos.isDefined && info.fun.declPos.get.isInstanceOf[org.ensime.api.OffsetSourcePosition]){

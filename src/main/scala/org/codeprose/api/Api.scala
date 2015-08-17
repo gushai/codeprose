@@ -257,7 +257,7 @@ object SourceSymbol {
   
   val symbolDesignation = new Key('symbolDesignation){ type Value = org.codeprose.api.ScalaLang.SourceSymbol.SourceSymbol }
   
-  val implicitConversion_indicator = new Key('implicitConversion_indicaor){ type Value = Boolean }
+  val implicitConversion_indicator = new Key('implicitConversion_indicator){ type Value = Boolean }
   val implicitConversion_sourcePosition = new Key('implicitConversion_sourcePosition){ type Value = SourcePosition }
   val implicitConversion_fullName = new Key('implicitConversion_fullName){ type Value = String }
   val implicitConversion_argNames = new Key('implicitConversion_argNamesName){ type Value = String }

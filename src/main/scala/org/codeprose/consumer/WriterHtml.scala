@@ -26,8 +26,9 @@ class WriterContextHtml(
     ) extends WriterContext {
   
   val outputFolders = List("content","js","style")
-  val styleSheetRelPath = new ResourceRelPaths("/html/style.css","style/style.css") 
-  val filesToCoy = List[ResourceRelPaths](styleSheetRelPath)
+  val styleSheetRelPath = new ResourceRelPaths("/html/style.css","style/style.css")
+  val jsGlobalRelPath = new ResourceRelPaths("/js/codeprose.global.js","js/codeprose.global.js")
+  val filesToCoy = List[ResourceRelPaths](styleSheetRelPath,jsGlobalRelPath)
 }
 
 
@@ -404,15 +405,77 @@ class HtmlContext(filename: String, packag: String,
         }     
       });""",
       s"""
+      // Create tooltip entries
+      function createTooltipHtmlFromDataAttr(elem) { 
+    
+        // Fullname
+          fullname = "<b>" + $$(elem).data("cp-fullname") + "</b>";
+        
+    // TypeId
+    typeId = $$(elem).data("cp-typeid")
+
+    // Declaration
+    rawLinkToDeclaration = $$(elem).data("cp-declaredat");
+    linkToDeclaration = ""
+          if(rawLinkToDeclaration){
+      console.log( rawLinkToDeclaration);
+            linkToDeclaration = "<a href='" + rawLinkToDeclaration + "'>Declaration</a>" + "<br/>";
+          }
+
+      // Definition
+      rawLinkToTypeDef = mappingToTypeDefinition(typeId)
+        
+      linkToDefintion = "";
+      if(rawLinkToTypeDef.length !=  0){
+        linkToDefintion = "<a href='" + rawLinkToTypeDef + "'>Definition</a>" + "<br/>";
+      }       
+
+      // Where used in project
+      rawLinkToWhereUsedProject = mappingToWhereUsedInProject(typeId)
+          
+      linkToWhereUsedInProject = "" 
+      if(rawLinkToWhereUsedProject.length  !=  0){
+        linkToWhereUsedInProject = "<a href='" + rawLinkToWhereUsedProject + "'>Where used in project</a>" + "<br/>";
+      }      
+    
+      linkToImplicitConversion =  "";
+      isImplicitConversion = $$(elem).data("cp-implicitconversion");
+      if(isImplicitConversion){
+    
+      implicitConversionFullname = $$(elem).data("cp-implicitconversionfullname");
+      implicitConversionDeclaredAt = $$(elem).data("cp-implicitconversiondeclaredat");   
+  if(implicitConversionDeclaredAt != null){
+        linkToImplicitConversion = "<a href='" + implicitConversionDeclaredAt + "'>Impl. conv: " + implicitConversionFullname + "</a>" + "<br/>";
+  } else {
+    linkToImplicitConversion = "Impl. conv: " + implicitConversionFullname + "<br/>";
+  }
+  }
+
+
+        linkToImplicitParameter =  "<S>Implicit parameter</S>" + "<br/>";
+      
+          html = "<div class='cp-tooltip'>" + fullname + "<br/><br/>" +
+            linkToDeclaration +
+            linkToDefintion +
+            linkToWhereUsedInProject +
+            linkToImplicitConversion +
+            linkToImplicitParameter + 
+            "</div>";
+      
+          return html;
+      }
+""",
+      s"""
         // Tooltip
         // $$("[id^='T']").tooltip({
         $$('*[data-cp-tooltipdisplay=true]').tooltip({
         content: function () {           
-         return $$(this).data("cp-tooltipinformation");
+         return createTooltipHtmlFromDataAttr(this);
         },
         show: null,
         disabled: false,
        // position: {of: $$("#LCOM0"), at: "left"},
+       position: { my: 'left-center', at: "right+7 right"},
         close: function (event, ui) {
             ui.tooltip.hover(
 
@@ -437,6 +500,7 @@ class HtmlContext(filename: String, packag: String,
 			<link rel="stylesheet" type="text/css" href="../style/style.css" media="screen" />
       <link rel="stylesheet" type="text/css" href="http://ajax.aspnetcdn.com/ajax/jquery.ui/1.10.0/themes/black-tie/jquery-ui.css" media="screen" />
 			<title>$fileNameWithoutPath</title>
+      <script src="../js/codeprose.global.js"></script>
       <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
       <script src="http://ajax.aspnetcdn.com/ajax/jquery.ui/1.10.0/jquery-ui.js"></script>
 			<script type="text/javascript">
@@ -502,6 +566,7 @@ class HtmlIndexContext(){
 			<link rel="stylesheet" type="text/css" href="./style/style.css" media="screen" />
 			<title>Overview</title>
       <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
+      <script src="./js/codeprose.global.js"></script>
 			<script type="text/javascript">
 			</script>
 			</head>
@@ -858,15 +923,25 @@ class TokenToOutputEntry(val filenamesOriginalToOutputNames: Array[(String,Strin
       val srcPos = token(declaredAt_TokenIdSrcPos).get
       
       // Get full file to output translation
-      val outputFileRelPath = filenamesOriginalToOutputNames.filter( e => e._1 == srcPos.filename).map(e => "./" + e._2)
+      val outputFileRelPath = getRelativeOutputFilenameFromOriginalFile(srcPos.filename)
       if(outputFileRelPath.length>0){
-        val tId = srcPos.tokenId
-        val idx = outputFileRelPath(0).lastIndexOf("/")
-        val link = "." + outputFileRelPath(0).slice(idx,outputFileRelPath(0).length) + "#" + "T" + tId.toString
-        (s"""<a href="$link" class="in-code">""","</a>")
+          val tId = srcPos.tokenId
+          val link = "." + outputFileRelPath + "#" + "T" + tId.toString
+          (s"""<a href="$link" class="in-code">""","</a>")        
       } else {
         ("","")
       }
+      // Old delete - beg
+//      val outputFileRelPath = filenamesOriginalToOutputNames.filter( e => e._1 == srcPos.filename).map(e => "./" + e._2)
+//      if(outputFileRelPath.length>0){
+//        val tId = srcPos.tokenId
+//        val idx = outputFileRelPath(0).lastIndexOf("/")
+//        val link = "." + outputFileRelPath(0).slice(idx,outputFileRelPath(0).length) + "#" + "T" + tId.toString
+//        (s"""<a href="$link" class="in-code">""","</a>")
+//      } else {
+//        ("","")
+//      }
+      // old delete - end
     } else { ("","") }
     
     val spanClass = token(symbolDesignation) match {
@@ -903,12 +978,11 @@ class TokenToOutputEntry(val filenamesOriginalToOutputNames: Array[(String,Strin
       val srcPos = token(declaredAt_TokenIdSrcPos).get
       
       // Get full file to output translation
-      val outputFileRelPath = filenamesOriginalToOutputNames.filter( e => e._1 == srcPos.filename).map(e => "./" + e._2)
+      val outputFileRelPath = getRelativeOutputFilenameFromOriginalFile(srcPos.filename)
       if(outputFileRelPath.length>0){
-        val tId = srcPos.tokenId
-        val idx = outputFileRelPath(0).lastIndexOf("/")
-        val link = "." + outputFileRelPath(0).slice(idx,outputFileRelPath(0).length) + "#" + "T" + tId.toString
-        (s"""<a href="$link" class="in-code">""","</a>")
+          val tId = srcPos.tokenId
+          val link = "." + outputFileRelPath + "#" + "T" + tId.toString
+          (s"""<a href="$link" class="in-code">""","</a>")        
       } else {
         ("","")
       }
@@ -971,49 +1045,63 @@ class TokenToOutputEntry(val filenamesOriginalToOutputNames: Array[(String,Strin
    private def getHtmlDataAttributesIds(token: Token, dataAttributesPrefix: String) : ArrayBuffer[(String,String)] = {
     val dataAttributes = ArrayBuffer[(String,String)]()
   
-    token.get(fullName) match {
+    token(fullName) match {
       case Some(name) => { dataAttributes +=  ((dataAttributesPrefix + "fullname",s""""""" + name.toString + s""""""")) } 
       case None => {}
     } 
     
-    token.get(typeId) match {
+    token(typeId) match {
       case Some(id) => { dataAttributes += ((dataAttributesPrefix + "typeid",s""""""" + id.toString + s""""""")) }
       case None => {}
     }
      
-    token.get(internalTokenId) match {
+    token(internalTokenId) match {
       case Some(id) => { dataAttributes += ((dataAttributesPrefix + "internaltokenid",s""""""" + id.toString + s""""""")) }
       case None => {}
     } 
     
-    token.get(whereUsed_WithinFileTokenIdSrcPos) match {
+    token(whereUsed_WithinFileTokenIdSrcPos) match {
       case Some(srcPos) => { val tokenIds=srcPos.map(e=> "#T" + e.tokenId ).mkString("",",","") 
         dataAttributes += ((dataAttributesPrefix + "whereusedinfile",s""""""" + tokenIds + s""""""")) }
       case None => {}
     } 
+           
+    token(declaredAt_TokenIdSrcPos) match {
+      case Some(srcPos) => {        
+        val link = "." + getRelativeOutputFilenameFromOriginalFile(srcPos.filename) + "#" + "T" + srcPos.tokenId.toString
+        dataAttributes += ((dataAttributesPrefix + "declaredat",s""""""" + link + s"""""""))
+      }
+      case None => {}
+    }
     
-    token.get(implicitConversion_indicator) match {
+     token(implicitConversion_indicator) match {
       case Some(name) => { 
         dataAttributes += ((dataAttributesPrefix + "implicitconversion",s""""""" + true + s""""""")) 
-        // Add others: Name and Tokenbased source position 
       }
       case None => { } 
     }
     
-    // Information for Tooltip
+    token(implicitConversion_fullName) match {
+      case Some(name) => { 
+        dataAttributes += ((dataAttributesPrefix + "implicitconversionfullname",s""""""" + name + s""""""")) 
+      }
+      case None => { } 
+    }
+
+    token(implicitConversion_sourcePosition) match {
+      case Some(srcPos) => { 
+        // TODO: ADD token ID
+        val link = "." + getRelativeOutputFilenameFromOriginalFile(srcPos.filename) + "#" + "T" + ""
+        dataAttributes += ((dataAttributesPrefix + "implicitconversiondeclaredat",s""""""" + link + s"""""""))          
+         
+ 
+      }
+      case None => { } 
+    }
+    
     
     dataAttributes += ((dataAttributesPrefix + "tooltipdisplay",s""""""" + true + s"""""""))
-    val tooltip = s"""
-      <div class='cp-tooltip'><b>org.codeprose.fullname</b><br><br> 
-      <a href='#'>Implicit conversion</a> 
-      <a href='#'>Declaration</a><br>
-      <a href='#'>Definition</a><br>
-      <a href='#'>Where used in file</a><br>
-      <a href='#'>Where used in project</a>
-      </div>
-      """
-    dataAttributes += ((dataAttributesPrefix + "tooltipinformation",s""""""" + tooltip + s"""""""))
-    
+     
     
     dataAttributes
    }
@@ -1022,7 +1110,14 @@ class TokenToOutputEntry(val filenamesOriginalToOutputNames: Array[(String,Strin
      
    val dataAttributes = ArrayBuffer[(String,String)]()
   
-    token.get(implicitConversion_indicator) match {
+     token(tokenType) match {
+      case Some(name) => { 
+        dataAttributes += ((dataAttributesPrefix + "fullname",s""""""" + name.toString + s""""""")) 
+      }
+      case None => { } 
+    }
+   
+    token(implicitConversion_indicator) match {
       case Some(name) => { 
         dataAttributes += ((dataAttributesPrefix + "implicitconversion",s""""""" + true + s""""""")) 
         // Add others: Name and Tokenbased source position 
@@ -1030,8 +1125,49 @@ class TokenToOutputEntry(val filenamesOriginalToOutputNames: Array[(String,Strin
       case None => { } 
     }
     
+    token(implicitConversion_fullName) match {
+      case Some(name) => { 
+        dataAttributes += ((dataAttributesPrefix + "implicitconversionfullname",s""""""" + name + s""""""")) 
+      }
+      case None => { } 
+    }
+
+    token(implicitConversion_sourcePosition) match {
+      case Some(srcPos) => { 
+        // TODO: ADD token ID
+          val link = "." + getRelativeOutputFilenameFromOriginalFile(srcPos.filename) + "#" + "T" + ""
+          dataAttributes += ((dataAttributesPrefix + "implicitconversiondeclaredat",s""""""" + link + s"""""""))
+      }
+      case None => { } 
+    }
+    
+    
+    
+    dataAttributes += ((dataAttributesPrefix + "tooltipdisplay",s""""""" + true + s"""""""))
+    
     dataAttributes
      
    }
    
+   
+   def getOutputFilenameFromOriginalFile(orgFile: String) : String = {
+      val paths = filenamesOriginalToOutputNames.filter( e => e._1 == orgFile).map(e => "./" + e._2)
+      if(paths.size > 0){
+        paths(0)
+      } else {
+        ""
+      }
+   }
+   
+   def getRelativeOutputFilenameFromOriginalFile(orgFile: String) : String = {
+     
+     val absPath = getOutputFilenameFromOriginalFile(orgFile)
+     if(absPath.length > 0){
+       val idx = absPath.lastIndexOf("/")
+       absPath.slice(idx,absPath.length)
+     } else {
+       ""
+     }
+     
+   }
 }

@@ -405,7 +405,7 @@ class HtmlContext(filename: String, packag: String,
         }     
       });""",
       s"""
-      // Create tooltip entries
+            // Create tooltip entries
       function createTooltipHtmlFromDataAttr(elem) { 
     
         // Fullname
@@ -438,6 +438,7 @@ class HtmlContext(filename: String, packag: String,
         linkToWhereUsedInProject = "<a href='" + rawLinkToWhereUsedProject + "'>Where used in project</a>" + "<br/>";
       }      
     
+      // Implicit conversion 
       linkToImplicitConversion =  "";
       isImplicitConversion = $$(elem).data("cp-implicitconversion");
       if(isImplicitConversion){
@@ -451,9 +452,20 @@ class HtmlContext(filename: String, packag: String,
   }
   }
 
-
-        linkToImplicitParameter =  "<S>Implicit parameter</S>" + "<br/>";
+  // Implicit Parameter
+          linkToImplicitParameter = ""
+  isImplicitParameter = $$(elem).data("cp-implicitparameter");
+  if(isImplicitParameter){
+        implicitParameterFullname = $$(elem).data("cp-implicitparameterfullname");
+       implicitParameterDeclaredAt = $$(elem).data("cp-implicitparameterdeclaredat");   
+    if(implicitParameterDeclaredAt != null){
+    linkToImplicitParameter = "<a href='" + implicitParameterDeclaredAt + "'>Impl. para: " + implicitParameterFullname + "</a>" + "<br/>";
+    } else {
+      linkToImplicitParameter = "Impl. conv: " + implicitConversionFullname + "<br/>";
+    } 
+  };
       
+  // Output structure 
           html = "<div class='cp-tooltip'>" + fullname + "<br/><br/>" +
             linkToDeclaration +
             linkToDefintion +
@@ -1074,7 +1086,7 @@ class TokenToOutputEntry(val filenamesOriginalToOutputNames: Array[(String,Strin
       case None => {}
     }
     
-     token(implicitConversion_indicator) match {
+   token(implicitConversion_indicator) match {
       case Some(name) => { 
         dataAttributes += ((dataAttributesPrefix + "implicitconversion",s""""""" + true + s""""""")) 
       }
@@ -1093,6 +1105,31 @@ class TokenToOutputEntry(val filenamesOriginalToOutputNames: Array[(String,Strin
         // TODO: ADD token ID
         val link = "." + getRelativeOutputFilenameFromOriginalFile(srcPos.filename) + "#" + "T" + ""
         dataAttributes += ((dataAttributesPrefix + "implicitconversiondeclaredat",s""""""" + link + s"""""""))          
+         
+ 
+      }
+      case None => { } 
+    }
+    
+    token(implicitParameter_indicator) match {
+      case Some(name) => { 
+        dataAttributes += ((dataAttributesPrefix + "implicitparameter",s""""""" + true + s""""""")) 
+      }
+      case None => { } 
+    }
+    
+    token(implicitParameter_fullName) match {
+      case Some(name) => { 
+        dataAttributes += ((dataAttributesPrefix + "implicitparameterfullname",s""""""" + name + s""""""")) 
+      }
+      case None => { } 
+    }
+
+    token(implicitParameter_sourcePosition) match {
+      case Some(srcPos) => { 
+        // TODO: ADD token ID
+        val link = "." + getRelativeOutputFilenameFromOriginalFile(srcPos.filename) + "#" + "T" + ""
+        dataAttributes += ((dataAttributesPrefix + "implicitparameterdeclaredat",s""""""" + link + s"""""""))          
          
  
       }

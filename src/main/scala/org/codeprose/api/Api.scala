@@ -13,15 +13,18 @@ class Token(val offset: Int, val text: String) extends DynamicPropertyMap {
 
 // Container of information exchange
 object Api {
+  
   type TokenInfoContainer = scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.ArrayBuffer[Token])]
   type MetaInfoContainer = scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.ArrayBuffer[String])]
 }
 
+class ProjectInfo () {  
+  val files = List[java.io.File]()
+  val enrichedTokens = scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.ArrayBuffer[Token])]()
+  val summary = DynamicPropertyMap
+}
 
 // Container for project specific information
-class Project() extends DynamicPropertyMap
-
-
 
 
 // DefaultLang
@@ -259,8 +262,14 @@ object SourceSymbol {
   
   val implicitConversion_indicator = new Key('implicitConversion_indicator){ type Value = Boolean }
   val implicitConversion_sourcePosition = new Key('implicitConversion_sourcePosition){ type Value = SourcePosition }
+  val implicitConversion_sourcePositionWithTokenId = new Key('implicitConversion_sourcePosition){ type Value = SourcePositionWithTokenId }
   val implicitConversion_fullName = new Key('implicitConversion_fullName){ type Value = String }
   val implicitConversion_argNames = new Key('implicitConversion_argNamesName){ type Value = String }
+  
+  val implicitParameter_indicator = new Key('implicitParameter_indicator){ type Value = Boolean }
+  val implicitParameter_sourcePosition = new Key('implicitParameter_sourcePosition){ type Value = SourcePosition }
+  val implicitParameter_fullName = new Key('implicitParameter_fullname){ type Value = String }
+  val implicitParameter_sourcePositionWithTokenId = new Key('implicitParameter_sourcePositionWithTokenId){ type Value = SourcePositionWithTokenId }
   
   val whereUsed = new Key('whereUsed){ type Value = List[ERangePosition]}
   val whereUsed_WithinFileTokenIdSrcPos = new Key('whereUsed_WithinFileTokenIdSrcPos){ type Value = List[SourcePositionWithTokenId]}
@@ -268,7 +277,12 @@ object SourceSymbol {
   
   // Keys MetaFile
   // ============================================================================
-  
+  object SummaryKeys {
+    
+    val typeInformation = new Key('typeInformation){ type Value = List[TypeInformation] }
+    
+    
+  }
   
   
 }

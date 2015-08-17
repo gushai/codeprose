@@ -628,27 +628,35 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       
       implicitInfo match {
          case info : ImplicitConversionInfo => {
-           // Affected token
-           val idx = tokens.indexWhere({ t =>
-             val idx = t.offset+t.length/2
-             info.start <= idx && info.end > idx
-            },0)
+                     
+          // Find affected tokens
+          var idx_searchStart = 0
+          var idx = 0
+          
+          while(idx != -1 && idx_searchStart<tokens.length){
+                         
+            idx = tokens.indexWhere({ t =>
+             val tPos = t.offset+t.length/2
+             info.start <= tPos && info.end > tPos
+            },idx_searchStart)
             
-           // Save information
-          if(idx != -1){
+            // Save information
+            if(idx != -1){
+              
+              // Save information
+//            println("[--------------------------------")
+//            println(info.fun.`type`.fullName)
+//            println(info.fun.`type`.name)
+//            println(info.fun.`type`.args)
+//            println(info.fun.`type`.typeArgs)
+//            println(info.fun.`type`.declaredAs)
+//            println(info.fun.`type`.declAs)
+//            println(info.fun.`type`.typeId)
+//            println("[--------------------------------")
             // TODO: Upgrade to ImplicitConversion to include more information, like:
             //   - Type id
             //   - Argument names ...
             //   - ...
-            println("[--------------------------------")
-            println(info.fun.`type`.fullName)
-            println(info.fun.`type`.name)
-            println(info.fun.`type`.args)
-            println(info.fun.`type`.typeArgs)
-            println(info.fun.`type`.declaredAs)
-            println(info.fun.`type`.declAs)
-            println(info.fun.`type`.typeId)
-            println("[--------------------------------")
             tokens(idx).set(implicitConversion_indicator)(true)
             tokens(idx).set(implicitConversion_fullName)(info.fun.name)
             if(info.fun.declPos.isDefined && info.fun.declPos.get.isInstanceOf[org.ensime.api.OffsetSourcePosition]){
@@ -656,9 +664,12 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
                  info.fun.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].file.getAbsolutePath,
                  info.fun.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].offset)
              )
+           }
+              
             }
-          } else {
-            logger.error("[ImpicitConverionInfo]\t" + "Failed to determine affected token. " + info)
+            // Search for more tokens
+            idx_searchStart = idx + 1 
+              
           }
         }
         case info : ImplicitParamInfo => {
@@ -670,7 +681,34 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
           println("params:\t\t " + info.params)
           println("funIsImplicit:\t\t" + info.funIsImplicit)
           println("[--------------------------------------------]\n")
-          logger.error("ImplicitParamInfo: Not yet collected!")
+        
+          // Find affected tokens
+          var idx_searchStart = 0
+          var idx = 0
+          
+          while(idx != -1 && idx_searchStart<tokens.length){
+            
+             
+            idx = tokens.indexWhere({ t =>
+             val tPos = t.offset+t.length/2
+             info.start <= tPos && info.end > tPos
+            },idx_searchStart)
+            
+            // Save information
+            if(idx != -1){
+              
+              if(tokens(idx)(tokenType).isDefined && tokens(idx)(tokenType).get.isId){
+                tokens(idx).set(implicitParameter_indicator)(true)
+                tokens(idx).set(implicitParameter_fullName)("TO BE ADDED")
+                tokens(idx).set(implicitParameter_sourcePosition)(new org.codeprose.api.TokenProperties.SourcePosition("filename",42))
+                // TODO: Add more and CORRECT information!   
+              }
+            }
+            // Search for more tokens
+            idx_searchStart = idx + 1 
+              
+          }
+          
         }
       }
       

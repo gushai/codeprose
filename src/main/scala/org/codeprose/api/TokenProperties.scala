@@ -32,7 +32,6 @@ class ImplicitConversion(
     val whereUsedWithinFile_OffsetBased: SourcePosition,
     var whereUsedWithinFile_TokenBase: SourcePositionWithTokenId
     ) {
-  
 }
 
 

@@ -11,6 +11,16 @@ class Token(val offset: Int, val text: String) extends DynamicPropertyMap {
   def toPrettyString() : String = { s"""Token($text,$offset,$length) w/ prop: """ + toString() }
 }
 
+class ProjectSummary() extends DynamicPropertyMap
+
+
+class ProjectInfo (  
+  val enrichedTokens : scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.ArrayBuffer[Token])],
+  val summary : ProjectSummary
+  ) {
+}
+
+
 // Container of information exchange
 object Api {
   
@@ -18,11 +28,7 @@ object Api {
   type MetaInfoContainer = scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.ArrayBuffer[String])]
 }
 
-class ProjectInfo () {  
-  val files = List[java.io.File]()
-  val enrichedTokens = scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.ArrayBuffer[Token])]()
-  val summary = DynamicPropertyMap
-}
+
 
 // Container for project specific information
 
@@ -279,6 +285,7 @@ object SourceSymbol {
   // ============================================================================
   object SummaryKeys {
     
+    val fileList = new Key('files){ type Value = List[java.io.File] }
     val typeInformation = new Key('typeInformation){ type Value = List[TypeInformation] }
     
     

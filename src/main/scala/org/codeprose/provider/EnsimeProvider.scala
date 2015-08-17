@@ -15,14 +15,18 @@ import scala.collection.mutable.ArrayBuffer
 import org.codeprose.api.Token
 import org.ensime.api._
 import org.codeprose.api.TokenProperties._
+import org.codeprose.api.ProjectInfo
+import org.codeprose.api.ProjectSummary
 
 
-trait TokenEnricher {
+trait Provider {
 	def initialize() : Unit 
 	def close() : Unit    
 	//def getEnrichedTokens(file : File) : scala.collection.mutable.ArrayBuffer[org.codeprose.api.Token]
   def getEnrichedTokens(files : Array[File]) : 
   ArrayBuffer[(File,ArrayBuffer[org.codeprose.api.Token])]
+  
+  def getProjectInformation(files: List[File]) : ProjectInfo 
 }
 
 // TODO: Do clearer specification of meta information specification
@@ -51,7 +55,7 @@ class EnsimeProviderContext(
 
     
 class EnsimeProvider(implicit c: EnsimeProviderContext )
-    extends TokenEnricher with LazyLogging {
+    extends Provider with LazyLogging {
 
 	private val ensimeClient = new Client()(new ClientContext(c.host,c.port,false)) 
 	var isInitialized = false
@@ -95,7 +99,37 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
 			ensimeClient.close()
 	}
 
-
+   def getProjectInformation(files: List[File]) : ProjectInfo =  {
+     
+     // Enrich tokens
+     val enrichedTokenPerFile = getEnrichedTokens(files.toArray)
+     
+     // project summary information
+     val summary = getProjectSummary(files)
+     
+     new ProjectInfo(enrichedTokenPerFile,summary)
+   }
+  
+  private def getProjectSummary(files: List[File]) : ProjectSummary = {
+    
+    val summary = new ProjectSummary()
+    
+    import org.codeprose.api.ScalaLang.SummaryKeys._
+    
+    // Files
+    summary.set(fileList)(files)
+    
+    // Used types
+    getDetailedTypeInformation()
+    
+    // Where used in project
+    
+    
+      
+    
+    summary
+  } 
+   
 	def getEnrichedTokens(files: Array[File]) : 
   ArrayBuffer[(File,ArrayBuffer[org.codeprose.api.Token])] = {
    
@@ -124,10 +158,6 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
  
         out += ((file,tokens))
       }
-     
-     // Inspect types occuring in the project
-     
-     getDetailedTypeInformation()
      
      
      // Translation of sourcePostions file offset to file Token id
@@ -168,7 +198,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   
   private def performInspectTypeByIdReq(typeId: Int) : String = {
     val typeInspectInfo = ensimeClient.inspectTypeById(typeId) 
-    
+   
     try {
       val result = Await.result(typeInspectInfo,  Duration(c.timeout_InspectTypeByIdReq, MILLISECONDS))
       println("InspectTypeById: got result, companionId: " + result.companionId + " - numInterfaces: " + result.interfaces.size)
@@ -591,7 +621,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
             )
             )
             
-            
+            // TODO global where used map typeId -> List[SrcPos]
             
             
           }   
@@ -673,22 +703,21 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
           }
         }
         case info : ImplicitParamInfo => {
-          println("[--------------------------------------------]")
-          println(info + "\n")
-          println("start:\t\t" + info.start)
-          println("end:\t\t" + info.end)
-          println("fun:\t\t" + info.fun)
-          println("params:\t\t " + info.params)
-          println("funIsImplicit:\t\t" + info.funIsImplicit)
-          println("[--------------------------------------------]\n")
+//        	println("[--------------------------------------------]")
+//        	println(info + "\n")
+//        	println("start:\t\t" + info.start)
+//        	println("end:\t\t" + info.end)
+//        	println("fun:\t\t" + info.fun)
+//        	println("params:\t\t " + info.params)
+//        	println("funIsImplicit:\t\t" + info.funIsImplicit)
+//        	println("[--------------------------------------------]\n")
         
           // Find affected tokens
           var idx_searchStart = 0
           var idx = 0
           
           while(idx != -1 && idx_searchStart<tokens.length){
-            
-             
+                         
             idx = tokens.indexWhere({ t =>
              val tPos = t.offset+t.length/2
              info.start <= tPos && info.end > tPos

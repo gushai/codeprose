@@ -1,17 +1,60 @@
 
+fieldset, form, label, legend,
+table, caption, tbody, tfoot, thead, tr, th, td,
+article, aside, canvas, details, embed, 
+figure, figcaption, footer, header, hgroup, 
+menu, nav, output, ruby, section, summary,
+time, mark, audio, video {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 100%;
+    font: inherit;
+    vertical-align: baseline;
+}
+/* HTML5 display-role reset for older browsers */
+article, aside, details, figcaption, figure, 
+footer, header, hgroup, menu, nav, section {
+    display: block;
+}
+body {
+    line-height: 1;
+}
+ol, ul {
+    list-style: none;
+}
+blockquote, q {
+    quotes: none;
+}
+blockquote:before, blockquote:after,
+q:before, q:after {
+    content: '';
+    content: none;
+}
+table {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+pre{
+	padding:0px;
+	margin:0px;
+}
+
+/* ====================================================== */
 body{
 	font-size:0.8em;
 }
 
 .header {
-	width:800px;
+	width:850px;
 	height:30px; 
 	border-bottom:1px solid;	
 	margin:0px auto;
 }
 
 .footer {
-	width:800px;
+	width:850px;
 	border-top:1px solid;
 	text-align:right;
 	margin-top:30px;
@@ -177,3 +220,136 @@ code {
 	color: black;
 }
 
+/* Table style*/
+
+/* Code table */
+
+.table-code{
+	margin-top:1em;	
+}
+
+.table-code-comment{
+	color:black;
+		
+	width:60px;
+
+	margin-top:0px;
+	margin-bottom:0px;
+	
+}
+
+.table-code-linenumber{
+	color:grey;
+	font-size:0.8em; 
+	text-align:right;
+	border-right:1px solid #E8E8E8;
+	
+	background: #F8F8F8;
+
+	width:30px;
+	margin-left: 2px;
+	margin-right: 2px;
+	padding-left:5px;
+	padding-right:5px;
+
+	margin-top:0px;
+	margin-bottom:0px;
+}
+
+.table-code-code{
+	background: #F8F8F8;
+
+	width:650px;
+
+	padding-left:5px;
+
+	margin-top:0.2em;
+	margin-bottom:2em;
+
+	font-size:1.2em; 
+	
+	padding-top:0.1em;
+	padding-bottom:0.1em;
+
+	font-family: Consolas,"Liberation Mono",Menlo,Courier,monospace;
+}
+
+/* Text table */
+
+.table-text{
+}
+
+.table-text-comment{
+	color:black;
+		
+	width:60px;
+
+	margin-top:0px;
+	margin-bottom:0px;
+	
+}
+
+.table-text-text{
+	text-align:left;
+
+	width:740px;
+}
+
+
+a.in-code{
+text-decoration: none;
+}
+
+
+a.in-code:link {
+    text-decoration: none;
+}
+
+a.in-code:visited {
+    text-decoration: none;
+}
+
+a.in-code:hover {
+    text-decoration: none;
+}
+
+a.in-code:active {
+    text-decoration: none;
+}
+
+/* Highlights */
+
+.highlightImplicitConversion {
+	background-color:yellow;
+}
+
+
+.highlightImplicitParameter {
+	background-color:green;
+}
+
+.highlightWhereUsedWithinFile {
+	background-color:yellow;
+}
+
+
+.cp-tooltip{
+	font-size:0.8em;
+}
+
+
+/* For highlight on selection with fade */
+:target {
+    -webkit-animation: target-fade 5s 1;
+    -moz-animation: target-fade 5s 1;
+}
+
+@-webkit-keyframes target-fade {
+    0% { background-color: rgba(255,255,0,1); }
+    100% { background-color: rgba(255,255,0,1); }
+}
+
+@-moz-keyframes target-fade {
+    0% { background-color: rgba(255,255,0,1); }
+    100% { background-color: rgba(255,255,0,1); }
+}

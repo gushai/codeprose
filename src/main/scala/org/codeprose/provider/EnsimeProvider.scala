@@ -13,27 +13,20 @@ import java.util.concurrent.TimeoutException
 import org.ensime.client.ClientContext
 import scala.collection.mutable.ArrayBuffer
 import org.codeprose.api.Token
-import org.ensime.api._
 import org.codeprose.api.TokenProperties._
 import org.codeprose.api.ProjectInfo
 import org.codeprose.api.ProjectSummary
 
 
+import org.ensime.api._
+
+
 trait Provider {
 	def initialize() : Unit 
-	def close() : Unit    
-	//def getEnrichedTokens(file : File) : scala.collection.mutable.ArrayBuffer[org.codeprose.api.Token]
-  def getEnrichedTokens(files : Array[File]) : 
-  ArrayBuffer[(File,ArrayBuffer[org.codeprose.api.Token])]
-  
+	def close() : Unit      
   def getProjectInformation(files: List[File]) : ProjectInfo 
 }
 
-// TODO: Do clearer specification of meta information specification
-//trait MetaInformationEnricher {
-//   def initializeMeta() : Unit 
-//   def close() : Unit   
-//} 
 
 trait ProviderContext { val verbose: Boolean }
 
@@ -60,12 +53,13 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
 	private val ensimeClient = new Client()(new ClientContext(c.host,c.port,false)) 
 	var isInitialized = false
   var tokenId = 0
-  var occuringTypeIds = scala.collection.mutable.SortedSet[(Int,String)]()
+  var occuringTypeIds = scala.collection.mutable.SortedSet[(Int,String)]() // TypeId, fullname
+//  var whereUsedCollection = scala.collection.mutable.Map[Int,scala.collection.mutable.SortedSet[]]
  
   
-	/*
+	/**
 	 * Initializes the ensime client and tests the connection to the server.
-	 * Sets isInitialized. 
+	 * Sets isInitialized to true if test successful. 
 	 */
 	def initialize(): Unit = {
 			logger.info("Initializing Ensime client ... ")    
@@ -99,17 +93,26 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
 			ensimeClient.close()
 	}
 
+  /**
+   * Generates project information. 
+   * @param List of files to be processed. Assumes only Scala files are provided!
+   * @return ProjectInfo
+   */
    def getProjectInformation(files: List[File]) : ProjectInfo =  {
      
      // Enrich tokens
-     val enrichedTokenPerFile = getEnrichedTokens(files.toArray)
+     val enrichedTokenPerFile = getEnrichedTokens(files)
      
-     // project summary information
+     // Project summary information
      val summary = getProjectSummary(files)
      
      new ProjectInfo(enrichedTokenPerFile,summary)
    }
   
+   
+   /**
+    * Creates project summary information. 
+    */
   private def getProjectSummary(files: List[File]) : ProjectSummary = {
     
     val summary = new ProjectSummary()
@@ -130,126 +133,659 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     summary
   } 
    
-	def getEnrichedTokens(files: Array[File]) : 
+  /**
+   * Creates enriched Tokens
+   * @param Files to be processed. Assumes only Scala files are provided.
+   * @return Enriched Tokens sorted per file. If isInitialized is false raw tokens are returned.
+   */
+	private def getEnrichedTokens(files: List[File]) : 
   ArrayBuffer[(File,ArrayBuffer[org.codeprose.api.Token])] = {
    
-    val out = ArrayBuffer[(File,ArrayBuffer[org.codeprose.api.Token])]()
-    if(isInitialized){			
+            
+    val enrichedTokens = if(isInitialized){
+    
+      val rawTokens = getRawTokens(files: List[File])
       
-      
-     for(file <- files){
+      logger.info("Enriching tokens ...")
+      logger.info("Adding type information ...")
+      val tokens = rawTokens.map( e => {
+        val et = e._2.map( t => { enrichToken(t,e._1,rawTokens)}) 
+        (e._1,et)
+       }) 
         
-        logger.info("Getting tokens: ")
-        if(c.verbose)
-				  logger.info("\n\nProcessing: \t" + file + "\n======================================================")
-     
-        import org.codeprose.api.ScalaLang._
-        val rawTokens = getTokens(file).map(t=>  {t.set(internalTokenId)(tokenId)
-          tokenId += 1
-          t
-        }) 
-        
-      
-        val rawTokensWithSymbolDesignations = getSymbolDesignations(file,rawTokens)
-        val rawTokensWithImplicitInformation = getImplicitInformation(file,rawTokensWithSymbolDesignations)
-        
-        val tokens = rawTokensWithImplicitInformation.map{t => enrichToken(file,t)}
-      
- 
-        out += ((file,tokens))
-      }
-     
-     
-     // Translation of sourcePostions file offset to file Token id
-     logger.info("Updating declared at source positions ... ")
-     includeTokenBasedSourcePostion_declaredAt(out)
-     includeTokenBasedSourcePostion_whereUsedWithinFile(out)
-     
-     
-    } else {
-      logger.error("Not initialized correctly.")
-    }
-    out
-	}
-
-  
-  private def getDetailedTypeInformation() : Unit = {
-    
-    println("Occuring Type Ids: [ALL] " + occuringTypeIds.map(e => e._1 + ": " + e._2).mkString("\n") + "\n")
-    
-    val occurIdFiltered = occuringTypeIds.filter(e => (e._2.contains("rational")))
-    println("Occuring Type Ids: [RATIONAL]" + occurIdFiltered.map(e => e._1 + ": " + e._2).mkString("\n") + "\n")
-
-    
-//    occurIdFiltered.map(e=>e._1).map(typeId => {
-//      (typeId,performInspectTypeByIdReq(typeId))
-//      }).foreach(e=> { 
-//        println(e._1 + ": " + e._2 +"\n")
-//      }) 
-    
-      // 
-      
-      println("Individual Req: 1 [XXX]\n " + performInspectTypeByIdReq(7) + "\n\n")
-      Thread.sleep(2000)
-      println("Individual Req: 2 " +performInspectTypeByIdReq(7))
-      Thread.sleep(2000)
-      println("Individual Req: 3 " +performInspectTypeByIdReq(7))
-  }
-  
-  private def performInspectTypeByIdReq(typeId: Int) : String = {
-    val typeInspectInfo = ensimeClient.inspectTypeById(typeId) 
-   
-    try {
-      val result = Await.result(typeInspectInfo,  Duration(c.timeout_InspectTypeByIdReq, MILLISECONDS))
-      println("InspectTypeById: got result, companionId: " + result.companionId + " - numInterfaces: " + result.interfaces.size)
-      
-      println("===================== - Beg\n")
-      println("compID: " + result.companionId)
-      println("\n")
-      println("typeInfo: " + result.`type`)
-      println("\n")
-      val interStr = result.supers.map( e => "TypeInfo: " + 
-          "\tname: \t" + e.`type`.name + "\n" +
-          "\ttypeid: \t" + e.`type`.typeId + "\n" +
-          "\tdeclAs: \t" + e.`type`.declAs + "\n" +
-          "\tfullName: \t" + e.`type`.fullName + "\n" +
-          "\ttypeArgs: \t" + e.`type`.typeArgs + "\n" +
-          "\tmembers: \t\n" + e.`type`.members.map(e => e.toString() +"\t\t").mkString("\n") + "\n" +
-          "\tpos: \t" + e.`type`.pos + "\n" +
-          "\touterTypeId: \t" + e.`type`.outerTypeId + "\n" +
-          "\n\nViaView: " + e.viaView + "\n----------\n" )
-      println("interfaces:\n" + interStr.mkString("\n"))
-      
-      println("\n===================== - End:\n")
-    }  catch {
-    case timeout : TimeoutException => { 
-      logger.error("InspectTypeByIdReq:\t" + timeout.getMessage)       
-      }
-    }
-    
-    var s=""
-    
-    typeInspectInfo.onSuccess({
-      
-      case iTI : TypeInspectInfo => {
-        val siz = iTI.supers.size
-        val typ = iTI.`type`
-        val inter = iTI.interfaces.toList
-       // println(inter)
-       // s = typ.toString()
-        s=iTI.toString() + "\n__" + siz
-      }
-      
-    })
-    
-     typeInspectInfo.onFailure({
-        case t => {(logger.error("SymbolDesignationsReq failed! " + t))}
+       
+      logger.info("Adding semantic highlighting information")
+      val tokenWithSemantic = tokens.map(e => {
+        (e._1,enrichTokensWithSymbolDesignations(e._1,e._2))
       })
       
-     s
+      logger.info("Adding implicit information ...")
+      val tokenWithSemanticImplicit = tokenWithSemantic.map( e => {
+        (e._1,enrichTokensWithImplicitInformation(e._1, e._2))
+      })
+      
+      logger.info("Done.")
+      
+     // println(tokens.last._2.map(t=>t.toPrettyString()).mkString("\n"))
+      tokens
+    } else {
+      logger.error("Not initialized correctly. Raw Tokens returned.")
+      getRawTokens(files: List[File])
+    }
+    enrichedTokens 
+  }
+    
+    
+//    if(isInitialized){			
+//      
+//      
+////     for(file <- files){
+////        
+////        logger.info("Getting tokens: ")
+////        if(c.verbose)
+////				  logger.info("\n\nProcessing: \t" + file + "\n======================================================")
+////     
+////        import org.codeprose.api.ScalaLang._
+////        val rawTokens = getTokens(file).map(t=>  {t.set(internalTokenId)(tokenId)
+////          tokenId += 1
+////          t
+////        }) 
+////        
+////      
+////        val rawTokensWithSymbolDesignations = getSymbolDesignations(file,rawTokens)
+////        val rawTokensWithImplicitInformation = getImplicitInformation(file,rawTokensWithSymbolDesignations)
+////        
+////        val tokens = rawTokensWithImplicitInformation.map{t => enrichToken(file,t)}
+////      
+//// 
+////        out += ((file,tokens))
+////      }
+////     
+////     
+////     // Translation of sourcePostions file offset to file Token id
+////     logger.info("Updating declared at source positions ... ")
+////     includeTokenBasedSourcePostion_declaredAt(out)
+////     includeTokenBasedSourcePostion_whereUsedWithinFile(out)
+////     
+////     
+////    } else {
+////      logger.error("Not initialized correctly.")
+////    }
+////    out
+//	}
+
+  /**
+   * Generates the raw tokens.
+   * @param List of files to process
+   * @return Collection of enriched tokens per file. Each Token assigned a unique internalTokenId.
+   */
+  private def getRawTokens(files: List[File]) : 
+  ArrayBuffer[(File,ArrayBuffer[Token])] = {
+    
+    logger.info("Generating raw tokens.")
+    val tokensPerFile = ArrayBuffer[(File,ArrayBuffer[Token])]()
+    
+    import org.codeprose.util.FileUtil
+    
+    for(file <- files){
+      // TODO: Add try catch
+      val srcContent =  FileUtil.loadSrcFileContent(file)         
+      
+      val tokens = org.codeprose.provider.ScalaTokenizer.tokenize(srcContent)
+      val tokensWithInternalId = tokens.map(t => {
+        tokenId+=1
+        import org.codeprose.api.ScalaLang._
+        t.set(internalTokenId)(tokenId)
+        t
+      })
+      
+      tokensPerFile.append( (file,tokensWithInternalId) )
+    }
+    tokensPerFile
   }
   
-  private def performInspectTypeAtPoint(file: File, range: OffsetRange) : String = {
+  /**
+   * Enriches tokens with information that is obtained specifically for them.
+   * @param Token to be enriched
+   * @return Enriched token.
+   * 
+   * Note: Enrichment depends on the token type. Many tokens are not altered. 
+   */
+  private def enrichToken(
+      token: Token, file: File, info: ArrayBuffer[(File,ArrayBuffer[Token])]) : Token = {
+    
+    import org.codeprose.api.ScalaLang._
+    
+    token(tokenType) match {
+      case Some(tt) => {
+        
+        if(tt.isId){
+          enrichTokenIds(token,file,info)
+        } else {
+          token  
+        }
+         
+      }
+      case None => {
+        
+      }
+    }        
+    token
+  }
+
+  
+  private def enrichTokenIds(
+      token: Token, file: File, info: ArrayBuffer[(File,ArrayBuffer[Token])]) : Token = {
+        
+    var enrichedTokenWithSymbol = enrichTokenWithSymbolInfo(token, file, info)
+     
+    enrichTokenWithUsesOfSymbolInfo(enrichedTokenWithSymbol, file, info)
+  }
+  
+  private def enrichTokenWithSymbolInfo(
+      token: Token, file: File, info: ArrayBuffer[(File,ArrayBuffer[Token])]) : Token = {
+    
+    val symbolInfoOption = performSymbolInfoRequest(file, token.offset) 
+    
+    symbolInfoOption match {
+      case Some(symbolInfo) => {
+        
+        // Collect occuring type information
+        val typeId = symbolInfo.tpe.typeId
+        val fullname = symbolInfo.tpe.fullName
+        occuringTypeIds += ((typeId,fullname))
+        
+        // Save type information on token
+      
+//        case sI: SymbolInfo => {
+//          
+//         
+//          val typeInfo = sI.tpe
+//          if(typeInfo.outerTypeId.isDefined)
+//            token.set(outerTypeId)(typeInfo.outerTypeId.get)
+//          
+//          token.set(fullName)(typeInfo.fullName)
+//          
+//          token.set(typeId)(typeInfo.typeId)
+//          occuringTypeIds += ((typeInfo.typeId,typeInfo.fullName))
+//          
+//          token.set(declaredAs)(typeInfo.declAs.toString)
+//          
+//          if(typeInfo.args.size>0)                      
+//            token.set(args)(typeInfo.args.mkString(","))
+//          if(typeInfo.members.size >0)  
+//            token.set(members)(typeInfo.members.mkString(","))
+//          if(typeInfo.typeArgs.size > 0)
+//            token.set(typeArgs)(typeInfo.typeArgs.mkString(","))
+//                    
+//          // TypeInfo
+//          if(typeInfo.isInstanceOf[BasicTypeInfo]){    
+//            token.set(isArrowType)(false)
+//          } else if (typeInfo.isInstanceOf[ArrowTypeInfo]){        
+//            token.set(isArrowType)(false)
+//          }
+//          
+//          if(sI.declPos.isDefined && sI.declPos.get.isInstanceOf[org.ensime.api.OffsetSourcePosition]){
+//                    token.set(declaredAt)(
+//                        new SourcePosition(sI.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].file.getAbsolutePath,
+//                        sI.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].offset))
+//            
+//          }
+//        }
+        
+        token
+      }
+      case None => { token }
+    }
+  }
+  
+  
+  
+  /**
+   * Enriches tokens with where used information. Records information 'globally'.
+   * @param   token   Token to enrich.
+   * @param   file    File of token.
+   * @param   info    
+   * @return          Enriched token.
+   */
+  private def enrichTokenWithUsesOfSymbolInfo(
+      token: Token, file: File, info: ArrayBuffer[(File,ArrayBuffer[Token])]) : Token = {
+           
+    val usesOfSymbolsOption = performUsesOfSymbolReq(file, token.offset)
+    
+    usesOfSymbolsOption match {
+      case Some(sourcePositions) => {
+//        println("[UsesOfSymbolAtPointReq]\t" + sourcePositions)
+        
+                     // TODO: Collection information
+//          
+//          // Filters the references that are not in the input folders!
+//          val posToSave = uOS.positions.filter(srcPos =>
+//            c.inputFolders.map( folder => srcPos.file.startsWith(folder)).reduce(_ || _)            
+//            )
+//          if(posToSave.size > 0){
+//            // Raw where used data (contains uses in other files)
+//            token.set(whereUsed)(posToSave.map({
+//            srcPos => 
+//                new org.codeprose.api.TokenProperties.ERangePosition(
+//                srcPos.file,
+//                srcPos.offset,
+//                srcPos.start,
+//                srcPos.end
+//                )}
+//            )
+//            )
+//            
+//            // TODO global where used map typeId -> List[SrcPos]
+//            
+//            
+//          }   
+//        } 
+        
+        token
+      }
+      case None => { token }
+    }
+  }
+  
+  /**
+   * Enriches the tokens with information about implicit parameters and conversions.
+   * @param file  File for information request.
+   * @param tokens Tokens to enrich.
+   * @return Tokens augmented with implicit information. 
+   */
+  private def enrichTokensWithImplicitInformation(
+      file: File, 
+      tokens: ArrayBuffer[Token]) : ArrayBuffer[Token] = {
+    
+    val end = tokens.last.offset + tokens.last.length
+    val implicitInfo = ensimeClient.implicitInfoReq(file,OffsetRange(0,end))
+    
+    try {
+      val result = Await.result(implicitInfo,  Duration(c.timeout_ImplicitInfoReq, MILLISECONDS))
+      
+      println("[ImplicitInformation]:\t" + result)
+      
+      result.infos.foreach(  implicitInfo => {
+      
+         implicitInfo match {
+         case implConvInfo : org.ensime.api.ImplicitConversionInfo => {
+          enrichTokensWithImplictConversionInformation(tokens,implConvInfo)
+        }
+        case implParaInfo : ImplicitParamInfo => {
+          enrichTokenWithImplicitParameterInformation(tokens,implParaInfo)
+        }
+        case _ => { logger.error("[ImplicitInformation]\t Unknown ImplicitInformation. Ignored!")}
+      }
+      })  
+      
+      tokens
+      
+    }  catch {
+    case timeout : TimeoutException => { 
+      logger.error("[RequestError] [Timeout] \tImplicitInfoReq:\t" + timeout.getMessage)       
+      }
+    case e : Throwable => {
+      logger.error("[RequestError] \tImplicitInfoReq: \t" + e.getMessage)
+      }
+ 
+    }
+           
+    tokens  
+  }
+  
+  /**
+   * Enriches a token with implicit conversion information.
+   * @param tokens  Tokens to be enriched.
+   * @param info    org.ensime.api.ImplicitConversionInfo
+   * @return        Enriched tokens.    
+   */
+	private def enrichTokensWithImplictConversionInformation(
+      tokens: ArrayBuffer[Token], implicitInfo: org.ensime.api.ImplicitConversionInfo) : ArrayBuffer[Token] = {
+
+			// Find affected tokens
+			var idx_searchStart = 0
+			var idx = 0
+
+			while(idx != -1 && idx_searchStart<tokens.length){
+
+  			idx = tokens.indexWhere({ t =>
+	   			val tPos = t.offset+t.length/2
+			  	implicitInfo.start <= tPos && implicitInfo.end > tPos
+				  },idx_searchStart)
+
+					// Save information
+					if(idx != -1){
+
+							// Save information
+							//            println("[--------------------------------")
+							//            println(info.fun.`type`.fullName)
+							//            println(info.fun.`type`.name)
+							//            println(info.fun.`type`.args)
+							//            println(info.fun.`type`.typeArgs)
+							//            println(info.fun.`type`.declaredAs)
+							//            println(info.fun.`type`.declAs)
+							//            println(info.fun.`type`.typeId)
+							//            println("[--------------------------------")
+							// TODO: Upgrade to ImplicitConversion to include more information, like:
+							//   - Type id
+							//   - Argument names ...
+            
+            // TODO: HANDLE MULTIPLE IMPLICIT CONVERSIONS for the same token!!
+            
+							//   - ...
+							//            tokens(idx).set(implicitConversion_indicator)(true)
+							//            tokens(idx).set(implicitConversion_fullName)(info.fun.name)
+							//           
+							//            if(info.fun.declPos.isDefined && info.fun.declPos.get.isInstanceOf[org.ensime.api.OffsetSourcePosition]){
+							//             tokens(idx).set(implicitConversion_sourcePosition)( new org.codeprose.api.TokenProperties.SourcePosition(
+							//                 info.fun.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].file.getAbsolutePath,
+							//                 info.fun.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].offset)
+							//             )
+							//             }
+
+						}
+						// Search for more tokens
+						idx_searchStart = idx + 1 
+
+					}
+			tokens
+	}
+  /**
+   * Enriches the tokens with implicit parameter information.
+   * @param   tokens  Tokens to enriched.
+   * @param   implicitInfo  org.ensime.api.ImplicitParamInfo.
+   */
+	private def enrichTokenWithImplicitParameterInformation(
+			tokens: ArrayBuffer[Token], 
+			implicitInfo: org.ensime.api.ImplicitParamInfo) : ArrayBuffer[Token] = {
+			//          println("[--------------------------------------------]")
+			//          println(info + "\n")
+			//          println("start:\t\t" + info.start)
+			//          println("end:\t\t" + info.end)
+			//          println("fun:\t\t" + info.fun)
+			//          println("params:\t\t " + info.params)
+			//          println("funIsImplicit:\t\t" + info.funIsImplicit)
+			//          println("[--------------------------------------------]\n")
+
+			// Find affected tokens
+			var idx_searchStart = 0
+			var idx = 0
+
+			while(idx != -1 && idx_searchStart<tokens.length){
+
+			  idx = tokens.indexWhere({ t =>
+						val tPos = t.offset+t.length/2
+						implicitInfo.start <= tPos && implicitInfo.end > tPos
+						},idx_searchStart)
+
+						// Save information
+				  if(idx != -1){
+
+							// TODO: Allow for multiple implicit parameter per TOKEN!!!
+							//              if(tokens(idx)(tokenType).isDefined && tokens(idx)(tokenType).get.isId){
+							//                tokens(idx).set(implicitParameter_indicator)(true)
+							//                tokens(idx).set(implicitParameter_fullName)("TO BE ADDED")
+							//                tokens(idx).set(implicitParameter_sourcePosition)(new org.codeprose.api.TokenProperties.SourcePosition("filename",42))
+							//                // TODO: Add more and CORRECT information!   
+							//              }
+
+
+						}
+						// Search for more tokens
+						idx_searchStart = idx + 1 
+
+			}
+			tokens  
+	}
+    
+  
+  /**
+   * Enriches the tokens with information about symbol designation.
+   * @param file  File for information request.
+   * @param tokens  Tokens to enrich.
+   * @return    Tokens augmented with symbol designation information. 
+   */
+  private def enrichTokensWithSymbolDesignations(
+      file: File, tokens: ArrayBuffer[Token]) : ArrayBuffer[Token] = {
+    
+    val symbolDesignationsOption = perfomSymbolDesignationReq(file, 0, tokens.last.offset + tokens.last.length)
+    
+    symbolDesignationsOption match {
+      case Some(symbolDesignations) => {
+        import org.codeprose.api.ScalaLang._
+    
+        symbolDesignations.syms.foreach { symDes => {
+        val idx = tokens.indexWhere({ t =>
+           val idx = t.offset+t.length/2
+           symDes.start <= idx && symDes.end > idx
+          },0)
+          if(idx != -1){
+            tokens(idx).set(symbolDesignation)(SourceSymbol.mapEnsimeToCodeprose(symDes.symType))
+          }
+        } 
+      }    
+    tokens  
+      } 
+      case None => { tokens }
+    }
+  }
+  
+  /**
+   * Performs a SymbolInfoReq.
+   * @param file  File
+   * @param point Offset
+   * @return    Some(SymbolInfo)
+   */
+  private def performSymbolInfoRequest(file: File, point: Int) : Option[org.ensime.api.SymbolInfo] = {
+    
+    val symbolInfo = ensimeClient.symbolAtPoint(file, point)
+   
+    val ret = try {
+      val result = Await.result(symbolInfo,  Duration(c.timeout_SymbolInfoReq, MILLISECONDS))
+      Some(result)
+         
+      } catch {
+        case timeout : TimeoutException => {
+          logger.error("[RequestError] [Timeout]\tSymbolInfosReq:\t" + timeout.getMessage)
+          None
+        }
+        case e : Throwable => {
+          logger.error("[RequestError] \tSymbolInfosReq:\t" + e.getMessage)
+          None
+        }
+    }
+    ret  
+  }
+  
+  /**
+   * Performs a UsesOfSymbolAtPointReq.
+   * @param file  File
+   * @param point Offset
+   * @return      Option[ERangePositions] Source positions.
+   */
+  private def performUsesOfSymbolReq(
+      file: File, point: Int) : Option[org.ensime.api.ERangePositions] = {
+      
+    val usesOfSymbol = ensimeClient.usesOfSymAtPoint(file, point)
+    try {
+      val result = Await.result(usesOfSymbol,  Duration(c.timeout_UsesOfSymbolAtPointReq, MILLISECONDS))
+      Some(result)
+    } catch {
+      case timeout : TimeoutException => {
+        logger.error("[RequestError] [Timeout]\tUsesOfSymbolAtPointReq:\t" + timeout.getMessage)
+        None
+      }
+      case e : Throwable => {
+        logger.error("[RequestError] \tUsesOfSymbolAtPointReq:\t" + e.getMessage)
+        None
+      }
+    }
+  }
+  
+  /**
+   * Perfroms a SymbolDesignationReq with all symbol types requested.
+   * @param file  File to be checked.
+   * @param 
+   * @return      Option[org.ensime.api.SymbolDesignations]
+   */
+  private def perfomSymbolDesignationReq(file: File, start: Int, end: Int) : Option[org.ensime.api.SymbolDesignations] = {
+    
+    val symbolDesignations = ensimeClient.symbolDesignations(file, start, end, org.ensime.api.SourceSymbol.allSymbols) 
+    
+    try {
+      val result= Await.result(symbolDesignations,  Duration(c.timeout_SymbolDesignationsReq, MILLISECONDS))
+      Some(result)
+    }  catch {
+      case timeout : TimeoutException => { 
+        logger.error("[RequestError] [Timeout] \tSymbolDesignationsReq:\t" + timeout.getMessage)
+        None
+      } 
+      case e : Throwable => {
+        logger.error("[RequestError] \tSymbolDesignationsReq:\t" + e.getMessage)
+        None
+      }
+    }
+  }
+    
+  
+  
+  
+  /**
+   * Collections detailed type information for all types in the project.
+   * @return
+   * 
+   * Notes:
+   * Uses occuringTypeIds.
+   */
+  private def getDetailedTypeInformation() : Unit = {
+    
+    // Some filtering?
+    occuringTypeIds.foreach(e => {
+      println(e._1 + " - " + e._2)
+    })
+    
+    occuringTypeIds.map(e => {
+      val typeInspectInfo = performInspectTypeByIdReq(e._1)
+      (e._1,typeInspectInfo )      
+    }).foreach( e => {
+      println("[InspectTypeInfo]\t" + e._1 + "\n" + e._2.toString())
+    })
+    
+    
+  }
+  
+  /**
+   * Performs a InspectTypeByIdReq.
+   * @param typeId  Internal type id assigned to type by ensime-server.
+   * @return        Option[org.ensime.api.TypeInspectInfo] 
+   * 
+   */
+  private def performInspectTypeByIdReq(typeId: Int) : Option[org.ensime.api.TypeInspectInfo] = {
+		  val typeInspectInfo = ensimeClient.inspectTypeById(typeId) 
+
+				  try {
+					  val result = Await.result(typeInspectInfo,  Duration(c.timeout_InspectTypeByIdReq, MILLISECONDS))
+							  Some(result)
+				  }  catch {
+				  case timeout : TimeoutException => { 
+					  logger.error("[RequestError] [Timeout]\tInspectTypeByIdReq:\t" + timeout.getMessage)
+					  None
+				  }
+				  case e : Throwable => {
+            logger.error("[RequestError] \tInspectTypeByIdReq:\t" + e.getMessage)
+					  None
+				  } 
+				  }
+  }
+    
+  
+  // ==============================================================================
+  // Boundary NEW OLD
+  // ==============================================================================
+  
+  
+  
+  
+  
+  
+//  private def getDetailedTypeInformation() : Unit = {
+//    
+//    println("Occuring Type Ids: [ALL] " + occuringTypeIds.map(e => e._1 + ": " + e._2).mkString("\n") + "\n")
+//    
+//    val occurIdFiltered = occuringTypeIds.filter(e => (e._2.contains("rational")))
+//    println("Occuring Type Ids: [RATIONAL]" + occurIdFiltered.map(e => e._1 + ": " + e._2).mkString("\n") + "\n")
+//
+//    
+////    occurIdFiltered.map(e=>e._1).map(typeId => {
+////      (typeId,performInspectTypeByIdReq(typeId))
+////      }).foreach(e=> { 
+////        println(e._1 + ": " + e._2 +"\n")
+////      }) 
+//    
+//      // 
+//      
+//      println("Individual Req: 1 [XXX]\n " + performInspectTypeByIdReq(7) + "\n\n")
+//      Thread.sleep(2000)
+//      println("Individual Req: 2 " +performInspectTypeByIdReq(7))
+//      Thread.sleep(2000)
+//      println("Individual Req: 3 " +performInspectTypeByIdReq(7))
+//  }
+  
+//  private def performInspectTypeByIdReq(typeId: Int) : String = {
+//    val typeInspectInfo = ensimeClient.inspectTypeById(typeId) 
+//   
+//    try {
+//      val result = Await.result(typeInspectInfo,  Duration(c.timeout_InspectTypeByIdReq, MILLISECONDS))
+//      println("InspectTypeById: got result, companionId: " + result.companionId + " - numInterfaces: " + result.interfaces.size)
+//      
+//      println("===================== - Beg\n")
+//      println("compID: " + result.companionId)
+//      println("\n")
+//      println("typeInfo: " + result.`type`)
+//      println("\n")
+//      val interStr = result.supers.map( e => "TypeInfo: " + 
+//          "\tname: \t" + e.`type`.name + "\n" +
+//          "\ttypeid: \t" + e.`type`.typeId + "\n" +
+//          "\tdeclAs: \t" + e.`type`.declAs + "\n" +
+//          "\tfullName: \t" + e.`type`.fullName + "\n" +
+//          "\ttypeArgs: \t" + e.`type`.typeArgs + "\n" +
+//          "\tmembers: \t\n" + e.`type`.members.map(e => e.toString() +"\t\t").mkString("\n") + "\n" +
+//          "\tpos: \t" + e.`type`.pos + "\n" +
+//          "\touterTypeId: \t" + e.`type`.outerTypeId + "\n" +
+//          "\n\nViaView: " + e.viaView + "\n----------\n" )
+//      println("interfaces:\n" + interStr.mkString("\n"))
+//      
+//      println("\n===================== - End:\n")
+//    }  catch {
+//    case timeout : TimeoutException => { 
+//      logger.error("InspectTypeByIdReq:\t" + timeout.getMessage)       
+//      }
+//    }
+//    
+//    var s=""
+//    
+//    typeInspectInfo.onSuccess({
+//      
+//      case iTI : TypeInspectInfo => {
+//        val siz = iTI.supers.size
+//        val typ = iTI.`type`
+//        val inter = iTI.interfaces.toList
+//       // println(inter)
+//       // s = typ.toString()
+//        s=iTI.toString() + "\n__" + siz
+//      }
+//      
+//    })
+//    
+//     typeInspectInfo.onFailure({
+//        case t => {(logger.error("SymbolDesignationsReq failed! " + t))}
+//      })
+//      
+//     s
+//  }
+  
+//  private def performInspectTypeAtPoint(file: File, range: OffsetRange) : String = {
 //    
 //    val typeInspectInfo = ensimeClient.inspectTypeAtPoint(file, range) 
 //    
@@ -279,604 +815,467 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
 //      })
 //      
 //     s
-    ???
-  }
+//    ???
+//  }
   
   
-  private def getSymbolDesignations(file: File, tokens: ArrayBuffer[Token]) : ArrayBuffer[Token] = {
-    val end = tokens.last.offset + tokens.last.length
-    val symbolDesignations = ensimeClient.symbolDesignations(file, 0, end, org.ensime.api.SourceSymbol.allSymbols) 
-    
-    try {
-    	val cIResult= Await.result(symbolDesignations,  Duration(c.timeout_SymbolDesignationsReq, MILLISECONDS))
-    }  catch {
-    case timeout : TimeoutException => { 
-    	logger.error("SymbolDesignationsReq:\t" + timeout.getMessage)     	
-      }
- 
-    }
-
-    
-    symbolDesignations.onSuccess({
-      
-      case symDes : SymbolDesignations => {
-        logger.info("Adding SymbolDesignations ... ")
-        enrichTokensWithSymbolDesignations(tokens,symDes)
-      }
-      
-    })
-    
-     symbolDesignations.onFailure({
-        case t => {(logger.error("SymbolDesignationsReq failed! " + t))}
-      })
-    
-    tokens
-  } 
+//  private def getSymbolDesignations(file: File, tokens: ArrayBuffer[Token]) : ArrayBuffer[Token] = {
+//    val end = tokens.last.offset + tokens.last.length
+//    val symbolDesignations = ensimeClient.symbolDesignations(file, 0, end, org.ensime.api.SourceSymbol.allSymbols) 
+//    
+//    try {
+//    	val cIResult= Await.result(symbolDesignations,  Duration(c.timeout_SymbolDesignationsReq, MILLISECONDS))
+//    }  catch {
+//    case timeout : TimeoutException => { 
+//    	logger.error("SymbolDesignationsReq:\t" + timeout.getMessage)     	
+//      }
+// 
+//    }
+//
+//    
+//    symbolDesignations.onSuccess({
+//      
+//      case symDes : SymbolDesignations => {
+//        logger.info("Adding SymbolDesignations ... ")
+//       // enrichTokensWithSymbolDesignations(tokens,symDes)
+//      }
+//      
+//    })
+//    
+//     symbolDesignations.onFailure({
+//        case t => {(logger.error("SymbolDesignationsReq failed! " + t))}
+//      })
+//    
+//    tokens
+//  } 
   
-  private def getImplicitInformation(file: File, tokens: ArrayBuffer[Token]) : ArrayBuffer[Token] = {
-    
-    logger.info("Adding ImplicitInformation ... ")
-    
-    val end = tokens.last.offset + tokens.last.length
-    val implicitInfo = ensimeClient.implicitInfoReq(file,OffsetRange(0,end))
-    
-    try {
-      val resultImplicitInfo = Await.result(implicitInfo,  Duration(c.timeout_ImplicitInfoReq, MILLISECONDS))
-    }  catch {
-    case timeout : TimeoutException => { 
-      logger.error("ImplicitInfoReq:\t" + timeout.getMessage)       
-      }
- 
-    }
-    
-    implicitInfo.onSuccess({
-      
-      case implInfo : ImplicitInfos => {
-         enrichTokensWithImplicitInformation(tokens, implInfo)
-       }
-      case _ => {
-          (logger.error("ImplicitInfoReq failed! "))
-        }
-      
-    })
-    
-     implicitInfo.onFailure({
-        case t => {(logger.error("ImplicitInfoReq failed! " + t))}
-      })
-    
-    tokens
-  }
+//  private def getImplicitInformation(file: File, tokens: ArrayBuffer[Token]) : ArrayBuffer[Token] = {
+//    
+//    logger.info("Adding ImplicitInformation ... ")
+//    
+//    val end = tokens.last.offset + tokens.last.length
+//    val implicitInfo = ensimeClient.implicitInfoReq(file,OffsetRange(0,end))
+//    
+//    try {
+//      val resultImplicitInfo = Await.result(implicitInfo,  Duration(c.timeout_ImplicitInfoReq, MILLISECONDS))
+//    }  catch {
+//    case timeout : TimeoutException => { 
+//      logger.error("ImplicitInfoReq:\t" + timeout.getMessage)       
+//      }
+// 
+//    }
+//    
+//    implicitInfo.onSuccess({
+//      
+//      case implInfo : ImplicitInfos => {
+//         enrichTokensWithImplicitInformation(tokens, implInfo)
+//       }
+//      case _ => {
+//          (logger.error("ImplicitInfoReq failed! "))
+//        }
+//      
+//    })
+//    
+//     implicitInfo.onFailure({
+//        case t => {(logger.error("ImplicitInfoReq failed! " + t))}
+//      })
+//    
+//    tokens
+//  }
   
   
   
   /*
    * Enriches the token with additional information obtained from ensime-server.
    */
-	private def enrichToken(file: File, token: org.codeprose.api.Token) : org.codeprose.api.Token = {
-		  
-      import org.codeprose.api.ScalaLang._      
-      
-			val tokenTyp = token(tokenType)
-
-			tokenTyp match {
-			  case Some(tt) => {
-          
-          if(tt.isId){
-            tt match {
-             case Tokens.VARID => { 
-               enrichToken_VARID(file,token)              
-             } 
-             case _ => {
-               enrichToken_Id(file,token)
-             }
-            }
-            
-          } else {
-          
-				  tt match {       
-				    case _ => { 
-            if(c.verbose){ 
-              //logger.info("No information requested for " + tt) 
-            } 
-          }
-         }
-				} 
-			}
-			case _ => { 
-				  logger.error("Oops: Not able to determine the token type of " + token.toPrettyString())
-			  }
-			} 
-
-      token
-      
-	}
-
-  private def enrichToken_VARID(file: File, token: org.codeprose.api.Token) : org.codeprose.api.Token = {
-      import org.codeprose.api.ScalaLang._      
-      import org.codeprose.api.TokenProperties.SourcePosition    
-      //println(file + " - " + OffsetRange(token.offset) + token.text)
-     
-        
-      // SymbolInfoReq
-      val symbolInfo = ensimeClient.symbolAtPoint(file, token.offset)
-      
-      
-      // Awaiting the symbolInfo
-      try {
-        val cIResult= Await.result(symbolInfo,  Duration(c.timeout_SymbolInfoReq, MILLISECONDS))
-      } catch {
-        case timeout : TimeoutException => {
-          logger.error("[RequestError] \tSymbolInfosReq:\t" + timeout.getMessage)       
-        }
-     
-      }
-     // 
-      symbolInfo.onSuccess({
-        case sI: SymbolInfo => {
-          
-         
-          val typeInfo = sI.tpe
-          if(typeInfo.outerTypeId.isDefined)
-            token.set(outerTypeId)(typeInfo.outerTypeId.get)
-          
-          token.set(fullName)(typeInfo.fullName)
-            
-          token.set(typeId)(typeInfo.typeId)
-          /* Inspect Type Stuff - Beg */
-          
-//          if(!occuringTypeIds.contains(typeInfo.typeId)){
-//            println(typeInfo.typeId + ": " + performInspectTypeAtPoint(file, OffsetRange(token.offset,token.offset)))
+//	private def enrichToken(file: File, token: org.codeprose.api.Token) : org.codeprose.api.Token = {
+//		  
+//      import org.codeprose.api.ScalaLang._      
+//      
+//			val tokenTyp = token(tokenType)
+//
+//			tokenTyp match {
+//			  case Some(tt) => {
+//          
+//          if(tt.isId){
+//            tt match {
+//             case Tokens.VARID => { 
+//               enrichToken_VARID(file,token)              
+//             } 
+//             case _ => {
+//               enrichToken_Id(file,token)
+//             }
+//            }
+//            
+//          } else {
+//          
+//				  tt match {       
+//				    case _ => { 
+//            if(c.verbose){ 
+//              //logger.info("No information requested for " + tt) 
+//            } 
 //          }
-          /* Inspect Type Stuff - End */
-          
-          occuringTypeIds += ((typeInfo.typeId,typeInfo.fullName))
-          
-          
-          token.set(declaredAs)(typeInfo.declAs.toString)
-          
-          if(typeInfo.args.size>0)                      
-            token.set(args)(typeInfo.args.mkString(","))
-          if(typeInfo.members.size >0) 
-            token.set(members)(typeInfo.members.mkString(","))
-          
-          if(typeInfo.typeArgs.size > 0)
-            token.set(typeArgs)(typeInfo.typeArgs.mkString(","))
-                    
-          // TypeInfo
-          if(typeInfo.isInstanceOf[BasicTypeInfo]){    
-            token.set(isArrowType)(false)
-          } else if (typeInfo.isInstanceOf[ArrowTypeInfo]){        
-            token.set(isArrowType)(false)
-          }
-          
-          if(sI.declPos.isDefined && sI.declPos.get.isInstanceOf[org.ensime.api.OffsetSourcePosition]){
-                    token.set(declaredAt)(
-                        new SourcePosition(sI.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].file.getAbsolutePath,
-                        sI.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].offset))
-            
-          }
-        }
-      })
-      
-       symbolInfo.onFailure({
-        case t => {
-          (logger.error("[RequestError] \tSymbolInfoReq failed! " + t))
-          }
-      })
-      
-      // ==================================
-      // Uses of Symbol
-      
-      
-      val usesOfSymbol = ensimeClient.usesOfSymAtPoint(file, token.offset)
-      
-      
-      // Awaiting the symbolInfo
-      try {
-        val cIResult= Await.result(usesOfSymbol,  Duration(c.timeout_SymbolInfoReq, MILLISECONDS))
-      } catch {
-        case timeout : TimeoutException => {
-          logger.error("[RequestError] \tUsesOfSymbolAtPointReq:\t" + timeout.getMessage)       
-        }
-     
-      }
-      
-      usesOfSymbol.onSuccess({
-        case uOS: ERangePositions => {
-          
-          // Filters the references that are not in the input folders!
-          val posToSave = uOS.positions.filter(srcPos =>
-            c.inputFolders.map( folder => srcPos.file.startsWith(folder)).reduce(_ || _)            
-            )
-          if(posToSave.size > 0){
-            // Raw where used data (contains uses in other files)
-            token.set(whereUsed)(posToSave.map({
-            srcPos => 
-                new org.codeprose.api.TokenProperties.ERangePosition(
-                srcPos.file,
-                srcPos.offset,
-                srcPos.start,
-                srcPos.end
-                )}
-            )
-            )
-            
-            
-            
-            
-          }   
-        } 
-      })
-      
-       usesOfSymbol.onFailure({
-        case t => {
-          (logger.error("[RequestError] \tUsesOfSymbolAtPointReq failed! " + t))
-          }
-      })
-      
-      
-      
-      token
-  }
+//         }
+//				} 
+//			}
+//			case _ => { 
+//				  logger.error("Oops: Not able to determine the token type of " + token.toPrettyString())
+//			  }
+//			} 
+//
+//      token
+//      ???
+//	}
+
+//  private def enrichToken_VARID(file: File, token: org.codeprose.api.Token) : org.codeprose.api.Token = {
+//      import org.codeprose.api.ScalaLang._      
+//      import org.codeprose.api.TokenProperties.SourcePosition    
+//      //println(file + " - " + OffsetRange(token.offset) + token.text)
+//     
+//        
+//      // SymbolInfoReq
+//      val symbolInfo = ensimeClient.symbolAtPoint(file, token.offset)
+//      
+//      
+//      // Awaiting the symbolInfo
+//      try {
+//        val cIResult= Await.result(symbolInfo,  Duration(c.timeout_SymbolInfoReq, MILLISECONDS))
+//      } catch {
+//        case timeout : TimeoutException => {
+//          logger.error("[RequestError] \tSymbolInfosReq:\t" + timeout.getMessage)       
+//        }
+//     
+//      }
+//     // 
+//      symbolInfo.onSuccess({
+//        case sI: SymbolInfo => {
+//          
+//         
+//          val typeInfo = sI.tpe
+//          if(typeInfo.outerTypeId.isDefined)
+//            token.set(outerTypeId)(typeInfo.outerTypeId.get)
+//          
+//          token.set(fullName)(typeInfo.fullName)
+//            
+//          token.set(typeId)(typeInfo.typeId)
+//          /* Inspect Type Stuff - Beg */
+//          
+////          if(!occuringTypeIds.contains(typeInfo.typeId)){
+////            println(typeInfo.typeId + ": " + performInspectTypeAtPoint(file, OffsetRange(token.offset,token.offset)))
+////          }
+//          /* Inspect Type Stuff - End */
+//          
+//          occuringTypeIds += ((typeInfo.typeId,typeInfo.fullName))
+//          
+//          
+//          token.set(declaredAs)(typeInfo.declAs.toString)
+//          
+//          if(typeInfo.args.size>0)                      
+//            token.set(args)(typeInfo.args.mkString(","))
+//          if(typeInfo.members.size >0) 
+//            token.set(members)(typeInfo.members.mkString(","))
+//          
+//          if(typeInfo.typeArgs.size > 0)
+//            token.set(typeArgs)(typeInfo.typeArgs.mkString(","))
+//                    
+//          // TypeInfo
+//          if(typeInfo.isInstanceOf[BasicTypeInfo]){    
+//            token.set(isArrowType)(false)
+//          } else if (typeInfo.isInstanceOf[ArrowTypeInfo]){        
+//            token.set(isArrowType)(false)
+//          }
+//          
+//          if(sI.declPos.isDefined && sI.declPos.get.isInstanceOf[org.ensime.api.OffsetSourcePosition]){
+//                    token.set(declaredAt)(
+//                        new SourcePosition(sI.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].file.getAbsolutePath,
+//                        sI.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].offset))
+//            
+//          }
+//        }
+//      })
+//      
+//       symbolInfo.onFailure({
+//        case t => {
+//          (logger.error("[RequestError] \tSymbolInfoReq failed! " + t))
+//          }
+//      })
+//      
+//      // ==================================
+//      // Uses of Symbol
+//      
+//      
+//      val usesOfSymbol = ensimeClient.usesOfSymAtPoint(file, token.offset)
+//      
+//      
+//      // Awaiting the symbolInfo
+//      try {
+//        val cIResult= Await.result(usesOfSymbol,  Duration(c.timeout_SymbolInfoReq, MILLISECONDS))
+//      } catch {
+//        case timeout : TimeoutException => {
+//          logger.error("[RequestError] \tUsesOfSymbolAtPointReq:\t" + timeout.getMessage)       
+//        }
+//     
+//      }
+//      
+//      usesOfSymbol.onSuccess({
+//        case uOS: ERangePositions => {
+//          
+//          // Filters the references that are not in the input folders!
+//          val posToSave = uOS.positions.filter(srcPos =>
+//            c.inputFolders.map( folder => srcPos.file.startsWith(folder)).reduce(_ || _)            
+//            )
+//          if(posToSave.size > 0){
+//            // Raw where used data (contains uses in other files)
+//            token.set(whereUsed)(posToSave.map({
+//            srcPos => 
+//                new org.codeprose.api.TokenProperties.ERangePosition(
+//                srcPos.file,
+//                srcPos.offset,
+//                srcPos.start,
+//                srcPos.end
+//                )}
+//            )
+//            )
+//            
+//            
+//            
+//            
+//          }   
+//        } 
+//      })
+//      
+//       usesOfSymbol.onFailure({
+//        case t => {
+//          (logger.error("[RequestError] \tUsesOfSymbolAtPointReq failed! " + t))
+//          }
+//      })
+//      
+//      
+//      
+//      token
+//  }
   
-  private def enrichToken_Id(file: File, token: org.codeprose.api.Token) : org.codeprose.api.Token = {
-      import org.codeprose.api.ScalaLang._      
-      import org.codeprose.api.TokenProperties.SourcePosition    
-      
-      //println(file + " - " + OffsetRange(token.offset) + token.text)
-     
-        
-      // SymbolInfoReq
-      val symbolInfo = ensimeClient.symbolAtPoint(file, token.offset)
-      
-      
-      // Awaiting the symbolInfo
-      try {
-        val cIResult= Await.result(symbolInfo,  Duration(c.timeout_SymbolInfoReq, MILLISECONDS))
-      } catch {
-        case timeout : TimeoutException => {
-          logger.error("[RequestError] \tSymbolInfosReq:\t" + timeout.getMessage)       
-        }
-     
-      }
-     // 
-      symbolInfo.onSuccess({
-        case sI: SymbolInfo => {
-          
-         
-          val typeInfo = sI.tpe
-          if(typeInfo.outerTypeId.isDefined)
-            token.set(outerTypeId)(typeInfo.outerTypeId.get)
-          
-          token.set(fullName)(typeInfo.fullName)
-          
-          token.set(typeId)(typeInfo.typeId)
-          occuringTypeIds += ((typeInfo.typeId,typeInfo.fullName))
-          
-          token.set(declaredAs)(typeInfo.declAs.toString)
-          
-          if(typeInfo.args.size>0)                      
-            token.set(args)(typeInfo.args.mkString(","))
-          if(typeInfo.members.size >0)  
-            token.set(members)(typeInfo.members.mkString(","))
-          if(typeInfo.typeArgs.size > 0)
-            token.set(typeArgs)(typeInfo.typeArgs.mkString(","))
-                    
-          // TypeInfo
-          if(typeInfo.isInstanceOf[BasicTypeInfo]){    
-            token.set(isArrowType)(false)
-          } else if (typeInfo.isInstanceOf[ArrowTypeInfo]){        
-            token.set(isArrowType)(false)
-          }
-          
-          if(sI.declPos.isDefined && sI.declPos.get.isInstanceOf[org.ensime.api.OffsetSourcePosition]){
-                    token.set(declaredAt)(
-                        new SourcePosition(sI.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].file.getAbsolutePath,
-                        sI.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].offset))
-            
-          }
-        }
-      })
-      
-       symbolInfo.onFailure({
-        case t => {
-          (logger.error("[RequestError] \tSymbolInfoReq failed! " + t))
-          }
-      })
-      
-      // ==================================
-      // Uses of Symbol
-      
-      
-      val usesOfSymbol = ensimeClient.usesOfSymAtPoint(file, token.offset)
-      
-      
-      // Awaiting the symbolInfo
-      try {
-        val cIResult= Await.result(usesOfSymbol,  Duration(c.timeout_SymbolInfoReq, MILLISECONDS))
-      } catch {
-        case timeout : TimeoutException => {
-          logger.error("[RequestError] \tUsesOfSymbolAtPointReq:\t" + timeout.getMessage)       
-        }
-     
-      }
-      
-      usesOfSymbol.onSuccess({
-        case uOS: ERangePositions => {
-          
-          // Filters the references that are not in the input folders!
-          val posToSave = uOS.positions.filter(srcPos =>
-            c.inputFolders.map( folder => srcPos.file.startsWith(folder)).reduce(_ || _)            
-            )
-          if(posToSave.size > 0){
-            // Raw where used data (contains uses in other files)
-            token.set(whereUsed)(posToSave.map({
-            srcPos => 
-                new org.codeprose.api.TokenProperties.ERangePosition(
-                srcPos.file,
-                srcPos.offset,
-                srcPos.start,
-                srcPos.end
-                )}
-            )
-            )
-            
-            // TODO global where used map typeId -> List[SrcPos]
-            
-            
-          }   
-        } 
-      })
-      
-       usesOfSymbol.onFailure({
-        case t => {
-          (logger.error("[RequestError] \tUsesOfSymbolAtPointReq failed! " + t))
-          }
-      })
-      
-      
-      
-      token
-  }
+//  private def enrichToken_Id(file: File, token: org.codeprose.api.Token) : org.codeprose.api.Token = {
+//   ???
+//  }
+//	
   
-	private def getTokens(file: java.io.File) : ArrayBuffer[Token]= {
-		
-    logger.info("Getting raw tokens.")
-		import org.codeprose.util.FileUtil    
-		val srcContent = FileUtil.loadSrcFileContent(file) 
-		val tokens = org.codeprose.provider.ScalaTokenizer.tokenize(srcContent)
-		tokens
-	}
+//  private def enrichTokensWithImplicitInformation(
+//      tokens: ArrayBuffer[Token], 
+//      implicitInfos: ImplicitInfos) : ArrayBuffer[Token] = {
+//    
+//    import org.codeprose.api.ScalaLang._
+//    
+//    implicitInfos.infos.foreach( { implicitInfo => {
+//      
+//      implicitInfo match {
+//         case info : ImplicitConversionInfo => {
+//                     
+//          // Find affected tokens
+//          var idx_searchStart = 0
+//          var idx = 0
+//          
+//          while(idx != -1 && idx_searchStart<tokens.length){
+//                         
+//            idx = tokens.indexWhere({ t =>
+//             val tPos = t.offset+t.length/2
+//             info.start <= tPos && info.end > tPos
+//            },idx_searchStart)
+//            
+//            // Save information
+//            if(idx != -1){
+//              
+//              // Save information
+////            println("[--------------------------------")
+////            println(info.fun.`type`.fullName)
+////            println(info.fun.`type`.name)
+////            println(info.fun.`type`.args)
+////            println(info.fun.`type`.typeArgs)
+////            println(info.fun.`type`.declaredAs)
+////            println(info.fun.`type`.declAs)
+////            println(info.fun.`type`.typeId)
+////            println("[--------------------------------")
+//            // TODO: Upgrade to ImplicitConversion to include more information, like:
+//            //   - Type id
+//            //   - Argument names ...
+//            //   - ...
+//            tokens(idx).set(implicitConversion_indicator)(true)
+//            tokens(idx).set(implicitConversion_fullName)(info.fun.name)
+//            if(info.fun.declPos.isDefined && info.fun.declPos.get.isInstanceOf[org.ensime.api.OffsetSourcePosition]){
+//             tokens(idx).set(implicitConversion_sourcePosition)( new org.codeprose.api.TokenProperties.SourcePosition(
+//                 info.fun.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].file.getAbsolutePath,
+//                 info.fun.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].offset)
+//             )
+//           }
+//              
+//            }
+//            // Search for more tokens
+//            idx_searchStart = idx + 1 
+//              
+//          }
+//        }
+//        case info : ImplicitParamInfo => {
+////        	println("[--------------------------------------------]")
+////        	println(info + "\n")
+////        	println("start:\t\t" + info.start)
+////        	println("end:\t\t" + info.end)
+////        	println("fun:\t\t" + info.fun)
+////        	println("params:\t\t " + info.params)
+////        	println("funIsImplicit:\t\t" + info.funIsImplicit)
+////        	println("[--------------------------------------------]\n")
+//        
+//          // Find affected tokens
+//          var idx_searchStart = 0
+//          var idx = 0
+//          
+//          while(idx != -1 && idx_searchStart<tokens.length){
+//                         
+//            idx = tokens.indexWhere({ t =>
+//             val tPos = t.offset+t.length/2
+//             info.start <= tPos && info.end > tPos
+//            },idx_searchStart)
+//            
+//            // Save information
+//            if(idx != -1){
+//              
+//              if(tokens(idx)(tokenType).isDefined && tokens(idx)(tokenType).get.isId){
+//                tokens(idx).set(implicitParameter_indicator)(true)
+//                tokens(idx).set(implicitParameter_fullName)("TO BE ADDED")
+//                tokens(idx).set(implicitParameter_sourcePosition)(new org.codeprose.api.TokenProperties.SourcePosition("filename",42))
+//                // TODO: Add more and CORRECT information!   
+//              }
+//            }
+//            // Search for more tokens
+//            idx_searchStart = idx + 1 
+//              
+//          }
+//          
+//        }
+//      }
+//      
+//      } 
+//    })  
+//    tokens    
+//  }
   
-  private def enrichTokensWithImplicitInformation(
-      tokens: ArrayBuffer[Token], 
-      implicitInfos: ImplicitInfos) : ArrayBuffer[Token] = {
-    
-    import org.codeprose.api.ScalaLang._
-    
-    implicitInfos.infos.foreach( { implicitInfo => {
-      
-      implicitInfo match {
-         case info : ImplicitConversionInfo => {
-                     
-          // Find affected tokens
-          var idx_searchStart = 0
-          var idx = 0
-          
-          while(idx != -1 && idx_searchStart<tokens.length){
-                         
-            idx = tokens.indexWhere({ t =>
-             val tPos = t.offset+t.length/2
-             info.start <= tPos && info.end > tPos
-            },idx_searchStart)
-            
-            // Save information
-            if(idx != -1){
-              
-              // Save information
-//            println("[--------------------------------")
-//            println(info.fun.`type`.fullName)
-//            println(info.fun.`type`.name)
-//            println(info.fun.`type`.args)
-//            println(info.fun.`type`.typeArgs)
-//            println(info.fun.`type`.declaredAs)
-//            println(info.fun.`type`.declAs)
-//            println(info.fun.`type`.typeId)
-//            println("[--------------------------------")
-            // TODO: Upgrade to ImplicitConversion to include more information, like:
-            //   - Type id
-            //   - Argument names ...
-            //   - ...
-            tokens(idx).set(implicitConversion_indicator)(true)
-            tokens(idx).set(implicitConversion_fullName)(info.fun.name)
-            if(info.fun.declPos.isDefined && info.fun.declPos.get.isInstanceOf[org.ensime.api.OffsetSourcePosition]){
-             tokens(idx).set(implicitConversion_sourcePosition)( new org.codeprose.api.TokenProperties.SourcePosition(
-                 info.fun.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].file.getAbsolutePath,
-                 info.fun.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].offset)
-             )
-           }
-              
-            }
-            // Search for more tokens
-            idx_searchStart = idx + 1 
-              
-          }
-        }
-        case info : ImplicitParamInfo => {
-//        	println("[--------------------------------------------]")
-//        	println(info + "\n")
-//        	println("start:\t\t" + info.start)
-//        	println("end:\t\t" + info.end)
-//        	println("fun:\t\t" + info.fun)
-//        	println("params:\t\t " + info.params)
-//        	println("funIsImplicit:\t\t" + info.funIsImplicit)
-//        	println("[--------------------------------------------]\n")
-        
-          // Find affected tokens
-          var idx_searchStart = 0
-          var idx = 0
-          
-          while(idx != -1 && idx_searchStart<tokens.length){
-                         
-            idx = tokens.indexWhere({ t =>
-             val tPos = t.offset+t.length/2
-             info.start <= tPos && info.end > tPos
-            },idx_searchStart)
-            
-            // Save information
-            if(idx != -1){
-              
-              if(tokens(idx)(tokenType).isDefined && tokens(idx)(tokenType).get.isId){
-                tokens(idx).set(implicitParameter_indicator)(true)
-                tokens(idx).set(implicitParameter_fullName)("TO BE ADDED")
-                tokens(idx).set(implicitParameter_sourcePosition)(new org.codeprose.api.TokenProperties.SourcePosition("filename",42))
-                // TODO: Add more and CORRECT information!   
-              }
-            }
-            // Search for more tokens
-            idx_searchStart = idx + 1 
-              
-          }
-          
-        }
-      }
-      
-      } 
-    })  
-    tokens    
-  }
+//  private def enrichTokensWithSymbolDesignations(
+//      tokens: ArrayBuffer[Token], 
+//      symDesignations: SymbolDesignations) : ArrayBuffer[Token] = {
+//    
+//    import org.codeprose.api.ScalaLang._
+//    
+//    symDesignations.syms.foreach { symDes => {
+//      val idx = tokens.indexWhere({ t =>
+//         val idx = t.offset+t.length/2
+//         symDes.start <= idx && symDes.end > idx
+//        },0)
+//        if(idx != -1){
+//          tokens(idx).set(symbolDesignation)(SourceSymbol.mapEnsimeToCodeprose(symDes.symType))
+//        }
+//      } 
+//    }    
+//    tokens    
+//  }
+ 
+//  
+//  private def includeTokenBasedSourcePostion_declaredAt(info : ArrayBuffer[(File,ArrayBuffer[Token])]) : 
+//  ArrayBuffer[(File,ArrayBuffer[Token])] = {
+//    import org.codeprose.api.ScalaLang._
+//    
+//    
+//   info.map(e =>{
+//     val file = e._1
+//     val tokens = e._2
+//
+//     
+//     tokens.map(t => {
+//       if(t(declaredAt).isDefined){
+//         val srcPos = t(declaredAt).get
+//         val tId = findInternalTokenIdToOffset(srcPos,info)
+//         if(tId != -1){
+//          t.set(declaredAt_TokenIdSrcPos)( new SourcePositionWithTokenId(srcPos.filename,tId))
+//         }
+//         t
+//       } else {
+//         t
+//       }
+//     })
+//     
+//     (file,tokens)
+//   })
+//        
+//  }
+
+//   private def includeTokenBasedSourcePostion_whereUsedWithinFile(info : ArrayBuffer[(File,ArrayBuffer[Token])]) : 
+//  ArrayBuffer[(File,ArrayBuffer[Token])] = {
+//    import org.codeprose.api.ScalaLang._
+//    
+//    
+//   info.map(e =>{
+//     val file = e._1
+//     val tokens = e._2
+//
+//     
+//     tokens.map(t => {
+//       if(t(whereUsed).isDefined){
+//         
+//         val srcPosList = t(whereUsed).get
+//         val tIds = srcPosList.filter(srcPos => srcPos.filename == file.getAbsolutePath()).map( srcPos => findInternalTokenIdToOffset(srcPos,info))
+//         if(tIds.length >0){
+//           t.set(whereUsed_WithinFileTokenIdSrcPos)(tIds.map(id => new SourcePositionWithTokenId(file.getAbsolutePath,id)))
+//         }
+//         t
+//       } else {
+//         t
+//       }
+//     })
+//     
+//     (file,tokens)
+//   })
+//        
+//  }
   
-  private def enrichTokensWithSymbolDesignations(
-      tokens: ArrayBuffer[Token], 
-      symDesignations: SymbolDesignations) : ArrayBuffer[Token] = {
-    
-    import org.codeprose.api.ScalaLang._
-    
-    symDesignations.syms.foreach { symDes => {
-      val idx = tokens.indexWhere({ t =>
-         val idx = t.offset+t.length/2
-         symDes.start <= idx && symDes.end > idx
-        },0)
-        if(idx != -1){
-          tokens(idx).set(symbolDesignation)(SourceSymbol.mapEnsimeToCodeprose(symDes.symType))
-        }
-      } 
-    }    
-    tokens    
-  }
  
   
-  private def includeTokenBasedSourcePostion_declaredAt(info : ArrayBuffer[(File,ArrayBuffer[Token])]) : 
-  ArrayBuffer[(File,ArrayBuffer[Token])] = {
-    import org.codeprose.api.ScalaLang._
-    
-    
-   info.map(e =>{
-     val file = e._1
-     val tokens = e._2
+}
 
-     
-     tokens.map(t => {
-       if(t(declaredAt).isDefined){
-         val srcPos = t(declaredAt).get
-         val tId = findInternalTokenIdToOffset(srcPos,info)
-         if(tId != -1){
-          t.set(declaredAt_TokenIdSrcPos)( new SourcePositionWithTokenId(srcPos.filename,tId))
-         }
-         t
-       } else {
-         t
-       }
-     })
-     
-     (file,tokens)
-   })
-        
-  }
 
-   private def includeTokenBasedSourcePostion_whereUsedWithinFile(info : ArrayBuffer[(File,ArrayBuffer[Token])]) : 
-  ArrayBuffer[(File,ArrayBuffer[Token])] = {
-    import org.codeprose.api.ScalaLang._
-    
-    
-   info.map(e =>{
-     val file = e._1
-     val tokens = e._2
 
-     
-     tokens.map(t => {
-       if(t(whereUsed).isDefined){
-         
-         val srcPosList = t(whereUsed).get
-         val tIds = srcPosList.filter(srcPos => srcPos.filename == file.getAbsolutePath()).map( srcPos => findInternalTokenIdToOffset(srcPos,info))
-         if(tIds.length >0){
-           t.set(whereUsed_WithinFileTokenIdSrcPos)(tIds.map(id => new SourcePositionWithTokenId(file.getAbsolutePath,id)))
-         }
-         t
-       } else {
-         t
-       }
-     })
-     
-     (file,tokens)
-   })
-        
-  }
+
+/**
+ * Utils for Provider.
+ */
+object ProviderUtil {
   
-  private def findInternalTokenIdToOffset(
-      srcPos: org.codeprose.api.TokenProperties.SourcePosition, 
-      info: ArrayBuffer[(File,ArrayBuffer[Token])]) : Int = {
-	 
-    import org.codeprose.api.ScalaLang._
-  
-    val tokens = info.filter({e => e._1.getAbsolutePath == srcPos.filename}).map(e=>e._2)
+  /**
+   * Returns the internal token id held by the token found at the offset position in the file.
+   * @param filename
+   * @param offset >0
+   * @return If token found internal token id, else -1.
+   */
+  def getTokenIdToOffsetSourcePosition(
+      filename: String, offset: Int, info: ArrayBuffer[(File,ArrayBuffer[Token])]) : Int = {
+        
+    val poentialTokens = info.filter({e => e._1.getAbsolutePath == filename}).map(e=>e._2)
     
-    val id = if(tokens.length==0){
+    val id = if(poentialTokens.length==0){
       -1
-    } else {
+    } else {      
       
-      val t = tokens(0).filter(t => {
-        t.offset == srcPos.offset
+      val t = poentialTokens(0).filter(t => {
+        t.offset == offset
       })
-    
+      
+      import org.codeprose.api.ScalaLang._
+      
       val ret = if(t.length>0 && t(0)(internalTokenId).isDefined){
         t(0)(internalTokenId).get
       } else {
-         logger.error("[findInternalTokenIdToOffset]\t" + "Could not determine internalTokenId." )
         -1
       }
       ret
     }
     id 
-   
-	}
-  
-   private def findInternalTokenIdToOffset(
-      srcPos: org.codeprose.api.TokenProperties.ERangePosition, 
-      info: ArrayBuffer[(File,ArrayBuffer[Token])]) : Int = {
-   
-    import org.codeprose.api.ScalaLang._
-  
-    val tokens = info.filter({e => e._1.getAbsolutePath == srcPos.filename}).map(e=>e._2)
-    
-    val id = if(tokens.length==0){
-      -1
-    } else {
-      
-      val t = tokens(0).filter(t => {
-        t.offset == srcPos.offset
-      })
-    
-      val ret = if(t.length>0 && t(0)(internalTokenId).isDefined){
-        t(0)(internalTokenId).get
-      } else {
-         logger.error("[findInternalTokenIdToOffset]\t" + "Could not determine internalTokenId." )
-        -1
-      }
-      ret
-    }
-    id 
-   
-  }
+  } 
   
 }

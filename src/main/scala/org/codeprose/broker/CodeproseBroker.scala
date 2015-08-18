@@ -59,7 +59,7 @@ object CodeproseBroker extends LazyLogging {
     logger.info("Run starting codeprose broker.")
     val broker = new CodeproseBroker()
     val info = broker.analyzeSourceCode()
-    broker.generateOutput(info)           
+    //broker.generateOutput(info)           
     broker.close()
     
   }
@@ -139,7 +139,9 @@ class CodeproseBroker()(implicit bc: BrokerContext)
 //     out += ((f,tokens))
 //    }
     
-    val out = provider.getEnrichedTokens(bc.filesToProcess)
+    val projectInfo = provider.getProjectInformation(bc.filesToProcess.toList)
+    
+    val out = projectInfo.enrichedTokens
     
     out
   }

@@ -2,7 +2,6 @@ package org.codeprose.api
 
 import scala.collection.mutable.ArrayBuffer
 import org.codeprose.util.DynamicPropertyMap
-import org.codeprose.api.TokenProperties._
 
 // Token
 class Token(val offset: Int, val text: String) extends DynamicPropertyMap {
@@ -23,9 +22,7 @@ class ProjectInfo (
 
 // Container of information exchange
 object Api {
-  
-  type TokenInfoContainer = scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.ArrayBuffer[Token])]
-  type MetaInfoContainer = scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.ArrayBuffer[String])]
+  type EnrichedTokenContainer = scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.ArrayBuffer[Token])]
 }
 
 
@@ -39,8 +36,8 @@ trait DefaultLang {
 	trait TokenType {}
   
   // Keys
-	val tokenType = new Key('tokenType){ type Value <: TokenType }  
- 
+  val tokenType = new Key('tokenType){ type Value <: TokenType }    
+	
 }
 
 // ScalaLang 
@@ -244,53 +241,64 @@ object SourceSymbol {
   
   // ScalaLang Keys
   // ============================================================================
-  import DynamicPropertyMap._
   
-  val internalTokenId = new Key('internalTokenId){ type Value = Int }
-  
-  val declaredAs = new Key('declaredAs) { type Value = String }
-  val declaredAt = new Key('declaredAt) { type Value = SourcePosition }
-  
-  val declaredAt_TokenIdSrcPos = new Key('declaredAt_TokenIdSrcPos){ type Value = SourcePositionWithTokenId }
-  
-  
-  val fullName = new Key('fullName) { type Value = String }  
-  val isArrowType = new Key('isArrowType) { type Value = Boolean }
-  override val tokenType = new Key('tokenType) { type Value = ScalaTokenType }
-  val typeId = new Key('typeId) { type Value = Int }
-  val outerTypeId = new Key('outerTypeId) { type Value = Int }
-  
-  val args = new Key('args){ type Value = String }
-  val typeArgs = new Key('typeArgs){ type Value = String }
-  val members = new Key('members){ type Value = String }
-  
-  val symbolDesignation = new Key('symbolDesignation){ type Value = org.codeprose.api.ScalaLang.SourceSymbol.SourceSymbol }
-  
-  val implicitConversion_indicator = new Key('implicitConversion_indicator){ type Value = Boolean }
-  val implicitConversion_sourcePosition = new Key('implicitConversion_sourcePosition){ type Value = SourcePosition }
-  val implicitConversion_sourcePositionWithTokenId = new Key('implicitConversion_sourcePosition){ type Value = SourcePositionWithTokenId }
-  val implicitConversion_fullName = new Key('implicitConversion_fullName){ type Value = String }
-  val implicitConversion_argNames = new Key('implicitConversion_argNamesName){ type Value = String }
-  
-  val implicitParameter_indicator = new Key('implicitParameter_indicator){ type Value = Boolean }
-  val implicitParameter_sourcePosition = new Key('implicitParameter_sourcePosition){ type Value = SourcePosition }
-  val implicitParameter_fullName = new Key('implicitParameter_fullname){ type Value = String }
-  val implicitParameter_sourcePositionWithTokenId = new Key('implicitParameter_sourcePositionWithTokenId){ type Value = SourcePositionWithTokenId }
-  
-  val whereUsed = new Key('whereUsed){ type Value = List[ERangePosition]}
-  val whereUsed_WithinFileTokenIdSrcPos = new Key('whereUsed_WithinFileTokenIdSrcPos){ type Value = List[SourcePositionWithTokenId]}
-  
-  
-  // Keys MetaFile
-  // ============================================================================
-  object SummaryKeys {
     
-    val fileList = new Key('files){ type Value = List[java.io.File] }
-    val typeInformation = new Key('typeInformation){ type Value = List[TypeInformation] }
+  // TODO: Is a grouing of keys possible? 
     
+    // Key for Tokens
+    // ==========================================================================
+        
+        import DynamicPropertyMap._
+
+        val internalTokenId = new Key('internalTokenId){ type Value = Int }
+        
+        val declaredAs = new Key('declaredAs) { type Value = String }
+        
+        val declaredAt = new Key('declaredAt) { type Value = OffsetSourcePositionWithTokenId }
+        
+        //val declaredAt_TokenIdSrcPos = new Key('declaredAt_TokenIdSrcPos){ type Value = SourcePositionWithTokenId }
+        
+        
+        val fullName = new Key('fullName) { type Value = String }  
+        val isArrowType = new Key('isArrowType) { type Value = Boolean }
+        override val tokenType = new Key('tokenType) { type Value = ScalaTokenType }
+        val typeId = new Key('typeId) { type Value = Int }
+        val outerTypeId = new Key('outerTypeId) { type Value = Int }
+        
+        val args = new Key('args){ type Value = String }
+        val typeArgs = new Key('typeArgs){ type Value = String }
+        val members = new Key('members){ type Value = String }
+        
+        val symbolDesignation = new Key('symbolDesignation){ type Value = org.codeprose.api.ScalaLang.SourceSymbol.SourceSymbol }
     
-  }
+  //    val implicitConversion_indicator = new Key('implicitConversion_indicator){ type Value = Boolean }
+  //    val implicitConversion_sourcePosition = new Key('implicitConversion_sourcePosition){ type Value = SourcePosition }
+  //    val implicitConversion_sourcePositionWithTokenId = new Key('implicitConversion_sourcePosition){ type Value = SourcePositionWithTokenId }
+  //    val implicitConversion_fullName = new Key('implicitConversion_fullName){ type Value = String }
+  //    val implicitConversion_argNames = new Key('implicitConversion_argNamesName){ type Value = String }
+  //    
+  //    val implicitParameter_indicator = new Key('implicitParameter_indicator){ type Value = Boolean }
+  //    val implicitParameter_sourcePosition = new Key('implicitParameter_sourcePosition){ type Value = SourcePosition }
+  //    val implicitParameter_fullName = new Key('implicitParameter_fullname){ type Value = String }
+  //    val implicitParameter_sourcePositionWithTokenId = new Key('implicitParameter_sourcePositionWithTokenId){ type Value = SourcePositionWithTokenId }
   
+        val whereUsedWithInFile = new Key('whereUsedWithinFile){ type Value = List[Int] }
+        
+  //    val whereUsed = new Key('whereUsed){ type Value = List[ERangePosition]}
+  //    val whereUsed_WithinFileTokenIdSrcPos = new Key('whereUsed_WithinFileTokenIdSrcPos){ type Value = List[SourcePositionWithTokenId]}
+   
+    //}
+ 
+
+    
+        
+      // Keys Summary
+      // ============================================================================
+    
+      val fileList = new Key('files){ type Value = List[java.io.File] }
+      val typeInformation = new Key('typeInformation){ type Value = Map[Int,Option[TypeInformation]] }
+      val whereUsedByTypeId = new Key('whereUsedByTypeId){ type Value = Map[Int,List[ERangePositionWithTokenIds]] }
+    
   
 }
 

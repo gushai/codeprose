@@ -17,6 +17,7 @@ import org.codeprose.provider.ProviderContext
 import org.codeprose.provider.EnsimeProvider
 import org.codeprose.provider.EnsimeProviderContext
 import org.codeprose.consumer.WriterContextHtml
+import org.codeprose.api.ProjectInfo
 
 
 object CodeproseBroker extends LazyLogging {
@@ -59,7 +60,7 @@ object CodeproseBroker extends LazyLogging {
     logger.info("Run starting codeprose broker.")
     val broker = new CodeproseBroker()
     val info = broker.analyzeSourceCode()
-    //broker.generateOutput(info)           
+    broker.generateOutput(info)           
     broker.close()
     
   }
@@ -85,7 +86,7 @@ object CodeproseBroker extends LazyLogging {
        
 }
 
-/*
+/**
  * Provides information to the broker.
  * Assumes ensime-server started externally.  
  */
@@ -101,11 +102,11 @@ class BrokerContext(
     ){}
 
 
-// TODO: Extension to Meta information needed.
+
 trait Broker {
   import org.codeprose.api.Api
-  def analyzeSourceCode() : Api.TokenInfoContainer  
-  def generateOutput(info: Api.TokenInfoContainer) : Unit    
+  def analyzeSourceCode() : ProjectInfo  
+  def generateOutput(projectInfo: ProjectInfo) : Unit    
   def close() : Unit
 }
 
@@ -125,33 +126,19 @@ class CodeproseBroker()(implicit bc: BrokerContext)
   }
     
     
-  def analyzeSourceCode() : Api.TokenInfoContainer = {
-    // For each file get tokens and enrich them
+  def analyzeSourceCode() :  ProjectInfo = {
     import org.codeprose.api.Api
     logger.info("Analysing source code ... ")
-//    val out = new Api.TokenInfoContainer()
-//
-//    for(f <- bc.filesToProcess){
-//      if(bc.verbose)
-//        logger.info(f.toString())
-//        
-//     val tokens = provider.getEnrichedTokens(f)                                    
-//     out += ((f,tokens))
-//    }
-    
     val projectInfo = provider.getProjectInformation(bc.filesToProcess.toList)
-    
-    val out = projectInfo.enrichedTokens
-    
-    out
+    projectInfo
   }
   
   private def analyzeSourceCodeOverview() : Unit = {
     ???
   }
   
-  def generateOutput(info: Api.TokenInfoContainer): Unit = {    
-   consumer.generateOutput(info)
+  def generateOutput(projectInfo: ProjectInfo): Unit = {
+   consumer.generateOutput(projectInfo)
   }
     
   def close() : Unit = {

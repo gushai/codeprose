@@ -13,9 +13,7 @@ import java.util.concurrent.TimeoutException
 import org.ensime.client.ClientContext
 import scala.collection.mutable.ArrayBuffer
 import org.codeprose.api.Token
-import org.codeprose.api.TokenProperties._
-import org.codeprose.api.ProjectInfo
-import org.codeprose.api.ProjectSummary
+import org.codeprose.api._
 
 
 import org.ensime.api._
@@ -37,24 +35,26 @@ class EnsimeProviderContext(
     val inputFolders: List[String]
 		) extends ProviderContext {
   
+  // All below in ms
   val timeout_ConnectionInfoReq = 500
-  val timeout_SymbolInfoReq = 250
-  val timeout_SymbolDesignationsReq =700
+  val timeout_SymbolInfoReq = 350
+  val timeout_SymbolDesignationsReq = 700
   val timeout_ImplicitInfoReq = 700
   val timeout_UsesOfSymbolAtPointReq = 700
   val timeout_InspectTypeByIdReq = 500
+  
+  val pauseBetweenReq_InspectTypeById = 250
 }
 
 
     
 class EnsimeProvider(implicit c: EnsimeProviderContext )
-    extends Provider with LazyLogging {
+    extends Provider with OccuringTypes with LazyLogging {
 
 	private val ensimeClient = new Client()(new ClientContext(c.host,c.port,false)) 
 	var isInitialized = false
   var tokenId = 0
-  var occuringTypeIds = scala.collection.mutable.SortedSet[(Int,String)]() // TypeId, fullname
-//  var whereUsedCollection = scala.collection.mutable.Map[Int,scala.collection.mutable.SortedSet[]]
+ 
  
   
 	/**
@@ -105,6 +105,8 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
      
      // Project summary information
      val summary = getProjectSummary(files)
+          
+     println(summary.toString())
      
      new ProjectInfo(enrichedTokenPerFile,summary)
    }
@@ -117,19 +119,17 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     
     val summary = new ProjectSummary()
     
-    import org.codeprose.api.ScalaLang.SummaryKeys._
+    import org.codeprose.api.ScalaLang._
     
     // Files
     summary.set(fileList)(files)
     
     // Used types
-    getDetailedTypeInformation()
+    summary.set(typeInformation)(getDetailedTypeInformation())
     
     // Where used in project
-    
-    
-      
-    
+    summary.set(whereUsedByTypeId)(getWhereUsedByTypeIdInformation())
+   
     summary
   } 
    
@@ -222,10 +222,12 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   private def getRawTokens(files: List[File]) : 
   ArrayBuffer[(File,ArrayBuffer[Token])] = {
     
+    import org.codeprose.util.FileUtil
+    import org.codeprose.api.ScalaLang._
+    
     logger.info("Generating raw tokens.")
     val tokensPerFile = ArrayBuffer[(File,ArrayBuffer[Token])]()
-    
-    import org.codeprose.util.FileUtil
+        
     
     for(file <- files){
       // TODO: Add try catch
@@ -293,7 +295,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
         // Collect occuring type information
         val typeId = symbolInfo.tpe.typeId
         val fullname = symbolInfo.tpe.fullName
-        occuringTypeIds += ((typeId,fullname))
+        addOccuringType(typeId, fullname)
         
         // Save type information on token
       
@@ -403,9 +405,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     
     try {
       val result = Await.result(implicitInfo,  Duration(c.timeout_ImplicitInfoReq, MILLISECONDS))
-      
-      println("[ImplicitInformation]:\t" + result)
-      
+         
       result.infos.foreach(  implicitInfo => {
       
          implicitInfo match {
@@ -441,55 +441,47 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
    * @return        Enriched tokens.    
    */
 	private def enrichTokensWithImplictConversionInformation(
-      tokens: ArrayBuffer[Token], implicitInfo: org.ensime.api.ImplicitConversionInfo) : ArrayBuffer[Token] = {
+      tokens: ArrayBuffer[Token], 
+      implicitInfo: org.ensime.api.ImplicitConversionInfo) : ArrayBuffer[Token] = {
 
-			// Find affected tokens
-			var idx_searchStart = 0
-			var idx = 0
-
-			while(idx != -1 && idx_searchStart<tokens.length){
-
-  			idx = tokens.indexWhere({ t =>
-	   			val tPos = t.offset+t.length/2
-			  	implicitInfo.start <= tPos && implicitInfo.end > tPos
-				  },idx_searchStart)
-
-					// Save information
-					if(idx != -1){
-
-							// Save information
-							//            println("[--------------------------------")
-							//            println(info.fun.`type`.fullName)
-							//            println(info.fun.`type`.name)
-							//            println(info.fun.`type`.args)
-							//            println(info.fun.`type`.typeArgs)
-							//            println(info.fun.`type`.declaredAs)
-							//            println(info.fun.`type`.declAs)
-							//            println(info.fun.`type`.typeId)
-							//            println("[--------------------------------")
-							// TODO: Upgrade to ImplicitConversion to include more information, like:
-							//   - Type id
-							//   - Argument names ...
+      val idxAffectedTokens = ProviderUtil.findIndicesOfTokensInRange(
+          tokens,implicitInfo.start,implicitInfo.end)
+    
+      if(idxAffectedTokens.size!=0){
+         for(idx <- idxAffectedTokens){
+           
+              // Save information
+              //            println("[--------------------------------")
+              //            println(info.fun.`type`.fullName)
+              //            println(info.fun.`type`.name)
+              //            println(info.fun.`type`.args)
+              //            println(info.fun.`type`.typeArgs)
+              //            println(info.fun.`type`.declaredAs)
+              //            println(info.fun.`type`.declAs)
+              //            println(info.fun.`type`.typeId)
+              //            println("[--------------------------------")
+              // TODO: Upgrade to ImplicitConversion to include more information, like:
+              //   - Type id
+              //   - Argument names ...
             
             // TODO: HANDLE MULTIPLE IMPLICIT CONVERSIONS for the same token!!
             
-							//   - ...
-							//            tokens(idx).set(implicitConversion_indicator)(true)
-							//            tokens(idx).set(implicitConversion_fullName)(info.fun.name)
-							//           
-							//            if(info.fun.declPos.isDefined && info.fun.declPos.get.isInstanceOf[org.ensime.api.OffsetSourcePosition]){
-							//             tokens(idx).set(implicitConversion_sourcePosition)( new org.codeprose.api.TokenProperties.SourcePosition(
-							//                 info.fun.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].file.getAbsolutePath,
-							//                 info.fun.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].offset)
-							//             )
-							//             }
-
-						}
-						// Search for more tokens
-						idx_searchStart = idx + 1 
-
-					}
-			tokens
+              //   - ...
+              //            tokens(idx).set(implicitConversion_indicator)(true)
+              //            tokens(idx).set(implicitConversion_fullName)(info.fun.name)
+              //           
+              //            if(info.fun.declPos.isDefined && info.fun.declPos.get.isInstanceOf[org.ensime.api.OffsetSourcePosition]){
+              //             tokens(idx).set(implicitConversion_sourcePosition)( new org.codeprose.api.TokenProperties.SourcePosition(
+              //                 info.fun.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].file.getAbsolutePath,
+              //                 info.fun.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].offset)
+              //             )
+              //             }
+         }
+      }    
+      
+      tokens
+      
+			
 	}
   /**
    * Enriches the tokens with implicit parameter information.
@@ -499,44 +491,34 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
 	private def enrichTokenWithImplicitParameterInformation(
 			tokens: ArrayBuffer[Token], 
 			implicitInfo: org.ensime.api.ImplicitParamInfo) : ArrayBuffer[Token] = {
-			//          println("[--------------------------------------------]")
-			//          println(info + "\n")
-			//          println("start:\t\t" + info.start)
-			//          println("end:\t\t" + info.end)
-			//          println("fun:\t\t" + info.fun)
-			//          println("params:\t\t " + info.params)
-			//          println("funIsImplicit:\t\t" + info.funIsImplicit)
-			//          println("[--------------------------------------------]\n")
+			
+     val idxAffectedTokens = ProviderUtil.findIndicesOfTokensInRange(
+          tokens,implicitInfo.start,implicitInfo.end)
+    
+      if(idxAffectedTokens.size!=0){
+         for(idx <- idxAffectedTokens){
+                 //          println("[--------------------------------------------]")
+                //          println(info + "\n")
+                //          println("start:\t\t" + info.start)
+                //          println("end:\t\t" + info.end)
+                //          println("fun:\t\t" + info.fun)
+                //          println("params:\t\t " + info.params)
+                //          println("funIsImplicit:\t\t" + info.funIsImplicit)
+                //          println("[--------------------------------------------]\n")
+                          
 
-			// Find affected tokens
-			var idx_searchStart = 0
-			var idx = 0
-
-			while(idx != -1 && idx_searchStart<tokens.length){
-
-			  idx = tokens.indexWhere({ t =>
-						val tPos = t.offset+t.length/2
-						implicitInfo.start <= tPos && implicitInfo.end > tPos
-						},idx_searchStart)
-
-						// Save information
-				  if(idx != -1){
-
-							// TODO: Allow for multiple implicit parameter per TOKEN!!!
-							//              if(tokens(idx)(tokenType).isDefined && tokens(idx)(tokenType).get.isId){
-							//                tokens(idx).set(implicitParameter_indicator)(true)
-							//                tokens(idx).set(implicitParameter_fullName)("TO BE ADDED")
-							//                tokens(idx).set(implicitParameter_sourcePosition)(new org.codeprose.api.TokenProperties.SourcePosition("filename",42))
-							//                // TODO: Add more and CORRECT information!   
-							//              }
-
-
-						}
-						// Search for more tokens
-						idx_searchStart = idx + 1 
-
-			}
-			tokens  
+              // TODO: Allow for multiple implicit parameter per TOKEN!!!
+              //              if(tokens(idx)(tokenType).isDefined && tokens(idx)(tokenType).get.isId){
+              //                tokens(idx).set(implicitParameter_indicator)(true)
+              //                tokens(idx).set(implicitParameter_fullName)("TO BE ADDED")
+              //                tokens(idx).set(implicitParameter_sourcePosition)(new org.codeprose.api.TokenProperties.SourcePosition("filename",42))
+              //                // TODO: Add more and CORRECT information!   
+              //              }
+           
+         }
+      }
+     tokens
+    
 	}
     
   
@@ -554,6 +536,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     symbolDesignationsOption match {
       case Some(symbolDesignations) => {
         import org.codeprose.api.ScalaLang._
+        import org.codeprose.api.ScalaLang.SourceSymbol
     
         symbolDesignations.syms.foreach { symDes => {
         val idx = tokens.indexWhere({ t =>
@@ -658,22 +641,30 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
    * Notes:
    * Uses occuringTypeIds.
    */
-  private def getDetailedTypeInformation() : Unit = {
+  private def getDetailedTypeInformation() : Map[Int,Option[TypeInformation]] = {
     
     // Some filtering?
-    occuringTypeIds.foreach(e => {
+    getOccuringTypesWithName().foreach(e => {
       println(e._1 + " - " + e._2)
     })
     
-    occuringTypeIds.map(e => {
+    getOccuringTypesWithName().map(e => {
+      
       val typeInspectInfo = performInspectTypeByIdReq(e._1)
-      (e._1,typeInspectInfo )      
-    }).foreach( e => {
-      println("[InspectTypeInfo]\t" + e._1 + "\n" + e._2.toString())
-    })
+      
+      import org.codeprose.util.EnsimeApiToCodeproseApi
+      val typeInformation = org.codeprose.util.EnsimeApiToCodeproseApi.TypeInspectInfoToTypeInformation(typeInspectInfo)
+      (e._1, typeInformation)      
+    }).toMap
     
+        
     
   }
+  
+  private def getWhereUsedByTypeIdInformation() : Map[Int,List[ERangePositionWithTokenIds]] = {
+     getOccuringTypesWithName().map{ e => 
+       (e._1,List[ERangePositionWithTokenIds](new ERangePositionWithTokenIds("pathToFile.scala",0,0,41,List(66,67)))) }.toMap   
+ }
   
   /**
    * Performs a InspectTypeByIdReq.
@@ -684,6 +675,10 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   private def performInspectTypeByIdReq(typeId: Int) : Option[org.ensime.api.TypeInspectInfo] = {
 		  val typeInspectInfo = ensimeClient.inspectTypeById(typeId) 
 
+      //println("Waiting before next InspectTypeReq is send (" + c.pauseBetweenReq_InspectTypeById + " ms)")
+      //Thread.sleep(c.pauseBetweenReq_InspectTypeById)
+      
+      
 				  try {
 					  val result = Await.result(typeInspectInfo,  Duration(c.timeout_InspectTypeByIdReq, MILLISECONDS))
 							  Some(result)
@@ -1278,4 +1273,55 @@ object ProviderUtil {
     id 
   } 
   
+  /**
+   * Find the indices of tokens in the offset range defined by start to end
+   * @param tokens  Tokens to be searched
+   * @param start   Source offset start
+   * @param end     Source offset end
+   * @return        List[Int] of tokens with offset in [set,end]
+   */
+  def findIndicesOfTokensInRange(tokens: ArrayBuffer[Token], start: Int, end: Int) : List[Int] = {
+        // Find affected tokens
+      var idx_searchStart = 0
+      var idx = 0
+      var indices = List[Int]()
+      
+      
+      while(idx != -1 && idx_searchStart<tokens.length){
+
+        idx = tokens.indexWhere({ t =>
+          val tPos = t.offset+t.length/2
+          start <= tPos && end > tPos
+          },idx_searchStart)
+
+          // Save information
+          if(idx != -1){
+            indices = indices :+ idx  
+            }
+            // Search for more tokens
+            idx_searchStart = idx + 1 
+          }
+      indices
+  }
+  
 }
+
+trait OccuringTypes {
+  
+   private val occuringTypeIdsWithName = scala.collection.mutable.SortedSet[(Int,String)]() 
+//   private val whereUsedCollection = scala.collection.mutable.Map[Int,scala.collection.mutable.SortedSet[ERangePositionWithTokenIds]]()
+  
+   def addOccuringType(typeId: Int, fullname: String) : Unit = {
+     occuringTypeIdsWithName += ((typeId,fullname))
+   }
+   
+   def getOccuringTypesWithName() : scala.collection.mutable.SortedSet[(Int,String)] = {
+     occuringTypeIdsWithName
+   } 
+   
+//   def getWhereUsed(typeId: Int) : Option[scala.collection.mutable.SortedSet[ERangePositionWithTokenIds]] = {
+//     whereUsedCollection.get(typeId)
+//   }
+   
+}
+

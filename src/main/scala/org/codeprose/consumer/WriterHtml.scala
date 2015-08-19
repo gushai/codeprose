@@ -1,6 +1,6 @@
 package org.codeprose.consumer
 
-import java.io.File
+import java.io.File 
 import org.codeprose.api.ScalaLang._
 import org.codeprose.api.Token
 import org.codeprose.consumer.util.CommentUtil
@@ -10,25 +10,28 @@ import org.codeprose.util.StringUtil
 import com.typesafe.scalalogging.LazyLogging
 import org.codeprose.consumer.util.OutputContextSetter
 import scala.collection.mutable.ArrayBuffer
-import org.codeprose.api.TokenProperties._
 
+import org.codeprose.api.ProjectInfo
+import org.codeprose.api.ProjectSummary
+import org.codeprose.api.TypeInformation
+
+import org.codeprose.util.CodeproseJsonFormat._
+import spray.json._
 
 
 class ResourceRelPaths(val base: String, val target: String)
 
-trait WriterContext {
-  val verbose: Boolean
-  
-}
 
 class WriterContextHtml(
     val verbose: Boolean
-    ) extends WriterContext {
-  
+    ) extends ConsumerContext(verbose) {  
   val outputFolders = List("content","js","style")
   val styleSheetRelPath = new ResourceRelPaths("/html/style.css","style/style.css")
   val jsGlobalRelPath = new ResourceRelPaths("/js/codeprose.global.js","js/codeprose.global.js")
-  val filesToCoy = List[ResourceRelPaths](styleSheetRelPath,jsGlobalRelPath)
+  val filesToCopy = List[ResourceRelPaths](styleSheetRelPath)
+  val summaryFilesRelPath = Map( "index" -> "index.html",
+                                 "js.global.typeinfo" -> "/js/codeprose.typeinfo.js",
+                                 "js.global.whereusedinfo" -> "/js/codeprose.whereusedinfo.js")
 }
 
 
@@ -37,31 +40,159 @@ class WriterHtml(outputPath: File)(implicit c: WriterContextHtml)
 extends Consumer with LazyLogging {
  
   
-	def generateOutput(
-			info: scala.collection.mutable.ArrayBuffer[(java.io.File, scala.collection.mutable.ArrayBuffer[Token])]
-			): Unit = {
+	def generateOutput(projectInfo: ProjectInfo) : Unit = {
     
-      import org.codeprose.util.StringUtil
-			val filenamesShorted = StringUtil.getUniqueShortFileNames(info.map(e => e._1.getAbsolutePath).toList)
-			val outputFilenames = filenamesShorted.map(s => outputPath + "/content/" + s.replace("/","_") + ".html")
-      
-      val filenamesOriginalToOutput =  info.map(e => e._1.getAbsolutePath).zip(outputFilenames).toArray
-      
-      logger.info("Generating output ...")					
-
-      // Output context
       setupOutputContext(outputPath)
-      
-      generateIndexFile(info.map(e => e._1.getAbsolutePath()).toList,filenamesShorted,outputFilenames)
-      
-			var idx=0
-			for(i<-info){     
-			  generateOutputFile(new File(outputFilenames(idx)),i._1,i._2,filenamesOriginalToOutput)
-				idx+=1
-      }
-			logger.info("Done.")
+    
+      generateSummaryPages(projectInfo)
+      generateIndividualPages(projectInfo)
+    
+      // --------------------------------------------------------------------
+      // OLD - Stuff - Begin
+    
+//      val info = projectInfo.enrichedTokens
+//      
+//      import org.codeprose.util.StringUtil
+//			val filenamesShorted = StringUtil.getUniqueShortFileNames(info.map(e => e._1.getAbsolutePath).toList)
+//			val outputFilenames = filenamesShorted.map(s => outputPath + "/content/" + s.replace("/","_") + ".html")
+//      
+//      val filenamesOriginalToOutput =  info.map(e => e._1.getAbsolutePath).zip(outputFilenames).toArray
+//      
+//      logger.info("Generating output ...")					
+//
+//      // Output context
+//      setupOutputContext(outputPath)
+//      
+//      generateIndexFile(info.map(e => e._1.getAbsolutePath()).toList,filenamesShorted,outputFilenames)
+//      
+//			var idx=0
+//			for(i<-info){     
+//			  generateOutputFile(new File(outputFilenames(idx)),i._1,i._2,filenamesOriginalToOutput)
+//				idx+=1
+//      }
+//			logger.info("Done.")
 	}
 
+  
+  /**
+   * Generates the output for the individual source files.
+   * @param projectInfo ProjectInfo 
+   */
+  private def generateIndividualPages(projectInfo: ProjectInfo) : Unit = {
+    logger.info("Generating output for the source files ...")  
+  }
+  
+  /**
+   * Generates and writes to disk the projects summary pages (incl. javascript 'databases') 
+   * @param projectInfo ProjectInfor
+   * 
+   */
+  private def generateSummaryPages(projectInfo: ProjectInfo) : Unit = {
+   
+    //generateIndexPage(projectInfo.)
+    //generateWhereUsedPage()
+    //generateTypeInformationPage()
+    
+    generateGlobalJSInformationFiles(projectInfo.summary)
+    
+    
+  }
+  
+  
+  private def generateIndexPage(projectSummary: ProjectSummary) : Unit = { 
+    
+  }
+  
+  private def generateWhereUsedPage() : Unit = { 
+    
+  }
+  
+  private def generateTypeInformationPage() : Unit = { 
+    
+  }
+  
+  private def generateGlobalJSInformationFiles(projectSummary: ProjectSummary) : Unit = {
+    
+    logger.info("Generating global js information file ...")
+    
+    import org.codeprose.api.ScalaLang.typeInformation
+    
+    projectSummary(typeInformation) match {
+      case Some(tpeInfos) => {
+        generateGlobalJSTypeInfo(tpeInfos)
+      } 
+      case None => { logger.error("No type information provided in project summary.") }
+    }
+    
+    //import org.codeprose.api.ScalaLang.whereUsedByTypeId
+  }
+  
+  /**
+   * Generate and saves type information to disk.
+   */
+  private def generateGlobalJSTypeInfo(typeInfos: Map[Int,Option[TypeInformation]]) : Unit = {
+    
+    val relFileName = c.summaryFilesRelPath.get("js.global.typeinfo")
+    
+    if(relFileName.isDefined){
+      
+      val outputFilename= new File(outputPath.getAbsolutePath + relFileName.get)
+      logger.info("Type information: \t" + relFileName + " ...")      
+
+      val beg = s"""
+        // codeprose
+        //
+        // type information
+        function typeInformation(typeId){ 
+          tInfo = null;
+          switch(typeId){
+          
+          """
+        
+      val end = s"""
+        default: \n\t\t tInfo=null;
+        }
+        return tInfo;
+      };"""
+      
+      val entries = typeInfos.map(e => {
+        val typeId = e._1
+        e._2 match {
+          case Some(tI) => {            
+            val jsonStr = tI.toJson.compactPrint
+            s"""\t case $typeId:\n\t\ttInfo=""" + jsonStr + s"""; break;"""
+          } 
+          case None => {""}
+        }
+        
+      }).mkString("\n")
+      
+      FileUtil.writeToFile(outputFilename,beg+entries+end)      
+
+    } else {
+      logger.error("Unable to generate js file with type information!")
+    }
+    
+  }
+  
+  private def generateGlobalJSWhereUsedInfo() : Unit = {
+    
+  }
+  
+  /**
+   * Sets up the output context
+   * @param outputPath  Main output path.
+   */
+  private def setupOutputContext(outputPath: File) : Unit = {
+    val setter = new OutputContextSetter(outputPath)
+    setter.setFolderStructure(c.outputFolders)
+    c.filesToCopy.foreach({ f => setter.copyResource(f.base, new File(outputPath,f.target)) }) 
+  }
+  
+  // OLD - BEGIN
+  // --------------------------------------------------------------------------------------
+  
+  
 	private def generateIndexFile(
       originalFilenames: List[String], 
       filenamesShortened : List[String], 
@@ -69,7 +200,7 @@ extends Consumer with LazyLogging {
       ) : Unit = {   
 			val outputFilename= new File(outputPath.getAbsolutePath + "/index.html")
       logger.info("Index page: \t" + outputFilename + " ...")      
-			val htmlFrame = new HtmlIndexContext()			
+			val htmlFrame = new HtmlSummaryFileContext()			
 			FileUtil.writeToFile(outputFilename,htmlFrame.begin + htmlFrame.getFileListing(originalFilenames,filenamesShortened,links) + htmlFrame.end)      
 	} 
 
@@ -84,7 +215,7 @@ extends Consumer with LazyLogging {
       if(c.verbose)
         logger.info(srcFile + " ... ")
       
-			val htmlContext = new HtmlContext(
+			val htmlContext = new HtmlSrcFileContext(
           srcFile.getAbsolutePath(),
           getPackageInformationForFile(srcFile,info),
           filenamesOriginalToOutputNames)
@@ -115,7 +246,7 @@ extends Consumer with LazyLogging {
   }
   
 	private def generateHtmlEntries(
-			infoSorted: scala.collection.mutable.ArrayBuffer[Token])(implicit htmlContext: HtmlContext)
+			infoSorted: scala.collection.mutable.ArrayBuffer[Token])(implicit htmlContext: HtmlSrcFileContext)
   : Iterable[String] = {
 
     // Group entries into: List[List[Token]] where each List contains a line of text or a MultilineComment
@@ -200,7 +331,7 @@ extends Consumer with LazyLogging {
       currentLine: Int,
       codeTableOpen: Boolean,
       codeTableClose: Boolean
-      )(implicit htmlContext: HtmlContext) : (Array[String],Int,Boolean) = {
+      )(implicit htmlContext: HtmlSrcFileContext) : (Array[String],Int,Boolean) = {
     
     var currentLineUpdate = currentLine
     var codeTableOpenUpdate = codeTableOpen
@@ -352,859 +483,22 @@ extends Consumer with LazyLogging {
    }
   }
   
-  private def setupOutputContext(outputPath: File) : Unit = {
-    val setter = new OutputContextSetter(outputPath)
-    setter.setFolderStructure(c.outputFolders)
-    c.filesToCoy.foreach({ f => setter.copyResource(f.base, new File(outputPath,f.target)) }) 
-	}
+  
 }
 
 
 
 
 
-class HtmlContext(filename: String, packag: String, 
-    val filenamesOriginalToOutputNames : Array[(String,String)]) {
 
-    val tokenToHtmlEntry = new TokenToOutputEntry(filenamesOriginalToOutputNames)
-
+trait TokenToOutputEntry {
+  val scriptElements = ArrayBuffer[String]()
+  def getTokenEntry(token: Token) : (String,String)
   
-	    val fileNameWithoutPath =  filename.slice(filename.lastIndexOf("/")+1, filename.length())  
-			val fileNameWithoutPathAndEnding = fileNameWithoutPath.slice(0,fileNameWithoutPath.lastIndexOf("."))		
-			val fileNameEnding = fileNameWithoutPath.slice(fileNameWithoutPath.lastIndexOf(".")+1,fileNameWithoutPath.length)
-
-      
-			def getBegin() : String = {
-      
-      val perTokenScripts = tokenToHtmlEntry.scriptElements.mkString("\n", "\n\n", "\n")
-      
-      
-      val perFileScripts = List(
-      s"""
-        // Highlight where used within file
-        $$("[id^='T']").hover( 
-          function(){ toHighlight = $$(this).data("cp-whereusedinfile"); $$(toHighlight).toggleClass("highlightWhereUsedWithinFile"); },
-          function(){ toHighlight = $$(this).data("cp-whereusedinfile"); $$(toHighlight).toggleClass("highlightWhereUsedWithinFile"); }
-        );""",    
-      s"""
-        // Highlight implicit conversions and parameters
-      function highlightImplicitConversionsAndParameters(){
-
-        // Implicit conversions
-        $$('*[data-cp-implicitconversion=true]').toggleClass("highlightImplicitConversion");
-
-        // Implicit parameters
-        // Color to use highlightImplicitParameter
-      }""",
-      s"""
-      // Key events     
-      $$(document).keypress(function(e){
-        // i
-        if(e.keyCode == 105){
-          highlightImplicitConversionsAndParameters()
-        }     
-      });""",
-      s"""
-            // Create tooltip entries
-      function createTooltipHtmlFromDataAttr(elem) { 
-    
-        // Fullname
-          fullname = "<b>" + $$(elem).data("cp-fullname") + "</b>";
-        
-    // TypeId
-    typeId = $$(elem).data("cp-typeid")
-
-    // Declaration
-    rawLinkToDeclaration = $$(elem).data("cp-declaredat");
-    linkToDeclaration = ""
-          if(rawLinkToDeclaration){
-      console.log( rawLinkToDeclaration);
-            linkToDeclaration = "<a href='" + rawLinkToDeclaration + "'>Declaration</a>" + "<br/>";
-          }
-
-      // Definition
-      rawLinkToTypeDef = mappingToTypeDefinition(typeId)
-        
-      linkToDefintion = "";
-      if(rawLinkToTypeDef.length !=  0){
-        linkToDefintion = "<a href='" + rawLinkToTypeDef + "'>Definition</a>" + "<br/>";
-      }       
-
-      // Where used in project
-      rawLinkToWhereUsedProject = mappingToWhereUsedInProject(typeId)
-          
-      linkToWhereUsedInProject = "" 
-      if(rawLinkToWhereUsedProject.length  !=  0){
-        linkToWhereUsedInProject = "<a href='" + rawLinkToWhereUsedProject + "'>Where used in project</a>" + "<br/>";
-      }      
-    
-      // Implicit conversion 
-      linkToImplicitConversion =  "";
-      isImplicitConversion = $$(elem).data("cp-implicitconversion");
-      if(isImplicitConversion){
-    
-      implicitConversionFullname = $$(elem).data("cp-implicitconversionfullname");
-      implicitConversionDeclaredAt = $$(elem).data("cp-implicitconversiondeclaredat");   
-  if(implicitConversionDeclaredAt != null){
-        linkToImplicitConversion = "<a href='" + implicitConversionDeclaredAt + "'>Impl. conv: " + implicitConversionFullname + "</a>" + "<br/>";
-  } else {
-    linkToImplicitConversion = "Impl. conv: " + implicitConversionFullname + "<br/>";
-  }
-  }
-
-  // Implicit Parameter
-          linkToImplicitParameter = ""
-  isImplicitParameter = $$(elem).data("cp-implicitparameter");
-  if(isImplicitParameter){
-        implicitParameterFullname = $$(elem).data("cp-implicitparameterfullname");
-       implicitParameterDeclaredAt = $$(elem).data("cp-implicitparameterdeclaredat");   
-    if(implicitParameterDeclaredAt != null){
-    linkToImplicitParameter = "<a href='" + implicitParameterDeclaredAt + "'>Impl. para: " + implicitParameterFullname + "</a>" + "<br/>";
-    } else {
-      linkToImplicitParameter = "Impl. conv: " + implicitConversionFullname + "<br/>";
-    } 
-  };
-      
-  // Output structure 
-          html = "<div class='cp-tooltip'>" + fullname + "<br/><br/>" +
-            linkToDeclaration +
-            linkToDefintion +
-            linkToWhereUsedInProject +
-            linkToImplicitConversion +
-            linkToImplicitParameter + 
-            "</div>";
-      
-          return html;
-      }
-""",
-      s"""
-        // Tooltip
-        // $$("[id^='T']").tooltip({
-        $$('*[data-cp-tooltipdisplay=true]').tooltip({
-        content: function () {           
-         return createTooltipHtmlFromDataAttr(this);
-        },
-        show: null,
-        disabled: false,
-       // position: {of: $$("#LCOM0"), at: "left"},
-       position: { my: 'left-center', at: "right+7 right"},
-        close: function (event, ui) {
-            ui.tooltip.hover(
-
-            function () {
-                $$(this).stop(true).fadeTo(400, 1);
-            },
-
-            function () {
-                $$(this).fadeOut("100", function () {
-                    $$(this).remove();
-                })
-            });
-        }
-    });"""
-      ).mkString("\n", "\n\n", "\n")
-      
-      
-      s"""<!doctype HTML>
-			<html lang="en">
-			<head>
-			<meta http-equiv="content-type" content="text/html; charset=utf-8" />
-			<link rel="stylesheet" type="text/css" href="../style/style.css" media="screen" />
-      <link rel="stylesheet" type="text/css" href="http://ajax.aspnetcdn.com/ajax/jquery.ui/1.10.0/themes/black-tie/jquery-ui.css" media="screen" />
-			<title>$fileNameWithoutPath</title>
-      <script src="../js/codeprose.global.js"></script>
-      <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
-      <script src="http://ajax.aspnetcdn.com/ajax/jquery.ui/1.10.0/jquery-ui.js"></script>
-			<script type="text/javascript">
-      $$(document).ready(function(){ """ +
-      perFileScripts +
-      perTokenScripts + 
-      s"""\n});
-			</script>
-			</head>
-			<body>
-			<div align="center">
-			<div class="header" id="header" align="center"> 
-			<div style="float:left;"> 
-			<span style="font-size:1.5em;font-weight:bold;" title="$filename">$fileNameWithoutPath&nbsp;</span><span style="font-size:1em;">$packag</span></div>
-			<div style="float:right;"><a style="color:black;font-weight:bold;" href="../index.html">overview</a></div>
-			</div>
-			<div class="content">\n"""
-      }
-			
-      def getEnd() : String  = {
-        s"""
-          
-      <div class="footer">generated by codeprose. help and support on <a href="http://github.com/sth/codeprose" target="blank">github</a>.</div>
-			</div></div></body></html>"""
-        }
-
-      
-      def textTable_getBegin() : String = { s"""<table class="table-text">""" } 
-
-      def textTable_getEnd() : String = { s"""</table>\n\n""" } 
-      
-      def textTable_getEntry(comment: String, mainText: String) : String = {
-        s"""<tr class="table-text-line">
-<td class="table-text-comment">$comment</td>
-<td class="table-text-text">$mainText</td>
-</tr>"""
-      } 
-
-      def codeTable_getBegin() : String = { """<table class="table-code">""" }
-      
-      
-      def codeTable_getEntry(lineNumber: Int, comment: String, code: String) : String = {
-        val lineNumStr = lineNumber.toString()
-        s"""<tr id="LCONT$lineNumStr" class="table-code-line" >
-<td id="LCOM$lineNumStr" class="table-code-comment">$comment</td>
-<td id="L$lineNumStr" class="table-code-linenumber" data-line-number="$lineNumStr">$lineNumStr</td>
-<td id="LC$lineNumStr" class="table-code-code">
-<pre>$code</pre>
-</td>
-</tr>""" 
-      }
-      
-      def codeTable_getEnd() : String = { s"""</table>\n\n""" }
-      
 }
 
-class HtmlIndexContext(){
-
-	val begin =s"""<!doctype HTML>
-			<html lang="en">
-			<head>
-			<meta http-equiv="content-type" content="text/html; charset=utf-8" />
-			<link rel="stylesheet" type="text/css" href="./style/style.css" media="screen" />
-			<title>Overview</title>
-      <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
-      <script src="./js/codeprose.global.js"></script>
-			<script type="text/javascript">
-			</script>
-			</head>
-			<body>
-			<div align="center">		
-			<div class="header" id="header"> 
-			<div style="text-align:left;"> 
-			<span style="font-size:1.5em;font-weight:bold;">Overview&nbsp;</span></div>
-      <div style="text-align:right;"></div>			
-			</div>
-			<div class="content">
-			"""
-
-			val end  = s"""<div class="footer">generated by codeprose. help and support on <a href="http://github.com/sth/codeprose" target="blank">github</a>.</div>
-			</div></div></body></html>"""
-
-			def getFileListing(
-          originalFilenames: List[String],
-          labels: List[String], 
-          links: List[String]
-          ): String = {
-			
-      // TODO group based on folders
-			val frameBeg = s"""<div class="textbox">"""
-			val frameEnd = s"""</div>\n"""
-			val beg = "<h2>" + "Files" +"</h2>"                 
-			
-      
-      val dataAttributesPrefix = "data-cp-"
-      
-      var entries = (originalFilenames zip ( labels zip links)).map{e => (e._1,e._2._1,e._2._2)}
-
-			frameBeg+ beg + "<ul>" + entries.map({e => 
-			s"""<li><a href="""" + 
-			e._3 + s"""" title="Originial filename:""" +e._1 + s"""">""" +
-			e._2 + s"""</a></li>"""}).mkString("\n") + "</ul>\n" + frameEnd
-      
-      
-	}
-
-}
-
-
-class TokenToOutputEntry(val filenamesOriginalToOutputNames: Array[(String,String)]){
-  
-   val scriptElements = ArrayBuffer[String]()
-  
-  
-   private def getTokenEntry_WithInformation(token: Token) : (String,String) = {
-    val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
-    (s"""<span title=""""+ tInfo + s"""">""",s"""</span>""")
-   }
-  
-   private def getTokenEntry_WithOutInformation(token: Token) : String = {
-     token.text
-  }
-   
-   def getTokenEntry(token: Token) : (String,String) = {
-   
-     import org.codeprose.api.ScalaLang._
-     
-     val out = token(tokenType) match {
-       case Some(tt) => {
-          val text = if(tt.isKeyword){
-            handleKeywords(token,tt)             
-          } else if(tt.isLiteral) {
-            handleLiterals(token,tt)
-          } else if(tt.isComment) {
-            handleComments(token,tt)
-          } else if(tt.isId){
-            handleIds(token,tt)
-          }
-          else {        
-            
-            tt match {
-              case Tokens.WS => {
-                handleWS(token)
-              }
-              case _ => {
-                ("","")
-              }
-            }
-            
-          }
-          text
-       }
-       case None => {
-         ("","")
-       }
-       
-     }
-     out 
-   }
- 
-
-   private def handleComments(token: Token, tt: ScalaTokenType) : (String,String) = {
-		   import org.codeprose.consumer.util.MarkdownConverter
-		   import org.codeprose.consumer.util.CommentUtil
-
-
-		   tt match{ 
-		   case Tokens.MULTILINE_COMMENT => {
-			   val s = if(CommentUtil.isScalaDocComment(token.text)){
-				   (s"""<span class="scaladoc">""","</span>")
-			   } else {
-				   (MarkdownConverter.apply(CommentUtil.cleanMultilineComment(token.text)),"") 
-			   }
-			   s
-		   }        
-		   case _ => {          
-			   //val tInfo = token.toString().replace(";",";\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
-				 //	   s"""<span class="comment" title="""" + tInfo + s"""">""" + token.text + "</span>"
-         (s"""<span class="comment">""", "</span>")
-		   }        
-		   }
-   }
-  
-  
-   /**
-    * 
-    */
-   private def handleKeywords(token: Token, tt: ScalaTokenType) : (String,String) = {
-      import org.codeprose.api.ScalaLang.Tokens._
-      
-      val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
-    
-      
-      tt match {
-      case ABSTRACT => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case CASE => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case CATCH => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case CLASS => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case DEF => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case DO => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case ELSE => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case EXTENDS => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case FINAL => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case FINALLY => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case FOR => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case FORSOME => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case IF => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case IMPLICIT => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case IMPORT => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case LAZY => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case MATCH => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case NEW => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case OBJECT => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case OVERRIDE => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case PACKAGE => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case PRIVATE => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case PROTECTED => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case RETURN => {
-        (s"""<span class="return" title="$tInfo">""", "</span>") 
-      }
-      case SEALED => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case SUPER => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case THIS => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case THROW => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case TRAIT => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case TRY => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case TYPE => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case VAL => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case VAR => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case WHILE => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case WITH => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>") 
-      }
-      case YIELD => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>")
-      }
-      case _ => {
-        (s"""<span class="keyword" title="$tInfo">""", "</span>")
-      }
-     }
-   }
-   private def handleLiterals(token: Token, tt: ScalaTokenType) : (String,String) = {
-    import org.codeprose.api.ScalaLang.Tokens._
-    
-    val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
-    
-    val dataAttributes = getHtmlDataAttributes(token,"data-cp-").map(e=> e._1 + "=" + e._2).mkString(" "," "," ")
-    
-    
-    tt match {
-    case CHARACTER_LITERAL => {
-      (s"""<span class="stringLiteral" $dataAttributes title="""" + tInfo +s"""">""", "</span>")
-    }
-    case INTEGER_LITERAL => {
-      (s"""<span class="numberLiteral" $dataAttributes title="""" + tInfo +s"""">""", "</span>")
-    }
-    case FLOATING_POINT_LITERAL => {
-      (s"""<span class="numberLiteral" $dataAttributes title="""" + tInfo +s"""">""", "</span>")
-    }
-    case STRING_LITERAL => {
-      (s"""<span class="stringLiteral" $dataAttributes title="""" + tInfo +s"""">""", "</span>")
-    }
-    case STRING_PART => {
-      (s"""<span class="stringLiteral" $dataAttributes title="""" + tInfo +s"""">""", "</span>")
-    }
-    case SYMBOL_LITERAL => {
-      (s"""<span class="literal" $dataAttributes title="""" + tInfo +s"""">""", "</span>")
-    }
-    case TRUE => {
-      (s"""<span class="keyword" $dataAttributes title="""" + tInfo +s"""">""", "</span>")
-    }
-    case FALSE => {
-      (s"""<span class="keyword" $dataAttributes title="""" + tInfo +s"""">""", "</span>")
-    }
-    case NULL => {
-      (s"""<span class="keyword" $dataAttributes title="""" + tInfo +s"""">""", "</span>")
-    }
-
-    }
-   }
-   
-   private def handleIds(token: Token, tt: ScalaTokenType) : (String,String) = {
-    
-     val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
-     val titleElem = s""" title="$tInfo" """
-     
-     
-     // Script element for highlight where used within file
-     
-     // TODO: REMOVE - BEGIN
-     // Replaced by one script per file
-     /*
-     token(internalTokenId) match {
-       case Some(id) => {
-         
-         scriptElements.append(
-             s"""$$("#T""" + id + s"""").hover( 
-          function(){ toHighlight = $$(this).data("cp-whereusedinfile"); $$(toHighlight).css("background-color","yellow"); },
-          function(){ toHighlight = $$(this).data("cp-whereusedinfile"); $$(toHighlight).css("background-color","#F8F8F8"); }
-          );""")
-       }
-       case None => {}
-     } */
-     // REMOVE - END
-     
-     
-     
-     
-     
-     
-     import org.codeprose.api.ScalaLang.Tokens._ 
-     
-     tt match {
-       case VARID => {
-           handleVARID(token)
-         } 
-        case PLUS => {
-          hanldeID(token)
-         } 
-        case MINUS => {
-          hanldeID(token)
-         } 
-        case STAR => {
-          hanldeID(token)
-         } 
-        case PIPE => {
-          hanldeID(token)
-         } 
-        case TILDE => {
-          hanldeID(token)
-         } 
-        case EXCLAMATION => {
-          hanldeID(token)
-         } 
-         case _ => {
-           (s"""<span $titleElem>""","</span>")
-         }
-     }
-   }
-   
-   
-  private def handleVARID(token: Token) : (String,String) = {
-
-		// Fill title information
-		val tInfo = token.toString().replace(";", ";\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
-    
-    val iTIdHtmlElement = token(internalTokenId) match {
-      case Some(id) => {s""" id="T$id" """}
-      case None => s""" """
-    }
-        
-    val (linkToDeclaredAt_beg,linkToDeclaredAt_end) = if(token(declaredAt_TokenIdSrcPos).isDefined){
-      
-      val srcPos = token(declaredAt_TokenIdSrcPos).get
-      
-      // Get full file to output translation
-      val outputFileRelPath = getRelativeOutputFilenameFromOriginalFile(srcPos.filename)
-      if(outputFileRelPath.length>0){
-          val tId = srcPos.tokenId
-          val link = "." + outputFileRelPath + "#" + "T" + tId.toString
-          (s"""<a href="$link" class="in-code">""","</a>")        
-      } else {
-        ("","")
-      }
-      // Old delete - beg
-//      val outputFileRelPath = filenamesOriginalToOutputNames.filter( e => e._1 == srcPos.filename).map(e => "./" + e._2)
-//      if(outputFileRelPath.length>0){
-//        val tId = srcPos.tokenId
-//        val idx = outputFileRelPath(0).lastIndexOf("/")
-//        val link = "." + outputFileRelPath(0).slice(idx,outputFileRelPath(0).length) + "#" + "T" + tId.toString
-//        (s"""<a href="$link" class="in-code">""","</a>")
-//      } else {
-//        ("","")
-//      }
-      // old delete - end
-    } else { ("","") }
-    
-    val spanClass = token(symbolDesignation) match {
-      case Some(spClass) => {s""" class="$spClass" """}
-      case None => " "
-    }
-    
-    // Data attributes 
-    val dataAttributes = getHtmlDataAttributes(token,"data-cp-").map(e=> e._1 + "=" + e._2).mkString(" "," "," ")
-    
-    // Set output 
-    val spanElementBeg = s"""<span""" + spanClass + iTIdHtmlElement + dataAttributes + s""" title="$tInfo">"""
-    val spanElementEnd = "</span>"
-      
-    if(linkToDeclaredAt_beg.length()!=0){
-      (linkToDeclaredAt_beg + spanElementBeg, spanElementEnd + linkToDeclaredAt_end)
-    } else {
-      (spanElementBeg,spanElementEnd)
-    }
-		
-   }
-   
-   private def hanldeID(token: Token) : (String, String) = {
-     // Fill title information
-    val tInfo = token.toString().replace(";", ";\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
-    
-    val iTIdHtmlElement = token(internalTokenId) match {
-      case Some(id) => {s""" id="T$id" """}
-      case None => s""" """
-    }
-    // Link elements to declared_At   
-    val (linkToDeclaredAt_beg,linkToDeclaredAt_end) = if(token(declaredAt_TokenIdSrcPos).isDefined){
-      
-      val srcPos = token(declaredAt_TokenIdSrcPos).get
-      
-      // Get full file to output translation
-      val outputFileRelPath = getRelativeOutputFilenameFromOriginalFile(srcPos.filename)
-      if(outputFileRelPath.length>0){
-          val tId = srcPos.tokenId
-          val link = "." + outputFileRelPath + "#" + "T" + tId.toString
-          (s"""<a href="$link" class="in-code">""","</a>")        
-      } else {
-        ("","")
-      }
-    } else { ("","") }
-    
-    val spanClass = token(symbolDesignation) match {
-      case Some(spClass) => {s""" class="$spClass" """}
-      case None => " "
-    }
-    
-   
-        
-     // Data attributes 
-    val dataAttributes = getHtmlDataAttributes(token,"data-cp-").map(e=> e._1 + "=" + e._2).mkString(" "," "," ")
-    
-    // Set output 
-    val spanElementBeg = s"""<span""" + spanClass + iTIdHtmlElement + dataAttributes + s""" title="$tInfo">"""
-    val spanElementEnd = "</span>"
-      
-    if(linkToDeclaredAt_beg.length()!=0){
-      (linkToDeclaredAt_beg + spanElementBeg, spanElementEnd + linkToDeclaredAt_end)
-    } else {
-      (spanElementBeg,spanElementEnd)
-    }
-    
-   }
-  
-   private def handleWS(token: Token) : (String,String) = {
-     ("","")
-   }
-   
-   private def getHtmlDataAttributes(token: Token, dataAttributesPrefix: String) : ArrayBuffer[(String,String)] = {
-     
-     
-     
-     token(tokenType) match {
-       case Some(tt) => {
-         
-         if(tt.isId){
-           getHtmlDataAttributesIds(token, dataAttributesPrefix)
-         } else if (tt.isKeyword) {
-           ArrayBuffer[(String,String)]()
-         } else if (tt.isXml) {
-           ArrayBuffer[(String,String)]()
-         } else if (tt.isComment){
-           ArrayBuffer[(String,String)]()
-         } else if (tt.isLiteral) {
-           getHtmlDataAttributesLiterals(token, dataAttributesPrefix)
-         } else {
-           ArrayBuffer[(String,String)]()
-         }
-         
-       }
-       case None => {
-         ArrayBuffer[(String,String)]()
-       }
-     }
-   } 
-   
-   private def getHtmlDataAttributesIds(token: Token, dataAttributesPrefix: String) : ArrayBuffer[(String,String)] = {
-    val dataAttributes = ArrayBuffer[(String,String)]()
-  
-    token(fullName) match {
-      case Some(name) => { dataAttributes +=  ((dataAttributesPrefix + "fullname",s""""""" + name.toString + s""""""")) } 
-      case None => {}
-    } 
-    
-    token(typeId) match {
-      case Some(id) => { dataAttributes += ((dataAttributesPrefix + "typeid",s""""""" + id.toString + s""""""")) }
-      case None => {}
-    }
-     
-    token(internalTokenId) match {
-      case Some(id) => { dataAttributes += ((dataAttributesPrefix + "internaltokenid",s""""""" + id.toString + s""""""")) }
-      case None => {}
-    } 
-    
-    token(whereUsed_WithinFileTokenIdSrcPos) match {
-      case Some(srcPos) => { val tokenIds=srcPos.map(e=> "#T" + e.tokenId ).mkString("",",","") 
-        dataAttributes += ((dataAttributesPrefix + "whereusedinfile",s""""""" + tokenIds + s""""""")) }
-      case None => {}
-    } 
-           
-    token(declaredAt_TokenIdSrcPos) match {
-      case Some(srcPos) => {        
-        val link = "." + getRelativeOutputFilenameFromOriginalFile(srcPos.filename) + "#" + "T" + srcPos.tokenId.toString
-        dataAttributes += ((dataAttributesPrefix + "declaredat",s""""""" + link + s"""""""))
-      }
-      case None => {}
-    }
-    
-   token(implicitConversion_indicator) match {
-      case Some(name) => { 
-        dataAttributes += ((dataAttributesPrefix + "implicitconversion",s""""""" + true + s""""""")) 
-      }
-      case None => { } 
-    }
-    
-    token(implicitConversion_fullName) match {
-      case Some(name) => { 
-        dataAttributes += ((dataAttributesPrefix + "implicitconversionfullname",s""""""" + name + s""""""")) 
-      }
-      case None => { } 
-    }
-
-    token(implicitConversion_sourcePosition) match {
-      case Some(srcPos) => { 
-        // TODO: ADD token ID
-        val link = "." + getRelativeOutputFilenameFromOriginalFile(srcPos.filename) + "#" + "T" + ""
-        dataAttributes += ((dataAttributesPrefix + "implicitconversiondeclaredat",s""""""" + link + s"""""""))          
-         
- 
-      }
-      case None => { } 
-    }
-    
-    token(implicitParameter_indicator) match {
-      case Some(name) => { 
-        dataAttributes += ((dataAttributesPrefix + "implicitparameter",s""""""" + true + s""""""")) 
-      }
-      case None => { } 
-    }
-    
-    token(implicitParameter_fullName) match {
-      case Some(name) => { 
-        dataAttributes += ((dataAttributesPrefix + "implicitparameterfullname",s""""""" + name + s""""""")) 
-      }
-      case None => { } 
-    }
-
-    token(implicitParameter_sourcePosition) match {
-      case Some(srcPos) => { 
-        // TODO: ADD token ID
-        val link = "." + getRelativeOutputFilenameFromOriginalFile(srcPos.filename) + "#" + "T" + ""
-        dataAttributes += ((dataAttributesPrefix + "implicitparameterdeclaredat",s""""""" + link + s"""""""))          
-         
- 
-      }
-      case None => { } 
-    }
-    
-    
-    dataAttributes += ((dataAttributesPrefix + "tooltipdisplay",s""""""" + true + s"""""""))
-     
-    
-    dataAttributes
-   }
-   
-   private def getHtmlDataAttributesLiterals(token: Token, dataAttributesPrefix: String) : ArrayBuffer[(String,String)] = {
-     
-   val dataAttributes = ArrayBuffer[(String,String)]()
-  
-     token(tokenType) match {
-      case Some(name) => { 
-        dataAttributes += ((dataAttributesPrefix + "fullname",s""""""" + name.toString + s""""""")) 
-      }
-      case None => { } 
-    }
-   
-    token(implicitConversion_indicator) match {
-      case Some(name) => { 
-        dataAttributes += ((dataAttributesPrefix + "implicitconversion",s""""""" + true + s""""""")) 
-        // Add others: Name and Tokenbased source position 
-      }
-      case None => { } 
-    }
-    
-    token(implicitConversion_fullName) match {
-      case Some(name) => { 
-        dataAttributes += ((dataAttributesPrefix + "implicitconversionfullname",s""""""" + name + s""""""")) 
-      }
-      case None => { } 
-    }
-
-    token(implicitConversion_sourcePosition) match {
-      case Some(srcPos) => { 
-        // TODO: ADD token ID
-          val link = "." + getRelativeOutputFilenameFromOriginalFile(srcPos.filename) + "#" + "T" + ""
-          dataAttributes += ((dataAttributesPrefix + "implicitconversiondeclaredat",s""""""" + link + s"""""""))
-      }
-      case None => { } 
-    }
-    
-    
-    
-    dataAttributes += ((dataAttributesPrefix + "tooltipdisplay",s""""""" + true + s"""""""))
-    
-    dataAttributes
-     
-   }
-   
-   
-   def getOutputFilenameFromOriginalFile(orgFile: String) : String = {
-      val paths = filenamesOriginalToOutputNames.filter( e => e._1 == orgFile).map(e => "./" + e._2)
-      if(paths.size > 0){
-        paths(0)
-      } else {
-        ""
-      }
-   }
-   
-   def getRelativeOutputFilenameFromOriginalFile(orgFile: String) : String = {
-     
-     val absPath = getOutputFilenameFromOriginalFile(orgFile)
-     if(absPath.length > 0){
-       val idx = absPath.lastIndexOf("/")
-       absPath.slice(idx,absPath.length)
-     } else {
-       ""
-     }
-     
-   }
+class TokenToOutputEntryHtml(val filenamesOriginalToOutputNames: Array[(String,String)]) extends TokenToOutputEntry {
+  def getTokenEntry(token: Token) : (String,String) = {
+    ("","")
+  }  
 }

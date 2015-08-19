@@ -37,7 +37,7 @@ class EnsimeProviderContext(
   
   // All below in ms
   val timeout_ConnectionInfoReq = 500
-  val timeout_SymbolInfoReq = 350
+  val timeout_SymbolInfoReq = 500
   val timeout_SymbolDesignationsReq = 700
   val timeout_ImplicitInfoReq = 700
   val timeout_UsesOfSymbolAtPointReq = 700
@@ -106,8 +106,6 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
      // Project summary information
      val summary = getProjectSummary(files)
           
-     println(summary.toString())
-     
      new ProjectInfo(enrichedTokenPerFile,summary)
    }
   
@@ -134,7 +132,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   } 
    
   /**
-   * Creates enriched Tokens
+   * Creates enriched Tokens.
    * @param Files to be processed. Assumes only Scala files are provided.
    * @return Enriched Tokens sorted per file. If isInitialized is false raw tokens are returned.
    */
@@ -279,7 +277,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   private def enrichTokenIds(
       token: Token, file: File, info: ArrayBuffer[(File,ArrayBuffer[Token])]) : Token = {
         
-    var enrichedTokenWithSymbol = enrichTokenWithSymbolInfo(token, file, info)
+    val enrichedTokenWithSymbol = enrichTokenWithSymbolInfo(token, file, info)
      
     enrichTokenWithUsesOfSymbolInfo(enrichedTokenWithSymbol, file, info)
   }
@@ -352,7 +350,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
    */
   private def enrichTokenWithUsesOfSymbolInfo(
       token: Token, file: File, info: ArrayBuffer[(File,ArrayBuffer[Token])]) : Token = {
-           
+   
     val usesOfSymbolsOption = performUsesOfSymbolReq(file, token.offset)
     
     usesOfSymbolsOption match {
@@ -607,7 +605,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   }
   
   /**
-   * Perfroms a SymbolDesignationReq with all symbol types requested.
+   * Performs a SymbolDesignationReq with all symbol types requested.
    * @param file  File to be checked.
    * @param 
    * @return      Option[org.ensime.api.SymbolDesignations]
@@ -644,11 +642,13 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   private def getDetailedTypeInformation() : Map[Int,Option[TypeInformation]] = {
     
     // Some filtering?
-    getOccuringTypesWithName().foreach(e => {
-      println(e._1 + " - " + e._2)
-    })
+    // TODO Remove after debugging
+//    println("Raw typeIds found w/ name:")
+//    getOccuringTypesWithName().foreach(e => {
+//      println(e._1 + "\t" + e._2)
+//    })
     
-    getOccuringTypesWithName().map(e => {
+    val detailedTypeInfo = getOccuringTypesWithName().map(e => {
       
       val typeInspectInfo = performInspectTypeByIdReq(e._1)
       
@@ -656,14 +656,24 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       val typeInformation = org.codeprose.util.EnsimeApiToCodeproseApi.TypeInspectInfoToTypeInformation(typeInspectInfo)
       (e._1, typeInformation)      
     }).toMap
-    
+   // TODO Remove after debugging
+//    println("\n\nInspectTypeInfo:")
+//    detailedTypeInfo.foreach(e => {
+//      println(e._1 +"\t" + e._2)
+//    })
         
-    
+    detailedTypeInfo
   }
   
+  /**
+   * 
+   */
   private def getWhereUsedByTypeIdInformation() : Map[Int,List[ERangePositionWithTokenIds]] = {
+    // TODO: ONLY FAKE!!!
      getOccuringTypesWithName().map{ e => 
-       (e._1,List[ERangePositionWithTokenIds](new ERangePositionWithTokenIds("pathToFile.scala",0,0,41,List(66,67)))) }.toMap   
+       (e._1,List[ERangePositionWithTokenIds](
+           new ERangePositionWithTokenIds("pathToFile1.scala",0,0,41,List(66,67)),
+           new ERangePositionWithTokenIds("pathToFile2.scala",0,0,41,List(1,6)))) }.toMap   
  }
   
   /**
@@ -675,22 +685,22 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   private def performInspectTypeByIdReq(typeId: Int) : Option[org.ensime.api.TypeInspectInfo] = {
 		  val typeInspectInfo = ensimeClient.inspectTypeById(typeId) 
 
-      //println("Waiting before next InspectTypeReq is send (" + c.pauseBetweenReq_InspectTypeById + " ms)")
-      //Thread.sleep(c.pauseBetweenReq_InspectTypeById)
+      println("Waiting before next InspectTypeReq is send (" + c.pauseBetweenReq_InspectTypeById + " ms)")
+      Thread.sleep(c.pauseBetweenReq_InspectTypeById)
       
       
 				  try {
 					  val result = Await.result(typeInspectInfo,  Duration(c.timeout_InspectTypeByIdReq, MILLISECONDS))
 							  Some(result)
 				  }  catch {
-				  case timeout : TimeoutException => { 
-					  logger.error("[RequestError] [Timeout]\tInspectTypeByIdReq:\t" + timeout.getMessage)
-					  None
-				  }
-				  case e : Throwable => {
-            logger.error("[RequestError] \tInspectTypeByIdReq:\t" + e.getMessage)
-					  None
-				  } 
+				    case timeout : TimeoutException => { 
+					    logger.error("[RequestError] [Timeout]\tInspectTypeByIdReq:\t" + timeout.getMessage)
+					    None
+				    }
+				    case e : Throwable => {
+              logger.error("[RequestError] \tInspectTypeByIdReq:\t" + e.getMessage)
+					    None
+				    } 
 				  }
   }
     

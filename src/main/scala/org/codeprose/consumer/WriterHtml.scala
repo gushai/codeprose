@@ -1,6 +1,6 @@
 package org.codeprose.consumer
 
-import java.io.File 
+import java.io.File
 import org.codeprose.api.ScalaLang._
 import org.codeprose.api.Token
 import org.codeprose.consumer.util.CommentUtil
@@ -10,13 +10,12 @@ import org.codeprose.util.StringUtil
 import com.typesafe.scalalogging.LazyLogging
 import org.codeprose.consumer.util.OutputContextSetter
 import scala.collection.mutable.ArrayBuffer
-
 import org.codeprose.api.ProjectInfo
 import org.codeprose.api.ProjectSummary
 import org.codeprose.api.TypeInformation
-
 import org.codeprose.util.CodeproseJsonFormat._
 import spray.json._
+import org.codeprose.api.ERangePositionWithTokenIds
 
 
 class ResourceRelPaths(val base: String, val target: String)
@@ -30,8 +29,8 @@ class WriterContextHtml(
   val jsGlobalRelPath = new ResourceRelPaths("/js/codeprose.global.js","js/codeprose.global.js")
   val filesToCopy = List[ResourceRelPaths](styleSheetRelPath)
   val summaryFilesRelPath = Map( "index" -> "index.html",
-                                 "js.global.typeinfo" -> "/js/codeprose.typeinfo.js",
-                                 "js.global.whereusedinfo" -> "/js/codeprose.whereusedinfo.js")
+                                 "js.global.typeinfo" -> "/js/codeprose.typeinformation.js",
+                                 "js.global.whereusedinfo" -> "/js/codeprose.whereusedinformation.js")
 }
 
 
@@ -124,11 +123,20 @@ extends Consumer with LazyLogging {
       case None => { logger.error("No type information provided in project summary.") }
     }
     
-    //import org.codeprose.api.ScalaLang.whereUsedByTypeId
+    import org.codeprose.api.ScalaLang.whereUsedByTypeId
+    
+    projectSummary(whereUsedByTypeId) match {
+      case Some(whereUsed) => {
+        generateGlobalJSWhereUsedInfo(whereUsed)
+      } 
+      case None => { logger.error("No where used information provided in project summary.") }
+    }
+    
   }
   
   /**
-   * Generate and saves type information to disk.
+   * Saves type information to disk in js file.
+   * @param typeInfos Type information by type id.
    */
   private def generateGlobalJSTypeInfo(typeInfos: Map[Int,Option[TypeInformation]]) : Unit = {
     
@@ -170,13 +178,52 @@ extends Consumer with LazyLogging {
       FileUtil.writeToFile(outputFilename,beg+entries+end)      
 
     } else {
-      logger.error("Unable to generate js file with type information!")
+      logger.error("Unable to generate js file with type information. No file name provided!")
     }
     
   }
   
-  private def generateGlobalJSWhereUsedInfo() : Unit = {
+  /**
+   * Saves where used information to disk in js file.
+   * @param whereUsed Source positions by type id.
+   */
+  private def generateGlobalJSWhereUsedInfo(whereUsed: Map[Int,List[ERangePositionWithTokenIds]]) : Unit = {
     
+    val relFileName = c.summaryFilesRelPath.get("js.global.whereusedinfo")
+    
+    if(relFileName.isDefined){
+      
+      val outputFilename= new File(outputPath.getAbsolutePath + relFileName.get)
+      logger.info("Where used information: \t" + relFileName + " ...")      
+
+      val beg = s"""
+        // codeprose
+        //
+        // where used information
+        function whereUsedInformation(typeId){ 
+          whereUsed = null;
+          switch(typeId){
+          
+          """
+        
+      val end = s"""
+        default: \n\t\t whereUsed=null;
+        }
+        return whereUsed;
+      };"""
+      
+      val entries = whereUsed.map(e => {
+        val typeId = e._1
+        val jsonStr = e._2.toJson.compactPrint
+        s"""\t case $typeId:\n\t\twhereUsed=""" + jsonStr + s"""; break;"""
+        
+      }).mkString("\n")
+      
+      FileUtil.writeToFile(outputFilename,beg+entries+end)      
+
+    } else {
+      logger.error("Unable to generate js file with where used information! No file name provided.")
+    }
   }
   
   /**

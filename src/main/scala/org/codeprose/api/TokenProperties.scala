@@ -3,26 +3,21 @@ package org.codeprose.api
 // OK ... 
 trait SourcePosition {}
 
-class OffsetSourcePosition(val filename: String, val offset: Int) extends SourcePosition {
+case class OffsetSourcePosition(val filename: String, val offset: Int) extends SourcePosition {
    override def toString() : String = { s"""($filename,$offset)""" }
 }
 
-class OffsetSourcePositionWithTokenId(
+case class OffsetSourcePositionWithTokenId(
     val filename: String, val offset: Int, val tokenId: Int) extends SourcePosition {
   override def toString() : String = { s"""($filename,$offset,$tokenId)""" }
 }
 
-class ERangePosition(val filename: String, val offset: Int, val start: Int, val end: Int){
-  override def toString() : String = { s"""($filename,$offset,$start,$end)""" }
-}
-
-class ERangePositionWithTokenIds(
+case class ERangePositionWithTokenIds(
     filename: String, 
     offset: Int, 
     start: Int, 
     end: Int, 
-    val tokenIds: List[Int]) 
-    extends ERangePosition (filename, offset, start, end) {
+    tokenIds: List[Int]){ 
   override def toString() : String = { s"""($filename,$offset,$start,$end,$tokenIds)""" }
 }
 

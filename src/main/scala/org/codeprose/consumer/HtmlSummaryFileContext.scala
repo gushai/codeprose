@@ -4,7 +4,7 @@ package org.codeprose.consumer
 
 class HtmlSummaryFileContext(){
 
-  
+  def htmlDataAttributePrefix  = "cp-"  
     
   def getBegin(title: String) : String = {
   s"""

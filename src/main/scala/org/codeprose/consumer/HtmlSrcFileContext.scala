@@ -25,14 +25,14 @@ class HtmlOutputContext(
 class HtmlSrcFileContext(
     filename: String, 
     packagName: String, 
-    tokenToHtmlEntry: TokenToOutputEntry) {
+    val tokenToOutputEntry: TokenToOutputEntry) {
 
     // Helpers  
 	  private val fileNameWithoutPath =  filename.slice(filename.lastIndexOf("/")+1, filename.length())  
 		private	val fileNameWithoutPathAndEnding = fileNameWithoutPath.slice(0,fileNameWithoutPath.lastIndexOf("."))		
 		private	val fileNameEnding = fileNameWithoutPath.slice(fileNameWithoutPath.lastIndexOf(".")+1,fileNameWithoutPath.length)
 
-      
+    def htmlDataAttributePrefix  = "cp-"   
       /**
        * Returns the upper part of an output html file. This includes:
        *  - html headers
@@ -42,7 +42,7 @@ class HtmlSrcFileContext(
        */
 			def getBegin() : String = {
       
-        val perTokenScripts = tokenToHtmlEntry.scriptElements.mkString("\n", "\n\n", "\n")
+        val perTokenScripts = tokenToOutputEntry.scriptElements.mkString("\n", "\n\n", "\n")
             
         val perFileScripts = List(
         s"""

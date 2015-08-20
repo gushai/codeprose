@@ -299,12 +299,21 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       case Some(symbolInfo) => {
         
         // Collect occuring type information
-        val typeId = symbolInfo.tpe.typeId
-        val fullname = symbolInfo.tpe.fullName
-        addOccuringType(typeId, fullname)
+        val tpeId = symbolInfo.tpe.typeId
+        val fullNameStr = symbolInfo.tpe.fullName
+        addOccuringType(tpeId, fullNameStr)
         
+              
         // Save type information on token
-      
+        import org.codeprose.api.ScalaLang._
+        
+        // Simple information
+        token.set(typeId)(tpeId)
+        token.set(fullName)(fullNameStr)
+        
+        // Complex information
+        
+        
 //        case sI: SymbolInfo => {
 //          
 //         

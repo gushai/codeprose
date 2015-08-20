@@ -251,26 +251,28 @@ object SourceSymbol {
         
         import DynamicPropertyMap._
 
+        override val tokenType = new Key('tokenType) { type Value = ScalaTokenType }
+        val typeId = new Key('typeId) { type Value = Int }
         val internalTokenId = new Key('internalTokenId){ type Value = Int }
+        val declaredAt_SrcPosWithTokenId = new Key('declaredAt_TokenIdSrcPos){ type Value = OffsetSourcePositionWithTokenId }
+        val fullName = new Key('fullName) { type Value = String }
+        val symbolDesignation = new Key('symbolDesignation){ type Value = org.codeprose.api.ScalaLang.SourceSymbol.SourceSymbol }
+        
+        // Currently not in use.
         
         val declaredAs = new Key('declaredAs) { type Value = String }
         
         val declaredAt = new Key('declaredAt) { type Value = OffsetSourcePositionWithTokenId }
-        
-        //val declaredAt_TokenIdSrcPos = new Key('declaredAt_TokenIdSrcPos){ type Value = SourcePositionWithTokenId }
-        
-        
-        val fullName = new Key('fullName) { type Value = String }  
+                  
         val isArrowType = new Key('isArrowType) { type Value = Boolean }
-        override val tokenType = new Key('tokenType) { type Value = ScalaTokenType }
-        val typeId = new Key('typeId) { type Value = Int }
+        
         val outerTypeId = new Key('outerTypeId) { type Value = Int }
         
         val args = new Key('args){ type Value = String }
         val typeArgs = new Key('typeArgs){ type Value = String }
         val members = new Key('members){ type Value = String }
         
-        val symbolDesignation = new Key('symbolDesignation){ type Value = org.codeprose.api.ScalaLang.SourceSymbol.SourceSymbol }
+        
     
   //    val implicitConversion_indicator = new Key('implicitConversion_indicator){ type Value = Boolean }
   //    val implicitConversion_sourcePosition = new Key('implicitConversion_sourcePosition){ type Value = SourcePosition }

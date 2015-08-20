@@ -1,5 +1,6 @@
 package org.codeprose.api
 
+import java.io.File
 import scala.collection.mutable.ArrayBuffer
 import org.codeprose.util.DynamicPropertyMap
 
@@ -295,10 +296,11 @@ object SourceSymbol {
       // Keys Summary
       // ============================================================================
     
-      val fileList = new Key('files){ type Value = List[java.io.File] }
+      val fileList = new Key('files){ type Value = List[File] }
       val typeInformation = new Key('typeInformation){ type Value = Map[Int,Option[TypeInformation]] }
       val whereUsedByTypeId = new Key('whereUsedByTypeId){ type Value = Map[Int,List[ERangePositionWithTokenIds]] }
     
+      val packageInfoPerFile = new Key('packageOfFiles){ type Value = Map[File,String] }
   
 }
 

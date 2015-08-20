@@ -132,13 +132,9 @@ class CodeproseBroker()(implicit bc: BrokerContext)
     val projectInfo = provider.getProjectInformation(bc.filesToProcess.toList)
     projectInfo
   }
-  
-  private def analyzeSourceCodeOverview() : Unit = {
-    ???
-  }
-  
+   
   def generateOutput(projectInfo: ProjectInfo): Unit = {
-   consumer.generateOutput(projectInfo)
+   consumer.generateOutput(projectInfo: ProjectInfo)
   }
     
   def close() : Unit = {
@@ -146,13 +142,11 @@ class CodeproseBroker()(implicit bc: BrokerContext)
   }
 
   private def initializeWriter() : Consumer = {
-    if(bc.outputType == "html") {
-      
-      val c = new WriterContextHtml(true)
-      
-      new WriterHtml(bc.outputPath)(c)     
+    if(bc.outputType == "html") {      
+      implicit val c = new WriterContextHtml(bc.outputPath,true)  
+      new WriterHtml()     
     } else {
-      throw new Exception("Unknown OutputWriter requested!")
+      throw new Exception("Unknown output type requested!")
     }
     
   }

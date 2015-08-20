@@ -104,7 +104,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
      val enrichedTokenPerFile = getEnrichedTokens(files)
      
      // Project summary information
-     val summary = getProjectSummary(files)
+     val summary = getProjectSummary(files,enrichedTokenPerFile)
           
      new ProjectInfo(enrichedTokenPerFile,summary)
    }
@@ -113,19 +113,28 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
    /**
     * Creates project summary information. 
     */
-  private def getProjectSummary(files: List[File]) : ProjectSummary = {
+  private def getProjectSummary(files: List[File], tokens: ArrayBuffer[(File, ArrayBuffer[Token])]) : ProjectSummary = {
     
     val summary = new ProjectSummary()
     
     import org.codeprose.api.ScalaLang._
     
+    logger.info("Getting project summary information ...")
+    
     // Files
+    logger.info("\t" + "files")
     summary.set(fileList)(files)
     
+    // Package information
+    logger.info("\t" + "package information")
+    summary.set(packageInfoPerFile)(getPackageInformationForFiles(tokens))
+    
     // Used types
+    logger.info("\t" + "type information")
     summary.set(typeInformation)(getDetailedTypeInformation())
     
     // Where used in project
+    logger.info("\t" + "where used information")
     summary.set(whereUsedByTypeId)(getWhereUsedByTypeIdInformation())
    
     summary
@@ -145,24 +154,23 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       val rawTokens = getRawTokens(files: List[File])
       
       logger.info("Enriching tokens ...")
-      logger.info("Adding type information ...")
+      logger.info("\t" + "adding type information ...")
       val tokens = rawTokens.map( e => {
         val et = e._2.map( t => { enrichToken(t,e._1,rawTokens)}) 
         (e._1,et)
        }) 
         
        
-      logger.info("Adding semantic highlighting information")
+      logger.info("\t" + "adding semantic highlighting information")
       val tokenWithSemantic = tokens.map(e => {
         (e._1,enrichTokensWithSymbolDesignations(e._1,e._2))
       })
       
-      logger.info("Adding implicit information ...")
+      logger.info("\t" + "adding implicit information ...")
       val tokenWithSemanticImplicit = tokenWithSemantic.map( e => {
         (e._1,enrichTokensWithImplicitInformation(e._1, e._2))
       })
       
-      logger.info("Done.")
       
      // println(tokens.last._2.map(t=>t.toPrettyString()).mkString("\n"))
       tokens
@@ -703,7 +711,42 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
 				    } 
 				  }
   }
+   
+  /**
+   * Extracts the package information from the tokens of each file.
+   * @param enrichedTokens  Tokens per file.
+   * @return                Map file to package name. 
+   */
+  private def getPackageInformationForFiles(
+      enrichedTokens: ArrayBuffer[(File,ArrayBuffer[Token])]) : Map[File,String] = {
+   
     
+    enrichedTokens.map(e => {
+      val file = e._1
+      val tokens = e._2
+        
+      import org.codeprose.api.ScalaLang._
+      
+      // Find package token
+      val beg = tokens.indexWhere { t => t(tokenType).get == Tokens.PACKAGE }
+      var notFound=false
+      
+      val packageStr = if(beg != -1){
+        
+        // Find WS token with newline
+        val end = tokens.indexWhere({ t => 
+          t(tokenType).get == Tokens.WS && t.text.contains("\n")},beg)
+          
+        if(end != 1){
+          tokens.slice(beg+1, end).map(e=> e.text).mkString.trim()
+        } else { "" }
+      } else { "" }
+    (file,packageStr)
+    }).toMap
+    
+    
+  
+  }
   
   // ==============================================================================
   // Boundary NEW OLD

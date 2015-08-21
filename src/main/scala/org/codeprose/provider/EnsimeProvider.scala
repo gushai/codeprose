@@ -376,13 +376,67 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   private def enrichTokenWithUsesOfSymbolInfo(
       token: Token, file: File, info: ArrayBuffer[(File,ArrayBuffer[Token])]) : Token = {
    
+    import org.codeprose.api.ScalaLang._
+    
     val usesOfSymbolsOption = performUsesOfSymbolReq(file, token.offset)
     
     usesOfSymbolsOption match {
       case Some(sourcePositions) => {
-//        println("[UsesOfSymbolAtPointReq]\t" + sourcePositions)
+        //println("[UsesOfSymbolAtPointReq]\t" + sourcePositions)
         
-                     // TODO: Collection information
+        // TODO: Generalized to input files???
+        // Filter out source positions that are in the dependencies!
+        // I.e those not in the input folders
+        // Applies e.g. to all Scala symbols (Int,List,...)
+        val srcPosWithinProject = sourcePositions.positions.filter(srcPos => {           
+            c.inputFolders.map( folder => srcPos.file.startsWith(folder)).reduce(_ || _)            
+        })
+        
+        // Save information
+        if(srcPosWithinProject.size>0){
+          
+          // Translate to codeprose srcPos with token id
+          val srcPosWithTokenId = srcPosWithinProject.map( srcPos => {
+                // Find referenced token id
+                val tokenId = ProviderUtil.getTokenIdToOffsetSourcePosition(srcPos.file, srcPos.offset, info)
+                new org.codeprose.api.ERangePositionWithTokenId(srcPos.file,srcPos.offset,srcPos.start,srcPos.end,tokenId)
+                })
+          
+          // Where used within same file
+          val srcPosWithinFile = srcPosWithTokenId.filter( srcPos => {
+            if(srcPos.filename == file.getAbsolutePath)
+              true
+            else 
+              false
+          })
+          
+          token.set(whereUsedWithInFile)(srcPosWithinFile)
+          
+          // Save source positions within type id
+          token(typeId) match {
+            case Some(tpeId) => {
+              
+              // TODO Save source positions in Map
+              // Map[Int,Set[ERangePositionWithTokenId]
+              
+              //println(tpeId.toString +"\n" + srcPosWithTokenId.map(e=> "\t" + e.toString +"\n"))
+              //println("---")
+            }
+            case None => { }
+          }
+        }
+          
+        
+        
+        // DEBUG
+//        if(sourcePositions.positions.size>posToSave.size){
+//          println("org size: " + sourcePositions.positions.size + " reduced size: " + posToSave.size)
+//          println(file + " -- " + token.text)
+//          println(sourcePositions.positions.foreach(e => println(e)))
+//          println("-----------------")
+//        }
+        
+        // TODO: Collection information
 //          
 //          // Filters the references that are not in the input folders!
 //          val posToSave = uOS.positions.filter(srcPos =>
@@ -702,12 +756,13 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   /**
    * 
    */
-  private def getWhereUsedByTypeIdInformation() : Map[Int,List[ERangePositionWithTokenIds]] = {
+  private def getWhereUsedByTypeIdInformation() : Map[Int,List[ERangePositionWithTokenId]] = {
     // TODO: ONLY FAKE!!!
-     getOccuringTypesWithName().map{ e => 
-       (e._1,List[ERangePositionWithTokenIds](
-           new ERangePositionWithTokenIds("pathToFile1.scala",0,0,41,List(66,67)),
-           new ERangePositionWithTokenIds("pathToFile2.scala",0,0,41,List(1,6)))) }.toMap   
+     getOccuringTypesWithName().map( e => {
+       (e._1,List[ERangePositionWithTokenId](
+           new ERangePositionWithTokenId("pathToFile1.scala",0,0,41,66),
+           new ERangePositionWithTokenId("pathToFile1.scala",0,0,456,644),
+           new ERangePositionWithTokenId("pathToFile2.scala",0,0,41,111)) )}).toMap   
  }
   
   

@@ -19,7 +19,9 @@ trait TokenToOutputEntry {
 
 
 //class TokenToOutputEntryHtml(val filenamesOriginalToOutputNames: Array[(String,String)]) extends TokenToOutputEntry {
-class TokenToOutputEntryHtml()(implicit hmtlOutputContext: HtmlOutputContext) extends TokenToOutputEntry with HtmlDataAttributeGen { 
+class TokenToOutputEntryHtml(
+    )(implicit hmtlOutputContext: HtmlOutputContext) 
+    extends TokenToOutputEntry with HtmlDataAttributeGen { 
   
    
   

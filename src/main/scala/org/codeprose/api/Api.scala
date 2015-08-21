@@ -262,6 +262,7 @@ object SourceSymbol {
         val implicitConversion_indicator = new Key('implicitConversion_indicator){ type Value = Boolean }
         val implicitParameter_indicator = new Key('implicitParameter_indicator){ type Value = Boolean }
 
+           val whereUsedWithInFile = new Key('whereUsedWithinFile){ type Value = List[ERangePositionWithTokenId] }
         
         // Currently not in use.
         
@@ -277,7 +278,7 @@ object SourceSymbol {
         val typeArgs = new Key('typeArgs){ type Value = String }
         val members = new Key('members){ type Value = String }
         
-        
+     
     
       
   //    val implicitConversion_sourcePosition = new Key('implicitConversion_sourcePosition){ type Value = SourcePosition }
@@ -290,7 +291,7 @@ object SourceSymbol {
   //    val implicitParameter_fullName = new Key('implicitParameter_fullname){ type Value = String }
   //    val implicitParameter_sourcePositionWithTokenId = new Key('implicitParameter_sourcePositionWithTokenId){ type Value = SourcePositionWithTokenId }
   
-        val whereUsedWithInFile = new Key('whereUsedWithinFile){ type Value = List[Int] }
+        //val whereUsedWithInFile = new Key('whereUsedWithinFile){ type Value = List[Int] }
         
   //    val whereUsed = new Key('whereUsed){ type Value = List[ERangePosition]}
   //    val whereUsed_WithinFileTokenIdSrcPos = new Key('whereUsed_WithinFileTokenIdSrcPos){ type Value = List[SourcePositionWithTokenId]}
@@ -304,7 +305,7 @@ object SourceSymbol {
     
       val fileList = new Key('files){ type Value = List[File] }
       val typeInformation = new Key('typeInformation){ type Value = Map[Int,Option[TypeInformation]] }
-      val whereUsedByTypeId = new Key('whereUsedByTypeId){ type Value = Map[Int,List[ERangePositionWithTokenIds]] }
+      val whereUsedByTypeId = new Key('whereUsedByTypeId){ type Value = Map[Int,List[ERangePositionWithTokenId]] }
     
       val packageNamePerFile = new Key('packageOfFiles){ type Value = Map[File,String] }
   

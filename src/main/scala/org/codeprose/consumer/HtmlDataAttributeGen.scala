@@ -79,6 +79,13 @@ trait HtmlDataAttributeGen {
       case None => { } 
     }
     
+    token(whereUsedWithInFile) match {
+      case Some(srcPos) => { 
+        val tokenIds=srcPos.map(e=> "#T" + e.tokenId ).mkString("",",","") 
+         dataAttributes += ((htmlDataAttributePrefix + "whereusedinfile",s""""""" + tokenIds + s""""""")) }
+          case None => {}
+      } 
+    
     
     //    token(whereUsed_WithinFileTokenIdSrcPos) match {
     //      case Some(srcPos) => { val tokenIds=srcPos.map(e=> "#T" + e.tokenId ).mkString("",",","") 
@@ -176,7 +183,6 @@ trait HtmlDataAttributeGen {
       case None => { } 
     }
 
-    
     //    token(implicitConversion_indicator) match {
     //      case Some(name) => { 
     //        dataAttributes += ((dataAttributesPrefix + "implicitconversion",s""""""" + true + s""""""")) 

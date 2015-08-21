@@ -15,7 +15,7 @@ import org.codeprose.api.ProjectSummary
 import org.codeprose.api.TypeInformation
 import org.codeprose.util.CodeproseJsonFormat._
 import spray.json._
-import org.codeprose.api.ERangePositionWithTokenIds
+import org.codeprose.api.ERangePositionWithTokenId
 
 
 class ResourceRelPaths(val base: String, val target: String)
@@ -73,10 +73,8 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
     generateWhereUsedPage(projectInfo, htmlOutputContext)
     generateTypeInformationPage(projectInfo, htmlOutputContext)
     generatePackageInformationPage(projectInfo, htmlOutputContext)
-    
-    
-    
-    
+     
+        
   }
   
   /**
@@ -204,6 +202,11 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
   
   /**
    * Saves type information to disk in js file.
+   * 
+   * Functions:
+   *  - getTypeIds()  returns a list of all typeIds found
+   *  - typeInformation(typeId) returns TypeInformation or null
+   * 
    * @param typeInfos Type information by type id.
    */
   private def generateGlobalJSTypeInfo(typeInfos: Map[Int,Option[TypeInformation]]) : Unit = {
@@ -215,35 +218,47 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
       val outputFilename= new File(c.outputMainPath.getAbsolutePath + relFileName.get)
       logger.info("\t" + "type information: \t\t" + relFileName.get)      
 
-      val beg = s"""
-        // codeprose
-        //
-        // type information
-        function typeInformation(typeId){ 
-          tInfo = null;
-          switch(typeId){
-          
-          """
-        
-      val end = s"""
-        default: \n\t\t tInfo=null;
-        }
-        return tInfo;
-      };"""
+      // Type ids
+      val begTypeId = s"""
+// Type Ids
+function getTypeIds(){\n"""
+      val entriesTypeId = s"""\treturn """ + typeInfos.map(e => e._1).toList.sorted.toJson.compactPrint +";"
+      val endTypeId = "\n};"
       
-      val entries = typeInfos.map(e => {
+      val contentTypeId = begTypeId + entriesTypeId + endTypeId
+      
+      // Type information
+      
+      val begTypeInfo = s"""
+// type information
+function typeInformation(typeId){ 
+  tInfo = null;
+  switch(typeId){
+"""
+        
+      val endTypeInfo = s"""
+  default: \n\t\t tInfo=null;
+  }
+  return tInfo;
+};"""
+      
+      val entriesTypeInfo = typeInfos.map(e => {
         val typeId = e._1
         e._2 match {
           case Some(tI) => {            
             val jsonStr = tI.toJson.compactPrint
-            s"""\t case $typeId:\n\t\ttInfo=""" + jsonStr + s"""; break;"""
+            s"""\tcase $typeId:\n\t\ttInfo=""" + jsonStr + s"""; break;"""
           } 
           case None => {""}
         }
         
       }).mkString("\n")
       
-      FileUtil.writeToFile(outputFilename,beg+entries+end)      
+      val contentTypeInfo = begTypeInfo + entriesTypeInfo + endTypeInfo
+      
+      // Generate output      
+      val content = List(contentTypeId,contentTypeInfo)
+      FileUtil.writeToFile(outputFilename,content.mkString("\n\n"))      
 
     } else {
       logger.error("Unable to generate js file with type information. No file name provided!")
@@ -251,11 +266,15 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
     
   }
   
+  
+  
+  
+  
   /**
    * Saves where used information to disk in js file.
    * @param whereUsed Source positions by type id.
    */
-  private def generateGlobalJSWhereUsedInfo(whereUsed: Map[Int,List[ERangePositionWithTokenIds]]) : Unit = {
+  private def generateGlobalJSWhereUsedInfo(whereUsed: Map[Int,List[ERangePositionWithTokenId]]) : Unit = {
     
     val relFileName = c.summaryFilesRelPath.get("js.global.whereusedinfo")
     

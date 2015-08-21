@@ -12,13 +12,13 @@ case class OffsetSourcePositionWithTokenId(
   override def toString() : String = { s"""($filename,$offset,$tokenId)""" }
 }
 
-case class ERangePositionWithTokenIds(
+case class ERangePositionWithTokenId(
     filename: String, 
     offset: Int, 
     start: Int, 
     end: Int, 
-    tokenIds: List[Int]){ 
-  override def toString() : String = { s"""($filename,$offset,$start,$end,$tokenIds)""" }
+    tokenId: Int){ 
+  override def toString() : String = { s"""($filename,$offset,$start,$end,$tokenId)""" }
 }
 
 class SymbolInfo(

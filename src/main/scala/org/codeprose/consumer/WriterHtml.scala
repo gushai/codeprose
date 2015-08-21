@@ -35,6 +35,7 @@ class WriterContextHtml(
 
   val summaryFilesRelPath = Map("summary.index" -> "/index.html",
                                 "summary.typeinfo" -> "/typeInformationSummary.html",
+                                "summary.packageinfo" -> "/packageSummary.html",
                                 "summary.whereUsed" -> "/whereUsedSummary.html",
                                 "js.global.typeinfo" -> "/js/codeprose.typeinformation.js",
                                 "js.global.whereusedinfo" -> "/js/codeprose.whereusedinformation.js")
@@ -47,38 +48,16 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
     
 	def generateOutput(projectInfo: ProjectInfo) : Unit = {
     
-     
-     
     setupOutputEnvironment()
+    
     generateGlobalJSInformationFiles(projectInfo.summary)
+    
     val htmlOutputContext = new HtmlOutputContext(c.outputMainPath,projectInfo.enrichedTokens.map(e => e._1).toList)
     generateSummaryPages(projectInfo,htmlOutputContext)
+    
     generateIndividualPages(projectInfo,htmlOutputContext)
     
-      // --------------------------------------------------------------------
-      // OLD - Stuff - Begin
-    
-//      val info = projectInfo.enrichedTokens
-//      
-//      import org.codeprose.util.StringUtil
-//			val filenamesShorted = StringUtil.getUniqueShortFileNames(info.map(e => e._1.getAbsolutePath).toList)
-//			val outputFilenames = filenamesShorted.map(s => outputPath + "/content/" + s.replace("/","_") + ".html")
-//      
-//      val filenamesOriginalToOutput =  info.map(e => e._1.getAbsolutePath).zip(outputFilenames).toArray
-//      
-//      logger.info("Generating output ...")					
-//
-//      // Output context
-//      setupOutputContext(outputPath)
-//      
-//      generateIndexFile(info.map(e => e._1.getAbsolutePath()).toList,filenamesShorted,outputFilenames)
-//      
-//			var idx=0
-//			for(i<-info){     
-//			  generateOutputFile(new File(outputFilenames(idx)),i._1,i._2,filenamesOriginalToOutput)
-//				idx+=1
-//      }
-//			logger.info("Done.")
+   
 	}
 
   
@@ -93,6 +72,7 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
     generateIndexPage(projectInfo, htmlOutputContext)
     generateWhereUsedPage(projectInfo, htmlOutputContext)
     generateTypeInformationPage(projectInfo, htmlOutputContext)
+    generatePackageInformationPage(projectInfo, htmlOutputContext)
     
     
     
@@ -181,6 +161,18 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
     }    
   }
   
+  private def generatePackageInformationPage(projectInfo: ProjectInfo, htmlOutputContext: HtmlOutputContext) : Unit = { 
+
+    val relFileName = c.summaryFilesRelPath.get("summary.packageinfo")
+    
+    if(relFileName.isDefined){
+    
+       logger.info("\t" + "package information \t" + relFileName.get)
+    
+    } else {
+      logger.error("Unable to package summary file. No file name provided!")
+    }    
+  }
  
   
   /**
@@ -348,7 +340,7 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
 
       // Get package name for file
       import org.codeprose.api.ScalaLang._
-      val packageName = projectSummary(packageInfoPerFile) match {
+      val packageName = projectSummary(packageNamePerFile) match {
         case Some(packagePerFile) => {
           packagePerFile.get(srcFile).getOrElse("")
         }

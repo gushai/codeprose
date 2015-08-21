@@ -16,6 +16,8 @@ trait TokenToOutputEntry {
   def getTokenEntryWrapper(token: Token) : (String,String)
 }
 
+
+
 //class TokenToOutputEntryHtml(val filenamesOriginalToOutputNames: Array[(String,String)]) extends TokenToOutputEntry {
 class TokenToOutputEntryHtml()(implicit hmtlOutputContext: HtmlOutputContext) extends TokenToOutputEntry with HtmlDataAttributeGen { 
   
@@ -357,7 +359,7 @@ class TokenToOutputEntryHtml()(implicit hmtlOutputContext: HtmlOutputContext) ex
 	  val dataAttributes = getHtmlDataAttributes(token).map(e=> e._1 + "=" + e._2).mkString(" "," "," ")
 
 			  // Set output 
-			  val spanElementBeg = s"""<span""" + spanClass + domElementId + s""" $title + dataAttributes>"""
+			  val spanElementBeg = s"""<span""" + spanClass + domElementId + s""" $title + $dataAttributes>"""
 			  val spanElementEnd = "</span>"
 
 			  if(linkToDeclaredAt_beg.length()!=0){

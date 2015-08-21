@@ -42,6 +42,7 @@ class EnsimeProviderContext(
   val timeout_ImplicitInfoReq = 700
   val timeout_UsesOfSymbolAtPointReq = 700
   val timeout_InspectTypeByIdReq = 500
+  val timeout_InspectPackageByPathReq = 700
   
   val pauseBetweenReq_InspectTypeById = 250
 }
@@ -127,7 +128,11 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     
     // Package information
     logger.info("\t" + "package information")
-    summary.set(packageInfoPerFile)(getPackageInformationForFiles(tokens))
+    val packNamesPerFile = getPackageNamesPerFile(tokens)
+    val packageNamesUnique = packNamesPerFile.map(e => e._2).toSet.toList
+    summary.set(packageNamePerFile)(packNamesPerFile)
+    summary.set(packageInformation)(getPackageInformaton(packageNamesUnique))
+    
     
     // Used types
     logger.info("\t" + "type information")
@@ -281,7 +286,10 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     token
   }
 
-  
+  /**
+   * 
+   * Note assumes token in group IDs.
+   */
   private def enrichTokenIds(
       token: Token, file: File, info: ArrayBuffer[(File,ArrayBuffer[Token])]) : Token = {
         
@@ -416,36 +424,27 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       tokens: ArrayBuffer[Token]) : ArrayBuffer[Token] = {
     
     val end = tokens.last.offset + tokens.last.length
-    val implicitInfo = ensimeClient.implicitInfoReq(file,OffsetRange(0,end))
+    val implicitInfoOpt = performImplicitInfoReq(file, 0, end)
     
-    try {
-      val result = Await.result(implicitInfo,  Duration(c.timeout_ImplicitInfoReq, MILLISECONDS))
-         
-      result.infos.foreach(  implicitInfo => {
+    implicitInfoOpt match {
+      case Some(implicitInfos) => {
+
+         implicitInfos.infos.foreach(  implicitInfo => {
       
-         implicitInfo match {
-         case implConvInfo : org.ensime.api.ImplicitConversionInfo => {
-          enrichTokensWithImplictConversionInformation(tokens,implConvInfo)
-        }
-        case implParaInfo : ImplicitParamInfo => {
-          enrichTokenWithImplicitParameterInformation(tokens,implParaInfo)
-        }
-        case _ => { logger.error("[ImplicitInformation]\t Unknown ImplicitInformation. Ignored!")}
+           implicitInfo match {
+            case implConvInfo : org.ensime.api.ImplicitConversionInfo => {
+              enrichTokensWithImplictConversionInformation(tokens,implConvInfo)
+            }
+            case implParaInfo : org.ensime.api.ImplicitParamInfo => {
+              enrichTokenWithImplicitParameterInformation(tokens,implParaInfo)
+            }
+            case _ => { logger.error("[ImplicitInformation]\t Unknown ImplicitInformation. Ignored!")}
+          }
+        })  
+        tokens  
       }
-      })  
-      
-      tokens
-      
-    }  catch {
-    case timeout : TimeoutException => { 
-      logger.error("[RequestError] [Timeout] \tImplicitInfoReq:\t" + timeout.getMessage)       
-      }
-    case e : Throwable => {
-      logger.error("[RequestError] \tImplicitInfoReq: \t" + e.getMessage)
-      }
- 
+      case None => { tokens }
     }
-           
     tokens  
   }
   
@@ -465,6 +464,13 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       if(idxAffectedTokens.size!=0){
          for(idx <- idxAffectedTokens){
            
+             import org.codeprose.api.ScalaLang._
+           
+             // Mark token that implicit information is applied
+             tokens(idx).set(implicitConversion_indicator)(true)
+           
+             // println("[TEST] conversion")
+             
               // Save information
               //            println("[--------------------------------")
               //            println(info.fun.`type`.fullName)
@@ -512,6 +518,14 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     
       if(idxAffectedTokens.size!=0){
          for(idx <- idxAffectedTokens){
+           
+           import org.codeprose.api.ScalaLang._
+           
+           // Mark token that implicit information is applied
+           tokens(idx).set(implicitParameter_indicator)(true)
+           
+           // println("[TEST] parameter")
+           
                  //          println("[--------------------------------------------]")
                 //          println(info + "\n")
                 //          println("start:\t\t" + info.start)
@@ -539,9 +553,9 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   
   /**
    * Enriches the tokens with information about symbol designation.
-   * @param file  File for information request.
+   * @param file    File for information request.
    * @param tokens  Tokens to enrich.
-   * @return    Tokens augmented with symbol designation information. 
+   * @return        Tokens augmented with symbol designation information. 
    */
   private def enrichTokensWithSymbolDesignations(
       file: File, tokens: ArrayBuffer[Token]) : ArrayBuffer[Token] = {
@@ -589,7 +603,8 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
           None
         }
         case e : Throwable => {
-          logger.error("[RequestError] \tSymbolInfosReq:\t" + e.getMessage)
+          logger.error("[RequestError] \tSymbolInfosReq:\t" + e.getMessage + 
+              "\nRequest details: " + "File: " + file + " - Point: " + point)
           None
         }
     }
@@ -615,7 +630,8 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
         None
       }
       case e : Throwable => {
-        logger.error("[RequestError] \tUsesOfSymbolAtPointReq:\t" + e.getMessage)
+        logger.error("[RequestError] \tUsesOfSymbolAtPointReq:\t" + e.getMessage+ 
+              "\nRequest details: " + "file: " + file + " - point: " + point)
         None
       }
     }
@@ -640,7 +656,8 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
         None
       } 
       case e : Throwable => {
-        logger.error("[RequestError] \tSymbolDesignationsReq:\t" + e.getMessage)
+        logger.error("[RequestError] \tSymbolDesignationsReq:\t" + e.getMessage + 
+              "\nRequest details: " + "file: " + file + " - start: " + start + " - end: " + end)
         None
       }
     }
@@ -693,6 +710,40 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
            new ERangePositionWithTokenIds("pathToFile2.scala",0,0,41,List(1,6)))) }.toMap   
  }
   
+  
+  /**
+   * 
+   */
+  private def getPackageInformaton(packageNames: List[String]) : Map[String,Option[PackageInformation]] = {
+    
+    
+    val ret =  packageNames.map(name => {
+      val packageInfoOpt = performInspectPackageByPathReq(name)
+      packageInfoOpt match {
+        case Some(pI) => {
+          
+//          println("\n[InspectPackageInfo]"+"\n")
+//          println("Fullname:\t" + pI.fullName)
+//          println("name:\t" + pI.name)
+//          println("Members:\t")
+//          pI.members.foreach(e=>println(e + "\n"))
+          
+          
+          val pInformation = new PackageInformation(name)
+          (name,Some(pInformation))    
+        } 
+        case None => { (name,None) }
+      }
+      
+    }).toMap
+    
+        
+    
+    ret
+    
+  }
+  
+  
   /**
    * Performs a InspectTypeByIdReq.
    * @param typeId  Internal type id assigned to type by ensime-server.
@@ -702,8 +753,8 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   private def performInspectTypeByIdReq(typeId: Int) : Option[org.ensime.api.TypeInspectInfo] = {
 		  val typeInspectInfo = ensimeClient.inspectTypeById(typeId) 
 
-      println("Waiting before next InspectTypeReq is send (" + c.pauseBetweenReq_InspectTypeById + " ms)")
-      Thread.sleep(c.pauseBetweenReq_InspectTypeById)
+      //println("Waiting before next InspectTypeReq is send (" + c.pauseBetweenReq_InspectTypeById + " ms)")
+      //Thread.sleep(c.pauseBetweenReq_InspectTypeById)
       
       
 				  try {
@@ -715,18 +766,78 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
 					    None
 				    }
 				    case e : Throwable => {
-              logger.error("[RequestError] \tInspectTypeByIdReq:\t" + e.getMessage)
+              logger.error("[RequestError] \tInspectTypeByIdReq:\t" + e.getMessage + 
+                  "\nRequest details: " + "typeId: " + typeId)
 					    None
 				    } 
 				  }
   }
    
+  
+  /**
+   * Performs a ImplicitInfoReq.
+   * @param file  File
+   * @param start Range begin
+   * @param end   Range end
+   * @return    Some(SymbolInfo)
+   */
+  private def performImplicitInfoReq(file: File, start: Int, end: Int) : Option[org.ensime.api.ImplicitInfos] = {
+     
+    val implicitInfo = ensimeClient.implicitInfoReq(file,OffsetRange(start,end))
+    
+    val ret = try {
+      val result = Await.result(implicitInfo,  Duration(c.timeout_ImplicitInfoReq, MILLISECONDS))
+      Some(result)
+         
+      } catch {
+        case timeout : TimeoutException => {
+          logger.error("[RequestError] [Timeout]\tImplicitInfoReq:\t" + timeout.getMessage)
+          None
+        }
+        case e : Throwable => {
+          logger.error("[RequestError] \tImplicitInfoReq:\t" + e.getMessage + 
+              "\nRequest details: " + "file: " + file + " - start: " + start + " - end: " + end)
+          None
+        }
+    }
+    ret  
+  }
+  
+ 
+   /**
+   * Performs a InspectPackageByPath.
+   * @param   packagePath Package path like org.codeprose.xyz
+   * @return              Some(PackageInfo)
+   */
+  private def performInspectPackageByPathReq(packagePath: String) : Option[org.ensime.api.PackageInfo] = {
+     
+    val packageInfo = ensimeClient.inspectPackageByPath(packagePath)
+    
+    val ret = try {
+      val result = Await.result(packageInfo,  Duration(c.timeout_InspectPackageByPathReq, MILLISECONDS))
+      Some(result)
+         
+      } catch {
+        case timeout : TimeoutException => {
+          logger.error("[RequestError] [Timeout]\tInspectPackageByPathReq:\t" + timeout.getMessage)
+          None
+        }
+        case e : Throwable => {
+          logger.error("[RequestError] \tInspectPackageByPathReq:\t" + e.getMessage + 
+              "\nRequest details: " + "package path: " + packagePath)
+          None
+        }
+    }
+    ret  
+  }
+  
+  
   /**
    * Extracts the package information from the tokens of each file.
    * @param enrichedTokens  Tokens per file.
    * @return                Map file to package name. 
    */
-  private def getPackageInformationForFiles(
+  private def getPackageNamesPerFile(
       enrichedTokens: ArrayBuffer[(File,ArrayBuffer[Token])]) : Map[File,String] = {
    
     

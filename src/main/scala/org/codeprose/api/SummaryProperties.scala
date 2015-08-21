@@ -31,3 +31,6 @@ package org.codeprose.api
 //  
 //}
 
+class PackageInformation(
+    val packageName: String){}
+

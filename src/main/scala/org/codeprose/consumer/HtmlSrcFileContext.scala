@@ -46,13 +46,18 @@ class HtmlSrcFileContext(
             
         val perFileScripts = List(
         s"""
-        // Highlight where used within file
+        /*
+         * Highlights other uses of the token under the mouse within the file.
+         */
         $$("[id^='T']").hover( 
           function(){ toHighlight = $$(this).data("cp-whereusedinfile"); $$(toHighlight).toggleClass("highlightWhereUsedWithinFile"); },
           function(){ toHighlight = $$(this).data("cp-whereusedinfile"); $$(toHighlight).toggleClass("highlightWhereUsedWithinFile"); }
         );""",    
-      s"""
-        // Highlight implicit conversions and parameters
+        s"""
+        /*
+         * Highlights/unhighlights implicit conversions and implicit 
+         * parameters within the file.
+         */
       function highlightImplicitConversionsAndParameters(){
 
         // Implicit conversions
@@ -60,113 +65,114 @@ class HtmlSrcFileContext(
 
         // Implicit parameters
         // Color to use highlightImplicitParameter
+        $$('*[data-cp-implicitparameter=true]').toggleClass("highlightImplicitParameter");
       }""",
       s"""
+      /*
+       * Central function handling key events.
+       * Mappings:
+       *  -  'i' -> highlightImplicitConversionsAndParameters()
+       */
       // Key events     
       $$(document).keypress(function(e){
         // i
-        if(e.keyCode == 105){
-          highlightImplicitConversionsAndParameters()
-        }     
+        if(e.keyCode == 105){ highlightImplicitConversionsAndParameters() }     
       });""",
       s"""
-            // Create tooltip entries
+      /*
+       * Create the tooltip entry html content for a token.
+       */
       function createTooltipHtmlFromDataAttr(elem) { 
     
         // Fullname
-          fullname = "<b>" + $$(elem).data("cp-fullname") + "</b>";
+        fullname = "<b>" + $$(elem).data("cp-fullname") + "</b>";
         
-    // TypeId
-    typeId = $$(elem).data("cp-typeid")
+        // TypeId
+        typeId = $$(elem).data("cp-typeid")
 
-    // Declaration
-    rawLinkToDeclaration = $$(elem).data("cp-declaredat");
-    linkToDeclaration = ""
-          if(rawLinkToDeclaration){
-      console.log( rawLinkToDeclaration);
-            linkToDeclaration = "<a href='" + rawLinkToDeclaration + "'>Declaration</a>" + "<br/>";
-          }
-
-      // Definition
-      rawLinkToTypeDef = mappingToTypeDefinition(typeId)
-        
-      linkToDefintion = "";
-      if(rawLinkToTypeDef.length !=  0){
-        linkToDefintion = "<a href='" + rawLinkToTypeDef + "'>Definition</a>" + "<br/>";
-      }       
-
-      // Where used in project
-      rawLinkToWhereUsedProject = mappingToWhereUsedInProject(typeId)
-          
-      linkToWhereUsedInProject = "" 
-      if(rawLinkToWhereUsedProject.length  !=  0){
-        linkToWhereUsedInProject = "<a href='" + rawLinkToWhereUsedProject + "'>Where used in project</a>" + "<br/>";
-      }      
-    
-      // Implicit conversion 
-      linkToImplicitConversion =  "";
-      isImplicitConversion = $$(elem).data("cp-implicitconversion");
-      if(isImplicitConversion){
-    
-      implicitConversionFullname = $$(elem).data("cp-implicitconversionfullname");
-      implicitConversionDeclaredAt = $$(elem).data("cp-implicitconversiondeclaredat");   
-  if(implicitConversionDeclaredAt != null){
-        linkToImplicitConversion = "<a href='" + implicitConversionDeclaredAt + "'>Impl. conv: " + implicitConversionFullname + "</a>" + "<br/>";
-  } else {
-    linkToImplicitConversion = "Impl. conv: " + implicitConversionFullname + "<br/>";
-  }
-  }
-
-  // Implicit Parameter
-          linkToImplicitParameter = ""
-  isImplicitParameter = $$(elem).data("cp-implicitparameter");
-  if(isImplicitParameter){
-        implicitParameterFullname = $$(elem).data("cp-implicitparameterfullname");
-       implicitParameterDeclaredAt = $$(elem).data("cp-implicitparameterdeclaredat");   
-    if(implicitParameterDeclaredAt != null){
-    linkToImplicitParameter = "<a href='" + implicitParameterDeclaredAt + "'>Impl. para: " + implicitParameterFullname + "</a>" + "<br/>";
-    } else {
-      linkToImplicitParameter = "Impl. conv: " + implicitConversionFullname + "<br/>";
-    } 
-  };
-      
-  // Output structure 
-          html = "<div class='cp-tooltip'>" + fullname + "<br/><br/>" +
-            linkToDeclaration +
-            linkToDefintion +
-            linkToWhereUsedInProject +
-            linkToImplicitConversion +
-            linkToImplicitParameter + 
-            "</div>";
-      
-          return html;
-      }
-""",
-      s"""
-        // Tooltip
-        // $$("[id^='T']").tooltip({
-        $$('*[data-cp-tooltipdisplay=true]').tooltip({
-        content: function () {           
-         return createTooltipHtmlFromDataAttr(this);
-        },
-        show: null,
-        disabled: false,
-       // position: {of: $$("#LCOM0"), at: "left"},
-       position: { my: 'left-center', at: "right+7 right"},
-        close: function (event, ui) {
-            ui.tooltip.hover(
-
-            function () {
-                $$(this).stop(true).fadeTo(400, 1);
-            },
-
-            function () {
-                $$(this).fadeOut("100", function () {
-                    $$(this).remove();
-                })
-            });
+        // Declaration
+        rawLinkToDeclaration = $$(elem).data("cp-declaredat");
+        linkToDeclaration = ""
+        if(rawLinkToDeclaration){
+          console.log( rawLinkToDeclaration);
+          linkToDeclaration = "<a href='" + rawLinkToDeclaration + "'>Declaration</a>" + "<br/>";
         }
-    });"""
+
+        // Definition
+        rawLinkToTypeDef = mappingToTypeDefinition(typeId)
+        
+        linkToDefintion = "";
+        if(rawLinkToTypeDef.length !=  0){
+          linkToDefintion = "<a href='" + rawLinkToTypeDef + "'>Definition</a>" + "<br/>";
+        }       
+
+        // Where used in project
+        rawLinkToWhereUsedProject = mappingToWhereUsedInProject(typeId)
+          
+        linkToWhereUsedInProject = "" 
+        if(rawLinkToWhereUsedProject.length  !=  0){
+          linkToWhereUsedInProject = "<a href='" + rawLinkToWhereUsedProject + "'>Where used in project</a>" + "<br/>";
+        }      
+    
+        // Implicit conversion 
+        linkToImplicitConversion =  "";
+        isImplicitConversion = $$(elem).data("cp-implicitconversion");
+        if(isImplicitConversion){
+    
+          implicitConversionFullname = $$(elem).data("cp-implicitconversionfullname");
+          implicitConversionDeclaredAt = $$(elem).data("cp-implicitconversiondeclaredat");   
+          if(implicitConversionDeclaredAt != null){
+            linkToImplicitConversion = "<a href='" + implicitConversionDeclaredAt + "'>Impl. conv: " + implicitConversionFullname + "</a>" + "<br/>";
+          } else {
+          linkToImplicitConversion = "Impl. conv: " + implicitConversionFullname + "<br/>";
+          }
+        }
+
+        // Implicit Parameter
+        linkToImplicitParameter = ""
+        isImplicitParameter = $$(elem).data("cp-implicitparameter");
+        if(isImplicitParameter){
+          implicitParameterFullname = $$(elem).data("cp-implicitparameterfullname");
+          implicitParameterDeclaredAt = $$(elem).data("cp-implicitparameterdeclaredat");   
+          if(implicitParameterDeclaredAt != null){
+            linkToImplicitParameter = "<a href='" + implicitParameterDeclaredAt + "'>Impl. para: " + implicitParameterFullname + "</a>" + "<br/>";
+          } else {
+            linkToImplicitParameter = "Impl. conv: " + implicitConversionFullname + "<br/>";
+          } 
+        }
+      
+        // Output structure 
+        html = "<div class='cp-tooltip'>" + fullname + "<br/><br/>" +
+        linkToDeclaration +
+        linkToDefintion +
+        linkToWhereUsedInProject +
+        linkToImplicitConversion +
+        linkToImplicitParameter + 
+        "</div>";
+      
+        return html;
+      }
+      """,
+      s"""
+      /*
+       * Assigns the tooltip information to tokens.
+       */
+       // Tooltip
+       $$('*[data-cp-tooltipdisplay=true]').tooltip({
+          content: function () {           
+          return createTooltipHtmlFromDataAttr(this);
+        },
+          show: null,
+          disabled: false,
+          // position: {of: $$("#LCOM0"), at: "left"},
+          position: { my: 'left-center', at: "right+7 right"},
+          close: function (event, ui) {
+            ui.tooltip.hover(
+            function () { $$(this).stop(true).fadeTo(400, 1); },
+            function () { $$(this).fadeOut("100", function () { $$(this).remove(); }) });
+        }
+      });
+      """
       ).mkString("\n", "\n\n", "\n")
       
       

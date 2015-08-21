@@ -258,6 +258,11 @@ object SourceSymbol {
         val fullName = new Key('fullName) { type Value = String }
         val symbolDesignation = new Key('symbolDesignation){ type Value = org.codeprose.api.ScalaLang.SourceSymbol.SourceSymbol }
         
+        
+        val implicitConversion_indicator = new Key('implicitConversion_indicator){ type Value = Boolean }
+        val implicitParameter_indicator = new Key('implicitParameter_indicator){ type Value = Boolean }
+
+        
         // Currently not in use.
         
         val declaredAs = new Key('declaredAs) { type Value = String }
@@ -274,13 +279,13 @@ object SourceSymbol {
         
         
     
-  //    val implicitConversion_indicator = new Key('implicitConversion_indicator){ type Value = Boolean }
+      
   //    val implicitConversion_sourcePosition = new Key('implicitConversion_sourcePosition){ type Value = SourcePosition }
   //    val implicitConversion_sourcePositionWithTokenId = new Key('implicitConversion_sourcePosition){ type Value = SourcePositionWithTokenId }
   //    val implicitConversion_fullName = new Key('implicitConversion_fullName){ type Value = String }
   //    val implicitConversion_argNames = new Key('implicitConversion_argNamesName){ type Value = String }
   //    
-  //    val implicitParameter_indicator = new Key('implicitParameter_indicator){ type Value = Boolean }
+  
   //    val implicitParameter_sourcePosition = new Key('implicitParameter_sourcePosition){ type Value = SourcePosition }
   //    val implicitParameter_fullName = new Key('implicitParameter_fullname){ type Value = String }
   //    val implicitParameter_sourcePositionWithTokenId = new Key('implicitParameter_sourcePositionWithTokenId){ type Value = SourcePositionWithTokenId }
@@ -292,8 +297,7 @@ object SourceSymbol {
    
     //}
  
-
-    
+   
         
       // Keys Summary
       // ============================================================================
@@ -302,8 +306,9 @@ object SourceSymbol {
       val typeInformation = new Key('typeInformation){ type Value = Map[Int,Option[TypeInformation]] }
       val whereUsedByTypeId = new Key('whereUsedByTypeId){ type Value = Map[Int,List[ERangePositionWithTokenIds]] }
     
-      val packageInfoPerFile = new Key('packageOfFiles){ type Value = Map[File,String] }
+      val packageNamePerFile = new Key('packageOfFiles){ type Value = Map[File,String] }
   
+      val packageInformation = new Key('packageInformation){ type Value = Map[String,Option[PackageInformation]] }
 }
 
 object ScalaLang extends ScalaLang

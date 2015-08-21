@@ -53,21 +53,33 @@ trait HtmlDataAttributeGen {
     import org.codeprose.api.ScalaLang._
     
     
-        token(fullName) match {
+    token(fullName) match {
         case Some(name) => { dataAttributes +=  ((htmlDataAttributePrefix + "fullname",s""""""" + name.toString + s""""""")) } 
         case None => {}
     } 
 
     token(typeId) match {
-    case Some(id) => { dataAttributes += ((htmlDataAttributePrefix + "typeid",s""""""" + id.toString + s""""""")) }
-    case None => {}
+      case Some(id) => { dataAttributes += ((htmlDataAttributePrefix + "typeid",s""""""" + id.toString + s""""""")) }
+      case None => {}
     }
 
     token(internalTokenId) match {
-    case Some(id) => { dataAttributes += ((htmlDataAttributePrefix + "internaltokenid",s""""""" + id.toString + s""""""")) }
-    case None => {}
+      case Some(id) => { dataAttributes += ((htmlDataAttributePrefix + "internaltokenid",s""""""" + id.toString + s""""""")) }
+      case None => {}
     } 
 
+    // Implicit indicators
+    token(implicitConversion_indicator) match {
+      case Some(bool) => { dataAttributes += ((htmlDataAttributePrefix + "implicitconversion",s""""""" + true + s""""""")) }
+      case None => { } 
+    }
+    
+    token(implicitParameter_indicator) match {
+      case Some(bool) => { dataAttributes += ((htmlDataAttributePrefix + "implicitparameter",s""""""" + true + s""""""")) }
+      case None => { } 
+    }
+    
+    
     //    token(whereUsed_WithinFileTokenIdSrcPos) match {
     //      case Some(srcPos) => { val tokenIds=srcPos.map(e=> "#T" + e.tokenId ).mkString("",",","") 
     //        dataAttributes += ((dataAttributesPrefix + "whereusedinfile",s""""""" + tokenIds + s""""""")) }
@@ -152,6 +164,19 @@ trait HtmlDataAttributeGen {
         case None => { } 
     }
 
+    // Implicit indicators
+
+    token(implicitConversion_indicator) match {
+      case Some(bool) => { dataAttributes += ((htmlDataAttributePrefix + "implicitconversion",s""""""" + true + s""""""")) }
+      case None => { } 
+    }
+    
+    token(implicitParameter_indicator) match {
+      case Some(bool) => { dataAttributes += ((htmlDataAttributePrefix + "implicitparameter",s""""""" + true + s""""""")) }
+      case None => { } 
+    }
+
+    
     //    token(implicitConversion_indicator) match {
     //      case Some(name) => { 
     //        dataAttributes += ((dataAttributesPrefix + "implicitconversion",s""""""" + true + s""""""")) 

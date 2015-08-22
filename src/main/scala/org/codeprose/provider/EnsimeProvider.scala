@@ -14,9 +14,8 @@ import org.ensime.client.ClientContext
 import scala.collection.mutable.ArrayBuffer
 import org.codeprose.api.Token
 import org.codeprose.api._
-
-
 import org.ensime.api._
+import scala.util.Sorting
 
 
 trait Provider {
@@ -415,7 +414,9 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
           // Save source positions within type id
           token(typeId) match {
             case Some(tpeId) => {
-              
+              srcPosWithTokenId.foreach( srcPos => {
+                addWhereUsedInformation(tpeId, srcPos)  
+              } )
               // TODO Save source positions in Map
               // Map[Int,Set[ERangePositionWithTokenId]
               
@@ -758,11 +759,28 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
    */
   private def getWhereUsedByTypeIdInformation() : Map[Int,List[ERangePositionWithTokenId]] = {
     // TODO: ONLY FAKE!!!
-     getOccuringTypesWithName().map( e => {
-       (e._1,List[ERangePositionWithTokenId](
-           new ERangePositionWithTokenId("pathToFile1.scala",0,0,41,66),
-           new ERangePositionWithTokenId("pathToFile1.scala",0,0,456,644),
-           new ERangePositionWithTokenId("pathToFile2.scala",0,0,41,111)) )}).toMap   
+   
+//    getWhereUsedAllTypes().foreach( e => {
+//      println(e._1)
+//      println(e._2)
+//      println("\n")
+//    })
+    
+//    // Test data
+//      getOccuringTypesWithName().map( e => {
+//       (e._1,List[ERangePositionWithTokenId](
+//           new ERangePositionWithTokenId("pathToFile1.scala",0,0,41,66),
+//           new ERangePositionWithTokenId("pathToFile1.scala",0,0,456,644),
+//           new ERangePositionWithTokenId("pathToFile2.scala",0,0,41,111)) )}).toMap   
+    
+    getWhereUsedAllTypes().map(e => {
+      // TODO: Provide ordering for ERangePositionWithTokenId!
+      // TODO: Sorting results in Issue with ToJson formater!
+      val sortedSrcPos = e._2.toArray
+      // Sorting.quickSort(sortedSrcPos)(Ordering[ERangePositionWithTokenId])
+      
+      (e._1,sortedSrcPos.toList)
+    }).toMap
  }
   
   
@@ -919,10 +937,40 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     (file,packageStr)
     }).toMap
     
-    
-  
   }
   
+  
+    private def getSrcSamplesForWhereUsed() : Unit = {
+      ???
+    }
+    
+    private def getSourceCodeSample(
+        srcPos: ERangePositionWithTokenId, 
+        tokens: ArrayBuffer[Token],
+        numberOfList: Int) : List[String] = {
+      
+      // Find idx of token
+      val idxMain = ProviderUtil.findIndicesOfTokensInRange(tokens,srcPos.start,srcPos.end)
+      
+      val sampleText = if(idxMain.size>0){
+      
+        // TODO: Adjust to actual source code lines
+        // Find preceding tokens
+        val idxStart = math.max(idxMain(0) - 5,0)
+        // Find following tokens
+        val idxEnd = math.min(idxMain(0)+5,tokens.length-1)
+        
+        val text = tokens.slice(idxStart, idxEnd).map(e => e.text).mkString("")
+        
+        List(text)
+      } else {
+        List("")
+      }
+      
+      sampleText
+    }
+    
+    
   // ==============================================================================
   // Boundary NEW OLD
   // ==============================================================================
@@ -1537,7 +1585,7 @@ object ProviderUtil {
 trait OccuringTypes {
   
    private val occuringTypeIdsWithName = scala.collection.mutable.SortedSet[(Int,String)]() 
-//   private val whereUsedCollection = scala.collection.mutable.Map[Int,scala.collection.mutable.SortedSet[ERangePositionWithTokenIds]]()
+   private val whereUsedCollection = scala.collection.mutable.Map[Int,scala.collection.mutable.Set[ERangePositionWithTokenId]]()
   
    def addOccuringType(typeId: Int, fullname: String) : Unit = {
      occuringTypeIdsWithName += ((typeId,fullname))
@@ -1547,9 +1595,25 @@ trait OccuringTypes {
      occuringTypeIdsWithName
    } 
    
-//   def getWhereUsed(typeId: Int) : Option[scala.collection.mutable.SortedSet[ERangePositionWithTokenIds]] = {
-//     whereUsedCollection.get(typeId)
-//   }
+   def addWhereUsedInformation(typeId: Int, srcPos: ERangePositionWithTokenId) : Unit = {
+     val s = whereUsedCollection.get(typeId)
+     s match {
+       case Some(srcPosSet) => {
+         srcPosSet += srcPos
+       }
+       case None => {
+         whereUsedCollection += (typeId -> scala.collection.mutable.Set[ERangePositionWithTokenId](srcPos))  
+       }
+     }
+   }
+   
+  def getWhereUsedByTypeId(typeId: Int) : Option[scala.collection.mutable.Set[ERangePositionWithTokenId]] = {
+    whereUsedCollection.get(typeId)
+  }
+  
+  def getWhereUsedAllTypes() : scala.collection.mutable.Map[Int,scala.collection.mutable.Set[ERangePositionWithTokenId]] = {
+    whereUsedCollection
+  }
    
 }
 

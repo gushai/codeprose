@@ -2,7 +2,15 @@ package org.codeprose.api
 
 //import org.codeprose.api.TokenProperties.SourcePosition
 //import org.codeprose.api.TokenProperties.SourcePositionWithTokenId
-//
+
+
+case class SourceSample(
+    srcPos: ERangePositionWithTokenId,
+    srcCodeLines: List[String]){}
+
+
+
+
 //class TypeInformation(
 //    val typeId: Int, 
 //    val fullname: String, 

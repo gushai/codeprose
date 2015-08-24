@@ -262,7 +262,7 @@ object SourceSymbol {
         val implicitConversion_indicator = new Key('implicitConversion_indicator){ type Value = Boolean }
         val implicitParameter_indicator = new Key('implicitParameter_indicator){ type Value = Boolean }
 
-           val whereUsedWithInFile = new Key('whereUsedWithinFile){ type Value = List[ERangePositionWithTokenId] }
+        val whereUsedWithInFile = new Key('whereUsedWithinFile){ type Value = List[ERangePositionWithTokenId] }
         
         // Currently not in use.
         
@@ -306,7 +306,8 @@ object SourceSymbol {
       val fileList = new Key('files){ type Value = List[File] }
       val typeInformation = new Key('typeInformation){ type Value = Map[Int,Option[TypeInformation]] }
       val whereUsedByTypeId = new Key('whereUsedByTypeId){ type Value = Map[Int,List[ERangePositionWithTokenId]] }
-    
+      val whereUsedByTypeIdWithCodeSample = new Key('whereUsedByTypeIdWithCodeSample){ type Value = Map[Int,List[(ERangePositionWithTokenId, List[String])]] }
+      
       val packageNamePerFile = new Key('packageOfFiles){ type Value = Map[File,String] }
   
       val packageInformation = new Key('packageInformation){ type Value = Map[String,Option[PackageInformation]] }

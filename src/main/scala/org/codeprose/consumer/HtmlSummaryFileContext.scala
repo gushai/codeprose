@@ -6,28 +6,41 @@ class HtmlSummaryFileContext(){
 
   def htmlDataAttributePrefix  = "cp-"  
     
-  def getBegin(title: String) : String = {
+  def getBegin(title: String,script: String,withLinkToOverview: Boolean) : String = {
+    
+    val linkToOverview = if(withLinkToOverview){
+      s"""<a style="color:black;font-weight:bold;" href="./index.html">overview</a>"""
+    } else {
+      s""""""
+    }
+    
   s"""
-      <!doctype HTML>
-      <html lang="en">
-      <head>
-      <meta http-equiv="content-type" content="text/html; charset=utf-8" />
-      <link rel="stylesheet" type="text/css" href="./style/style.css" media="screen" />
-      <title>$title</title>
-      <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
-      <script src="./js/codeprose.global.js"></script>
-      <script type="text/javascript">      
-      </script>
-      </head>
-      <body>
-      <div align="center">    
-      <div class="header" id="header"> 
-      <div style="text-align:left;"> 
-      <span style="font-size:1.5em;font-weight:bold;">$title&nbsp;</span></div>
-      <div style="text-align:right;"></div>     
-      </div>
-      <div class="content">
-      """
+<!doctype HTML>
+<html lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="./style/style.css" media="screen" />
+<title>$title</title>
+<script src="./js/codeprose.global.js"></script>
+<script src="https://code.jquery.com/jquery-1.10.2.js"></script>
+<script src="http://ajax.aspnetcdn.com/ajax/jquery.ui/1.10.0/jquery-ui.js"></script>
+<script src="./js/codeprose.typeinformation.js"></script>
+<script src="./js/codeprose.whereusedinformation.js"></script> 
+<script type="text/javascript">
+
+$script      
+
+</script>
+</head>
+<body>
+<div align="center">
+<div class="header" id="header" align="center"> 
+<div style="float:left;"> 
+<span style="font-size:1.5em;font-weight:bold;">$title&nbsp;</span></div>
+<div style="float:right;">$linkToOverview</div>
+</div>
+<div class="content">
+"""
   }
   /**
    * Return the lower part of the html output. This includes:

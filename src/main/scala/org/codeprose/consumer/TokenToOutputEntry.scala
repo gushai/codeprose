@@ -342,7 +342,7 @@ class TokenToOutputEntryHtml(
 
 			// Get full file to output translation
 			val relLinkToOtherSrcOutputFile = getRelativeLinkToOtherOutputFile(srcPos.filename)
-			
+      
       if(relLinkToOtherSrcOutputFile.length>0){
 			  val tId = srcPos.tokenId
 				val link = relLinkToOtherSrcOutputFile + "#" + "T" + tId.toString

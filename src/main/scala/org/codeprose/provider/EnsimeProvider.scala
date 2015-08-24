@@ -31,8 +31,11 @@ class EnsimeProviderContext(
 		val host: String,
 		val port: Int,
 		val verbose: Boolean,
-    val inputFolders: List[String]
+    val inputFolders: List[String]    
 		) extends ProviderContext {
+  
+  val whereUsedSourceCodeSamplesNumberOfLinesBefore = 2
+  val whereUsedSourceCodeSamplesNumberOfLinesAfter = 2
   
   // All below in ms
   val timeout_ConnectionInfoReq = 500
@@ -140,6 +143,10 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     // Where used in project
     logger.info("\t" + "where used information")
     summary.set(whereUsedByTypeId)(getWhereUsedByTypeIdInformation())
+    
+    // Where used in project source positions
+    logger.info("\t" + "source code samples for where used information")
+    summary.set(whereUsedByTypeIdWithCodeSample)(getSourceSamplesForWhereUsed(tokens,c.whereUsedSourceCodeSamplesNumberOfLinesBefore,c.whereUsedSourceCodeSamplesNumberOfLinesAfter))
    
     summary
   } 
@@ -939,35 +946,110 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     
   }
   
-  
-    private def getSrcSamplesForWhereUsed() : Unit = {
-      ???
+  /**
+   * Retrieves source code samples for all source positions in where used,
+   * @param enrichedTokens  Enriched token information
+   * @param numberOfLines   Number of source code lines to retrieve.
+   * @return                
+   */
+    private def getSourceSamplesForWhereUsed(
+        enrichedTokens: ArrayBuffer[(File,ArrayBuffer[Token])],
+        numberOfLinesBefore: Int,
+        numberOfLinesAfter: Int) : 
+    Map[Int,List[(ERangePositionWithTokenId, List[String])]] = {
+      val srcPosPerTypeId = getWhereUsedAllTypes().map(e => {
+        val sourceSamples = e._2.map( srcPos => {
+          // Convert set to 
+          (srcPos,getSourceCodeSampleForToken(srcPos,enrichedTokens,numberOfLinesBefore,numberOfLinesAfter))
+        }).toList
+        (e._1,sourceSamples)
+      }).toMap
+
+      srcPosPerTypeId
     }
     
-    private def getSourceCodeSample(
+    /**
+     * Returns a source code sample matching a token based source position.
+     * @param srcPos          Source position.
+     * @param enrichedTokens  Enriched tokens.
+     * @param numberOfLine    Number of source code lines to retrieve.
+     * @return                List of text text before token, token text, text after token
+     */
+    private def getSourceCodeSampleForToken(
         srcPos: ERangePositionWithTokenId, 
-        tokens: ArrayBuffer[Token],
-        numberOfList: Int) : List[String] = {
+        enrichedTokens: ArrayBuffer[(File,ArrayBuffer[Token])],
+        numberOfLinesBefore: Int,
+        numberOfLinesAfter: Int) : List[String] = {
       
-      // Find idx of token
-      val idxMain = ProviderUtil.findIndicesOfTokensInRange(tokens,srcPos.start,srcPos.end)
+      // Find tokens 
+      val tokens = enrichedTokens.filter(e => 
+        if(e._1.getAbsolutePath == srcPos.filename){
+          true
+        } else{  
+          false
+        }
+        ).map(e=>e._2)
       
-      val sampleText = if(idxMain.size>0){
+       val srcSample = if(tokens.size>0){
+          
+          // Find idx of token
+           val idxMain = ProviderUtil.findIndicesOfTokensInRange(tokens(0),srcPos.start,srcPos.end)
       
-        // TODO: Adjust to actual source code lines
-        // Find preceding tokens
-        val idxStart = math.max(idxMain(0) - 5,0)
-        // Find following tokens
-        val idxEnd = math.min(idxMain(0)+5,tokens.length-1)
-        
-        val text = tokens.slice(idxStart, idxEnd).map(e => e.text).mkString("")
-        
-        List(text)
+//           // DEBUG
+//           if(idxMain.size>1){
+//             println("[Several tokens found: " + idxMain)
+//             println(srcPos)
+//           }
+           
+           val sampleText = if(idxMain.size>0){
+      
+          // TODO: Adjust to actual source code lines
+          // Find preceding tokens
+          val idxNewLines = tokens(0).zipWithIndex.filter { e => 
+            if(e._1.text.contains("\n")) 
+              true
+            else 
+              false
+            }.map(e=>e._2)
+          
+          //idxNewLines.foreach(e=> print(e+","))
+          //println("["+idxMain(0)+"]" + "\n\n")
+          val idxNewLineBefore = idxNewLines.filter(e=> 
+              if(e<idxMain(0))
+                true
+              else 
+                false)
+          val idxStart = if(idxNewLineBefore.length>numberOfLinesBefore){
+            idxNewLineBefore(idxNewLineBefore.length-numberOfLinesBefore)
+          } else {
+            0
+          }
+         // val idxStart = math.max(idxNewLineBefore(idxNewLineBefore) - 10,0)
+          // Find following tokens
+          val idxNewLineAfter = idxNewLines.filter(e=> 
+              if(e>idxMain(0))
+                true
+              else 
+                false)
+          //val idxEnd = math.min(idxMain(0)+10,tokens(0).length-1)
+          val idxEnd = if(idxNewLineAfter.length>numberOfLinesAfter){
+            idxNewLineAfter(numberOfLinesAfter)
+          } else{ tokens(0).length-1 } 
+            
+          val textBefore = tokens(0).slice(idxStart, idxMain(0)).map(e => e.text).mkString("")
+          val textAfter = tokens(0).slice(math.min(idxMain(0)+1,tokens(0).length-1), idxEnd).map(e => e.text).mkString("")
+          val textToken = tokens(0)(idxMain(0)).text
+          List(textBefore,textToken,textAfter)
+        } else {
+          logger.error("[getSourceCodeSampleForToken]+\t" + "Token not found.")
+          List("")
+        }
+        sampleText
       } else {
+        logger.error("[getSourceCodeSampleForToken]+\t" + "Source file not found.")
         List("")
       }
-      
-      sampleText
+      srcSample
     }
     
     

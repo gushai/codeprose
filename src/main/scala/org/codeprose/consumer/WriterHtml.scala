@@ -16,9 +16,11 @@ import org.codeprose.api.TypeInformation
 import org.codeprose.util.CodeproseJsonFormat._
 import spray.json._
 import org.codeprose.api.ERangePositionWithTokenId
+import org.codeprose.api.SourcePositionLinkWithCodeSample
 
 
 class ResourceRelPaths(val base: String, val target: String)
+
 
 
 class WriterContextHtml(
@@ -48,11 +50,12 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
     
 	def generateOutput(projectInfo: ProjectInfo) : Unit = {
     
+    val htmlOutputContext = new HtmlOutputContext(c.outputMainPath,projectInfo.enrichedTokens.map(e => e._1).toList)
+    
     setupOutputEnvironment()
     
-    generateGlobalJSInformationFiles(projectInfo.summary)
+    generateGlobalJSInformationFiles(projectInfo.summary,htmlOutputContext)
     
-    val htmlOutputContext = new HtmlOutputContext(c.outputMainPath,projectInfo.enrichedTokens.map(e => e._1).toList)
     generateSummaryPages(projectInfo,htmlOutputContext)
     
     generateIndividualPages(projectInfo,htmlOutputContext)
@@ -123,7 +126,7 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
       // create output
       val content = List(filesList,otherList).map(e=>htmlContext.packageContent(e)).mkString("\n\n")  
         
-     FileUtil.writeToFile(outputFilename,htmlContext.getBegin(indexFileTitle) + content  + htmlContext.getEnd())      
+     FileUtil.writeToFile(outputFilename,htmlContext.getBegin(indexFileTitle,"",false) + content  + htmlContext.getEnd())      
     } else {
       logger.error("Unable to generate index file. No file name provided!")
     }
@@ -152,7 +155,72 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
     
     if(relFileName.isDefined){
     
-       logger.info("\t" + "where used information \t" + relFileName.get)
+      logger.info("\t" + "where used information \t" + relFileName.get)
+      val outputFilename= new File(c.outputMainPath.getAbsolutePath + relFileName.get)
+         
+      val htmlContext = new HtmlSummaryFileContext()      
+    
+      val title = "Where Used by Type Id"
+      
+      
+      val script =s"""
+ $$(document).ready(function(){ 
+  
+  // Where used information with code sample by type id
+  function whereUsedInfoWithSampleCode(){
+
+    console.log("Getting where used information with sample code ... ");
+
+    var domElemToAppend = "#ContentWhereUsedWithSourceSample";
+
+    var typeIds = getTypeIds();
+    
+    for(var i = 0;i<typeIds.length;i++){
+      var currentId = typeIds[i];
+
+      var whereUsedInfo = whereUsedInformation(currentId);
+      var tInfo = typeInformation(currentId);
+  
+      var toAppend = "<div style='margin-top:3em;' id='TYPEID" + currentId +"'><b>" + tInfo.fullname + "</b>" + " &nbsp;&nbsp;&nbsp;&nbsp;" + "(Type Id: " +  String(currentId) + ")</div>";
+
+      if(whereUsedInfo == null){
+        toAppend += "<div style='margin-top:2em;'>" + "no where used information found" + "</div>";
+      } else {
+        var text = "";    
+        for (pos = 0; pos < whereUsedInfo.length; pos++) {
+
+          var sampleCode = whereUsedInfo[pos].sourceSample;
+          if(whereUsedInfo[pos].sourceSample.length>2){
+            // TODO: Highlight token
+            sampleCode = whereUsedInfo[pos].sourceSample[0] +whereUsedInfo[pos].sourceSample[1] + whereUsedInfo[pos].sourceSample[2]; 
+            //sampleCode = whereUsedInfo[pos].sourceSample[0] + "<span style='background-color:yellow;'>"+whereUsedInfo[pos].sourceSample[1] +"</span>" + whereUsedInfo[pos].sourceSample[2];       
+          }   
+          var srcSampleDiv = "<div style='border-top:1px solid;margin-top:2em;padding-top:1em;'>" + 
+          "<b>" + whereUsedInfo[pos].srcFilename + "</b><br/><br/>" + 
+"<div class='table-code-code'>" + "<a class='in-code' href='."+whereUsedInfo[pos].link + "#T" + whereUsedInfo[pos].tokenId + "'><span style='color:black;'><pre>" + sampleCode + "</pre></span></a>" +"</div>"+"</div>";
+
+          text += srcSampleDiv;
+        }
+  
+        toAppend += "<div style='margin-top:2em;'>" + text + "</div>";
+      }
+      $$(domElemToAppend).append(toAppend);      
+    }
+  };
+
+  whereUsedInfoWithSampleCode();
+
+});       
+
+"""
+      
+      val content = htmlContext.packageContent(s"""<div id="ContentWhereUsedWithSourceSample"></div>""")
+           
+      // create output
+        
+      FileUtil.writeToFile(outputFilename,htmlContext.getBegin(title,script,true) + content + htmlContext.getEnd())      
+
+       
     
     } else {
       logger.error("Unable to where used summary file. No file name provided!")
@@ -176,7 +244,9 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
   /**
    * Create the java script files that act as db.
    */
-  private def generateGlobalJSInformationFiles(projectSummary: ProjectSummary) : Unit = {
+  private def generateGlobalJSInformationFiles(
+      projectSummary: ProjectSummary, 
+      htmlOutputContext: HtmlOutputContext) : Unit = {
     
     logger.info("Generating js information files ...")
     
@@ -189,14 +259,24 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
       case None => { logger.error("No type information provided in project summary.") }
     }
     
-    import org.codeprose.api.ScalaLang.whereUsedByTypeId
+    import org.codeprose.api.ScalaLang.whereUsedByTypeIdWithCodeSample
     
-    projectSummary(whereUsedByTypeId) match {
+    projectSummary(whereUsedByTypeIdWithCodeSample) match {
       case Some(whereUsed) => {
-        generateGlobalJSWhereUsedInfo(whereUsed)
+        generateGlobalJSWhereUsedInfo(whereUsed,htmlOutputContext)
       } 
       case None => { logger.error("No where used information provided in project summary.") }
     }
+
+    
+//    import org.codeprose.api.ScalaLang.whereUsedByTypeId
+//    
+//    projectSummary(whereUsedByTypeId) match {
+//      case Some(whereUsed) => {
+//        generateGlobalJSWhereUsedInfo(whereUsed)
+//      } 
+//      case None => { logger.error("No where used information provided in project summary.") }
+//    }
     
   }
   
@@ -274,7 +354,9 @@ function typeInformation(typeId){
    * Saves where used information to disk in js file.
    * @param whereUsed Source positions by type id.
    */
-  private def generateGlobalJSWhereUsedInfo(whereUsed: Map[Int,List[ERangePositionWithTokenId]]) : Unit = {
+  private def generateGlobalJSWhereUsedInfo(
+      whereUsedWithSampleCode: Map[Int,List[(ERangePositionWithTokenId,List[String])]],
+      htmlOutputContext: HtmlOutputContext): Unit = {
     
     val relFileName = c.summaryFilesRelPath.get("js.global.whereusedinfo")
     
@@ -283,30 +365,83 @@ function typeInformation(typeId){
       val outputFilename= new File(c.outputMainPath.getAbsolutePath + relFileName.get)
       logger.info("\t" + "where used information: \t" + relFileName.get)
 
-      val beg = s"""
-        // codeprose
-        //
-        // where used information
-        function whereUsedInformation(typeId){ 
-          whereUsed = null;
-          switch(typeId){
-          
-          """
-        
-      val end = s"""
-        default: \n\t\t whereUsed=null;
-        }
-        return whereUsed;
-      };"""
+//      // Where used information
+//      val whereUsedBeg = s"""
+//        // codeprose
+//        //
+//        // where used information
+//        function whereUsedInformation(typeId){ 
+//          whereUsed = null;
+//          switch(typeId){
+//          
+//          """
+//        
+//      val whereUsedEnd = s"""
+//        default: \n\t\t whereUsed=null;
+//        }
+//        return whereUsed;
+//      };"""
+//      
+//      val whereUsedEntries = whereUsed.map(e => {
+//        val typeId = e._1
+//        val jsonStr = e._2.toJson.compactPrint
+//        s"""\t case $typeId:\n\t\twhereUsed=""" + jsonStr + s"""; break;"""
+//        
+//      }).mkString("\n")
+//
+//      
+//      
+//      val whereUsedContent = whereUsedBeg + whereUsedEntries + whereUsedEnd
+      val whereUsedContent = ""
       
-      val entries = whereUsed.map(e => {
+      // Where used with sample code
+      
+      val whereUsedWithSampleCodeBeg = s"""
+// codeprose
+//
+// where used information
+function whereUsedInformation(typeId){ 
+  whereUsed = null;
+  switch(typeId){ \n \n"""
+      
+      val whereUsedWithSampleCodeEnd = s"""
+    default: \n\t\t whereUsed=null;
+    }
+  return whereUsed;
+};\n\n"""
+      
+      val whereUsedWithSampleCodeEntries = whereUsedWithSampleCode.map(e=>{
         val typeId = e._1
-        val jsonStr = e._2.toJson.compactPrint
+        val output = e._2.map(e => {
+          val srcPos = e._1
+          val sample = e._2
+          val srcFileNameLink = htmlOutputContext.filenamesOriginalToRelOutput.filter( e => {
+            if(e._1.getAbsolutePath == srcPos.filename){
+              true
+            } else {
+              false
+            }
+          }).map(e=>e._2).toList
+          
+          val srcFilename = htmlOutputContext.getShoretendFilename(srcPos.filename).getOrElse("")
+          
+          if(srcFileNameLink.size>0){
+            new SourcePositionLinkWithCodeSample(srcFilename,srcFileNameLink(0),srcPos.tokenId,sample)
+          } else {
+            new SourcePositionLinkWithCodeSample(srcFilename,"",srcPos.tokenId,sample)
+          }
+          
+        })
+        val jsonStr = output.toJson.compactPrint 
         s"""\t case $typeId:\n\t\twhereUsed=""" + jsonStr + s"""; break;"""
-        
       }).mkString("\n")
       
-      FileUtil.writeToFile(outputFilename,beg+entries+end)      
+      
+      val whereUsedWithSampleCodeContent = whereUsedWithSampleCodeBeg + whereUsedWithSampleCodeEntries + whereUsedWithSampleCodeEnd
+      
+      val content = List(whereUsedContent,whereUsedWithSampleCodeContent).mkString("\n")
+      
+      FileUtil.writeToFile(outputFilename,content)      
 
     } else {
       logger.error("Unable to generate js file with where used information! No file name provided.")

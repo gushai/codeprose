@@ -141,6 +141,13 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
     if(relFileName.isDefined){
     
        logger.info("\t" + "type information \t" + relFileName.get)
+       
+       val htmlContext = new HtmlSummaryFileContext()      
+    
+       val title = "Type information"
+       
+       
+       
     
     } else {
       logger.error("Unable to generate type summary file. No file name provided!")
@@ -505,7 +512,7 @@ function whereUsedInformation(typeId){
       implicit val htmlSrcFileContext = new HtmlSrcFileContext(
           srcFile.getAbsolutePath,
           packageName,
-          new TokenToOutputEntryHtml()(htmlOutputContext))
+          new TokenToOutputEntryHtml(htmlOutputContext))
       val srcEntries = generateHtmlEntries(tokens).toArray
     
       val outputFile = htmlOutputContext.filenamesOriginalToOutput(srcFile.getAbsolutePath())

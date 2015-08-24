@@ -17,17 +17,26 @@ class HtmlOutputContext(
  
   val filenamesOriginalToShortened = srcFiles.zip(filenamesShortened).toMap
   
-  val relatvieOutputFilenames = filenamesShortened.map( s=> "/content/" + s.replace("/","_") + ".html")
+  val relativeOutputFilenames = filenamesShortened.map( s=> "/content/" + s.replace("/","_") + ".html")
   
-  val filenamesOriginalToRelOutput = srcFiles.zip(relatvieOutputFilenames).toMap
+  val filenamesOriginalToRelOutput = srcFiles.zip(relativeOutputFilenames).toMap
   
   
   def getShoretendFilename(srcFile: File) : Option[String] = {
     filenamesOriginalToShortened.get(srcFile)
   } 
-   def getShoretendFilename(srcFile: String) : Option[String] = {
+  def getShoretendFilename(srcFile: String) : Option[String] = {
     filenamesOriginalToShortened.get(new File(srcFile))
   } 
+  
+  def getRelativeOutputFilename(srcFile: File) : Option[String] = {
+    filenamesOriginalToRelOutput.get(srcFile)
+  }
+  
+  def getRelativeOutputFilename(srcFile: String) : Option[String] = {
+    getRelativeOutputFilename(new File(srcFile))
+  }
+   
 
 }
 

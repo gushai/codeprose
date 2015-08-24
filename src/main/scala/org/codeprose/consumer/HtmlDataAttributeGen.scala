@@ -66,8 +66,8 @@ trait HtmlDataAttributeGen {
     token(internalTokenId) match {
       case Some(id) => { dataAttributes += ((htmlDataAttributePrefix + "internaltokenid",s""""""" + id.toString + s""""""")) }
       case None => {}
-    } 
-
+    }  
+    
     // Implicit indicators
     token(implicitConversion_indicator) match {
       case Some(bool) => { dataAttributes += ((htmlDataAttributePrefix + "implicitconversion",s""""""" + true + s""""""")) }
@@ -93,13 +93,7 @@ trait HtmlDataAttributeGen {
     //      case None => {}
     //    } 
     //           
-    //    token(declaredAt_TokenIdSrcPos) match {
-    //      case Some(srcPos) => {        
-    //        val link = "." + getRelativeOutputFilenameFromOriginalFile(srcPos.filename) + "#" + "T" + srcPos.tokenId.toString
-    //        dataAttributes += ((dataAttributesPrefix + "declaredat",s""""""" + link + s"""""""))
-    //      }
-    //      case None => {}
-    //    }
+
     //    
     //   token(implicitConversion_indicator) match {
     //      case Some(name) => { 

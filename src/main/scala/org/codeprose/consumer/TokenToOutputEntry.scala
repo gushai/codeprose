@@ -19,12 +19,9 @@ trait TokenToOutputEntry {
 
 
 //class TokenToOutputEntryHtml(val filenamesOriginalToOutputNames: Array[(String,String)]) extends TokenToOutputEntry {
-class TokenToOutputEntryHtml(
-    )(implicit hmtlOutputContext: HtmlOutputContext) 
+class TokenToOutputEntryHtml(htmlOutputContext: HtmlOutputContext) 
     extends TokenToOutputEntry with HtmlDataAttributeGen { 
-  
-   
-  
+       
   /**
    * Returns wrapper for tocken.text.
    * @param token Token
@@ -336,20 +333,20 @@ class TokenToOutputEntryHtml(
 	  }
     
 	  // Link elements to declared_At   
-	  val (linkToDeclaredAt_beg,linkToDeclaredAt_end) = if(token(declaredAt_SrcPosWithTokenId).isDefined){
+	  val (linkToDeclaredAt_beg,linkToDeclaredAt_end) = if(token(declaredAt).isDefined){
 
-		  val srcPos = token(declaredAt_SrcPosWithTokenId).get
+		  val srcPos = token(declaredAt).get
 
-			// Get full file to output translation
-			val relLinkToOtherSrcOutputFile = getRelativeLinkToOtherOutputFile(srcPos.filename)
-      
-      if(relLinkToOtherSrcOutputFile.length>0){
-			  val tId = srcPos.tokenId
-				val link = relLinkToOtherSrcOutputFile + "#" + "T" + tId.toString
-				(s"""<a href="$link" class="in-code">""","</a>")        
-      } else {
-			  ("","")
-			}
+      htmlOutputContext.getRelativeOutputFilename(srcPos.filename) match {
+        case Some(relLinkToOtherSrcOutputFile) => {
+          val tId = srcPos.tokenId
+          val link = ".." + relLinkToOtherSrcOutputFile + "#" + "T" + tId.toString
+          (s"""<a href="$link" class="in-code">""","</a>")   
+        } 
+        case None => {
+          ("","")
+        }
+      }
 	  } else { ("","") }
 
 	  val spanClass = token(symbolDesignation) match {
@@ -382,18 +379,7 @@ class TokenToOutputEntryHtml(
   }
 
   
-  /**
-   * Returns relative link to other output file.
-   * @param srcFileName Input source file.
-   * @return            Link of type "./outputFile.html"
-   */
-  private def getRelativeLinkToOtherOutputFile(srcFileName: String) : String = {
-    
-    val absPath = hmtlOutputContext.filenamesOriginalToOutput(srcFileName).getAbsolutePath 
-    val idx = absPath.lastIndexOf("/")
-    "./" + absPath.slice(idx,absPath.length)
-  }
-  
+   
 //  /**
 //   * Maps source file names to output file names.
 //   * @param srcFileName Source file name.

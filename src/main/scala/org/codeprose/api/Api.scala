@@ -254,7 +254,10 @@ object SourceSymbol {
         override val tokenType = new Key('tokenType) { type Value = ScalaTokenType }
         val typeId = new Key('typeId) { type Value = Int }
         val internalTokenId = new Key('internalTokenId){ type Value = Int }
-        val declaredAt_SrcPosWithTokenId = new Key('declaredAt_TokenIdSrcPos){ type Value = OffsetSourcePositionWithTokenId }
+        
+        val declaredAt = new Key('declaredAt) { type Value = OffsetSourcePositionWithTokenId }
+        
+        //val declaredAt_SrcPosWithTokenId = new Key('declaredAt_TokenIdSrcPos){ type Value = OffsetSourcePositionWithTokenId }
         val fullName = new Key('fullName) { type Value = String }
         val symbolDesignation = new Key('symbolDesignation){ type Value = org.codeprose.api.ScalaLang.SourceSymbol.SourceSymbol }
         
@@ -268,7 +271,7 @@ object SourceSymbol {
         
         val declaredAs = new Key('declaredAs) { type Value = String }
         
-        val declaredAt = new Key('declaredAt) { type Value = OffsetSourcePositionWithTokenId }
+        
                   
         val isArrowType = new Key('isArrowType) { type Value = Boolean }
         

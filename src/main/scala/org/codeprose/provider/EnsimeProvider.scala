@@ -325,6 +325,22 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
         token.set(typeId)(tpeId)
         token.set(fullName)(fullNameStr)
         
+        // Declared At information
+        symbolInfo.declPos match {
+          case Some(srcPos) => {
+            if(srcPos.isInstanceOf[org.ensime.api.OffsetSourcePosition]){
+              val offsetSrcPos = srcPos.asInstanceOf[org.ensime.api.OffsetSourcePosition]
+              val tokenId = ProviderUtil.getTokenIdToOffsetSourcePosition(offsetSrcPos.file.getAbsolutePath, offsetSrcPos.offset, info)
+              token.set(declaredAt)(OffsetSourcePositionWithTokenId(offsetSrcPos.file.getAbsolutePath,offsetSrcPos.offset,tokenId))
+            } else {
+              logger.error("[enrichTokenWithSymbolInfo]\t Unknown declaredAt source position type.")
+            }
+          }
+          case None => {
+            
+          }
+        }
+                
         // Complex information
         
         
@@ -353,7 +369,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
 //          if(typeInfo.isInstanceOf[BasicTypeInfo]){    
 //            token.set(isArrowType)(false)
 //          } else if (typeInfo.isInstanceOf[ArrowTypeInfo]){        
-//            token.set(isArrowType)(false)
+//            token.set(isArrowType)(true)
 //          }
 //          
 //          if(sI.declPos.isDefined && sI.declPos.get.isInstanceOf[org.ensime.api.OffsetSourcePosition]){
@@ -752,6 +768,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       val typeInformation = org.codeprose.util.EnsimeApiToCodeproseApi.TypeInspectInfoToTypeInformation(typeInspectInfo)
       (e._1, typeInformation)      
     }).toMap
+    
    // TODO Remove after debugging
 //    println("\n\nInspectTypeInfo:")
 //    detailedTypeInfo.foreach(e => {

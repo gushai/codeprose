@@ -30,21 +30,18 @@ case class SourcePositionLinkWithCodeSample(
     s"""($srcFilename,$link,$tokenId,$sample)""" }
 }
 
-
-
-// TODO: Causes issues with the to json formatter!
-//object ERangePositionWithTokenId {
-//  implicit val ord = new Ordering[ERangePositionWithTokenId] {
-//    def compare(a: ERangePositionWithTokenId, b: ERangePositionWithTokenId): Int = {
-//      if(a.filename == b.filename){
-//        a.tokenId compare b.tokenId  
-//      } else {
-//        a.filename compare b.filename
-//      }
-//      
-//    }
-//  }
-//}
+object ERangePositionWithTokenId {
+  implicit val ord = new Ordering[ERangePositionWithTokenId] {
+    def compare(a: ERangePositionWithTokenId, b: ERangePositionWithTokenId): Int = {
+      if(a.filename == b.filename){
+        a.tokenId compare b.tokenId  
+      } else {
+        a.filename compare b.filename
+      }
+      
+    }
+  }
+}
 
 
 class SymbolInfo(

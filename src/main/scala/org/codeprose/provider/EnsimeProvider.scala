@@ -957,7 +957,12 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
         numberOfLinesBefore: Int,
         numberOfLinesAfter: Int) : 
     Map[Int,List[(ERangePositionWithTokenId, List[String])]] = {
-      val srcPosPerTypeId = getWhereUsedAllTypes().map(e => {
+      
+      val whereUsedByTypeIdSorted = getWhereUsedAllTypes().map(e=>{
+        (e._1,e._2.toList.sorted)
+      })
+      
+      val srcPosPerTypeId = whereUsedByTypeIdSorted.map(e => {
         val sourceSamples = e._2.map( srcPos => {
           // Convert set to 
           (srcPos,getSourceCodeSampleForToken(srcPos,enrichedTokens,numberOfLinesBefore,numberOfLinesAfter))

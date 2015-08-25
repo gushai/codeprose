@@ -80,7 +80,7 @@ object CodeproseBroker extends LazyLogging {
   ) : BrokerContext = {
 
     // TODO: Extend to include several folders
-    val filesToProcess = FileUtil.getAllScalaFilesIncludingSubDir(mainSrcFolder)        
+    val filesToProcess = FileUtil.getAllScalaFilesIncludingSubDir(mainSrcFolder).sorted       
     return new BrokerContext(host,port,ensimeFile,List(mainSrcFolder.getAbsolutePath),filesToProcess,outputPath,outputType,verbose)   
   }
        

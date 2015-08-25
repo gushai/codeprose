@@ -50,33 +50,50 @@ class EnsimeProviderContext(
 }
 
 
-    
+/**
+ * The EnsimeProvider
+ * 
+ * Usage: 
+ *  - Call order: 
+ *    1.) initialize()
+ *    2.) getProjectInformation(files: List[File])
+ *    3.) close()
+ *  
+ * @param 
+ *     
+ */
 class EnsimeProvider(implicit c: EnsimeProviderContext )
     extends Provider with OccuringTypes with LazyLogging {
 
 	private val ensimeClient = new Client()(new ClientContext(c.host,c.port,false)) 
 	var isInitialized = false
+  // Internal token id used to reference individual tokens in the project. 
+  // All tokens in the project are numbered starting with 0.
   var tokenId = 0
  
  
   
 	/**
 	 * Initializes the ensime client and tests the connection to the server.
-	 * Sets isInitialized to true if test successful. 
+   * 
+	 * Sets isInitialized to true if test successful. Tokens are only enriched 
+   * with information from ensime if test successful.
+   * 
+   *  
 	 */
 	def initialize(): Unit = {
 			logger.info("Initializing Ensime client ... ")    
 			ensimeClient.initialize()         
 			logger.info("Done.")
-
-			isInitialized = testConnection()       
+			isInitialized = testConnectionToEnsimeServer()       
 	}
 
-	/*
-	 * Send a ConnectionInfo to the server and returns boolean success indicator.
-	 * Blocks during test.
+	/**
+	 * Tests the connection to the ensime server by sending a ConnectionInfoReq.
+   *   
+	 * @return Boolean connection test success indicator. 
 	 */
-	def testConnection() : Boolean = {
+	private def testConnectionToEnsimeServer() : Boolean = {
 			logger.info("[Ensime Server Connection]\t Testing connection to ensime-server ...")
 			val connectionInfo = ensimeClient.connectionInfo()
 			val serverReady = try {
@@ -92,12 +109,17 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
 			serverReady
 	}
 
+  /**
+   * Closes the ensime client.
+   *
+   */
 	def close() : Unit = {
 			ensimeClient.close()
 	}
 
   /**
    * Generates project information. 
+   * 
    * @param List of files to be processed. Assumes only Scala files are provided!
    * @return ProjectInfo
    */
@@ -115,39 +137,55 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
    
    /**
     * Creates project summary information. 
+    * 
+    * If connection to ensime server is not initialized an empty ProjectSummary is returned.
+    * 
+    * Collected information:  
+    *   - List of files
+    *   - Package name per file
+    *   - Package information 
+    *   - Detailed type information
+    *   - Detailed information on where types are used
+    *   - 
+    * 
+    * @param files  files to enrich
+    * @param tokens enriched tokens returned from getEnrichedTokens()
+    * @return       Project summary
+    * 
     */
   private def getProjectSummary(files: List[File], tokens: ArrayBuffer[(File, ArrayBuffer[Token])]) : ProjectSummary = {
     
     val summary = new ProjectSummary()
-    
-    import org.codeprose.api.ScalaLang._
-    
-    logger.info("Getting project summary information ...")
-    
-    // Files
-    logger.info("\t" + "files")
-    summary.set(fileList)(files)
-    
-    // Package information
-    logger.info("\t" + "package information")
-    val packNamesPerFile = getPackageNamesPerFile(tokens)
-    val packageNamesUnique = packNamesPerFile.map(e => e._2).toSet.toList
-    summary.set(packageNamePerFile)(packNamesPerFile)
-    summary.set(packageInformation)(getPackageInformaton(packageNamesUnique))
-    
-    
-    // Used types
-    logger.info("\t" + "type information")
-    summary.set(typeInformation)(getDetailedTypeInformation())
-    
-    // Where used in project
-    logger.info("\t" + "where used information")
-    summary.set(whereUsedByTypeId)(getWhereUsedByTypeIdInformation())
-    
-    // Where used in project source positions
-    logger.info("\t" + "source code samples for where used information")
-    summary.set(whereUsedByTypeIdWithCodeSample)(getSourceSamplesForWhereUsed(tokens,c.whereUsedSourceCodeSamplesNumberOfLinesBefore,c.whereUsedSourceCodeSamplesNumberOfLinesAfter))
-   
+    if(isInitialized){
+
+      import org.codeprose.api.ScalaLang._
+      
+      logger.info("Getting project summary information ...")
+      
+      // Files
+      logger.info("\t" + "files")
+      summary.set(fileList)(files)
+      
+      // Package information
+      logger.info("\t" + "package information")
+      val packNamesPerFile = getPackageNamesPerFile(tokens)
+      val packageNamesUnique = packNamesPerFile.map(e => e._2).toSet.toList
+      summary.set(packageNamePerFile)(packNamesPerFile)
+      summary.set(packageInformation)(getPackageInformaton(packageNamesUnique))
+      
+      
+      // Used types
+      logger.info("\t" + "type information")
+      summary.set(typeInformation)(getDetailedTypeInformation())
+      
+      // Where used in project
+      logger.info("\t" + "where used information")
+      summary.set(whereUsedByTypeId)(getWhereUsedByTypeIdInformation())
+      
+      // Where used in project source positions
+      logger.info("\t" + "source code samples for where used information")
+      summary.set(whereUsedByTypeIdWithCodeSample)(getSourceSamplesForWhereUsed(tokens,c.whereUsedSourceCodeSamplesNumberOfLinesBefore,c.whereUsedSourceCodeSamplesNumberOfLinesAfter))
+    }
     summary
   } 
    
@@ -662,27 +700,32 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   }
   
   /**
-   * Performs a SymbolInfoReq.
+   * Sends a SymbolAtPointReq to the ensime server. 
+   * 
+   * If request fails or times out None is returned.
+   * 
    * @param file  File
    * @param point Offset
    * @return    Some(SymbolInfo)
    */
   private def performSymbolInfoRequest(file: File, point: Int) : Option[org.ensime.api.SymbolInfo] = {
+   
     
     val symbolInfo = ensimeClient.symbolAtPoint(file, point)
-   
+    
+    val requestDetails = s""""Request details: File: """ + file.getAbsolutePath + s""" - Point:  $point"""
+    
     val ret = try {
       val result = Await.result(symbolInfo,  Duration(c.timeout_SymbolInfoReq, MILLISECONDS))
       Some(result)
          
       } catch {
         case timeout : TimeoutException => {
-          logger.error("[RequestError] [Timeout]\tSymbolInfosReq:\t" + timeout.getMessage)
+          logger.error("[RequestError] [Timeout]\tSymbolInfosReq:\t" + timeout.getMessage + "\n" + requestDetails )
           None
         }
         case e : Throwable => {
-          logger.error("[RequestError] \tSymbolInfosReq:\t" + e.getMessage + 
-              "\nRequest details: " + "File: " + file + " - Point: " + point)
+          logger.error("[RequestError] \tSymbolInfosReq:\t" + e.getMessage + "\n" + requestDetails )
           None
         }
     }
@@ -690,33 +733,45 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   }
   
   /**
-   * Performs a UsesOfSymbolAtPointReq.
+   * Sends a UsesOfSymbolAtPointReq to the ensime server. 
+   * 
+   * If the request fails or times out None is returned.
+   * 
+   * The UsesOfSymbolAtPointReq returns source code positions where the requested 
+   * symbol is also used. 
+   * 
    * @param file  File
    * @param point Offset
    * @return      Option[ERangePositions] Source positions.
    */
   private def performUsesOfSymbolReq(
       file: File, point: Int) : Option[org.ensime.api.ERangePositions] = {
-      
+    
     val usesOfSymbol = ensimeClient.usesOfSymAtPoint(file, point)
+    
+    val requestDetails = s""""Request details: File: """ + file.getAbsolutePath + s""" - Point:  $point"""
+  
+    
     try {
       val result = Await.result(usesOfSymbol,  Duration(c.timeout_UsesOfSymbolAtPointReq, MILLISECONDS))
       Some(result)
     } catch {
       case timeout : TimeoutException => {
-        logger.error("[RequestError] [Timeout]\tUsesOfSymbolAtPointReq:\t" + timeout.getMessage)
+        logger.error("[RequestError] [Timeout]\tUsesOfSymbolAtPointReq:\t" + timeout.getMessage + "\n" + requestDetails)
         None
       }
       case e : Throwable => {
-        logger.error("[RequestError] \tUsesOfSymbolAtPointReq:\t" + e.getMessage+ 
-              "\nRequest details: " + "file: " + file + " - point: " + point)
+        logger.error("[RequestError] \tUsesOfSymbolAtPointReq:\t" + e.getMessage + "\n" + requestDetails)
         None
       }
     }
   }
   
   /**
-   * Performs a SymbolDesignationReq with all symbol types requested.
+   * Sends a SymbolDesignationReq to the ensime server with all symbol types requested.
+   * 
+   * If request fails or times out None is returned.
+   *  
    * @param file  File to be checked.
    * @param 
    * @return      Option[org.ensime.api.SymbolDesignations]
@@ -725,22 +780,122 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     
     val symbolDesignations = ensimeClient.symbolDesignations(file, start, end, org.ensime.api.SourceSymbol.allSymbols) 
     
+    val requestDetails = s""""Request details: File: """ + file.getAbsolutePath + s""" - Range:  $start - $end"""
+    
     try {
       val result= Await.result(symbolDesignations,  Duration(c.timeout_SymbolDesignationsReq, MILLISECONDS))
       Some(result)
     }  catch {
       case timeout : TimeoutException => { 
-        logger.error("[RequestError] [Timeout] \tSymbolDesignationsReq:\t" + timeout.getMessage)
+        logger.error("[RequestError] [Timeout] \tSymbolDesignationsReq:\t" + timeout.getMessage + "\n" + requestDetails)
         None
       } 
       case e : Throwable => {
-        logger.error("[RequestError] \tSymbolDesignationsReq:\t" + e.getMessage + 
-              "\nRequest details: " + "file: " + file + " - start: " + start + " - end: " + end)
+        logger.error("[RequestError] \tSymbolDesignationsReq:\t" + e.getMessage + "\n" + requestDetails)
         None
       }
     }
   }
     
+  /**
+   * Sends a ImplicitInfoReq to the ensime server.
+   *    
+   * If request fails or times out None is returned.
+   * 
+   * @param file  File
+   * @param start Range begin
+   * @param end   Range end
+   * @return    Some(SymbolInfo)
+   */
+  private def performImplicitInfoReq(file: File, start: Int, end: Int) : Option[org.ensime.api.ImplicitInfos] = {
+     
+    val implicitInfo = ensimeClient.implicitInfoReq(file,OffsetRange(start,end))
+    
+    val requestDetails = s""""Request details: File: """ + file.getAbsolutePath + s""" - Range:  $start - $end"""
+    
+    val ret = try {
+      val result = Await.result(implicitInfo,  Duration(c.timeout_ImplicitInfoReq, MILLISECONDS))
+      Some(result)
+         
+      } catch {
+        case timeout : TimeoutException => {
+          logger.error("[RequestError] [Timeout]\tImplicitInfoReq:\t" + timeout.getMessage + "\n" + requestDetails)
+          None
+        }
+        case e : Throwable => {
+          logger.error("[RequestError] \tImplicitInfoReq:\t" + e.getMessage + "\n" + requestDetails)
+          None
+        }
+    }
+    ret  
+  }
+  
+ 
+   /**
+   * Sends an InspectPackageByPathReq to the ensime server.
+   * 
+   * If request fails or times out None is returned.
+   * 
+   * @param   packagePath Package path like org.codeprose.xyz
+   * @return              Some(PackageInfo)
+   */
+  private def performInspectPackageByPathReq(packagePath: String) : Option[org.ensime.api.PackageInfo] = {
+     
+    val packageInfo = ensimeClient.inspectPackageByPath(packagePath)
+    
+    val requestDetails = s""""Request details: PackagePath: $packagePath"""
+    
+    val ret = try {
+      val result = Await.result(packageInfo,  Duration(c.timeout_InspectPackageByPathReq, MILLISECONDS))
+      Some(result)
+         
+      } catch {
+        case timeout : TimeoutException => {
+          logger.error("[RequestError] [Timeout]\tInspectPackageByPathReq:\t" + timeout.getMessage + "\n" + requestDetails)
+          None
+        }
+        case e : Throwable => {
+          logger.error("[RequestError] \tInspectPackageByPathReq:\t" + e.getMessage + "\n" + requestDetails )
+          None
+        }
+    }
+    ret  
+  }
+  
+  /**
+   * Sends an InspectTypeByIdReq to the ensime server.
+   * 
+   * If request fails or times out None is returned.
+   * 
+   * @param typeId  Internal type id assigned to type by ensime-server.
+   * @return        Option[org.ensime.api.TypeInspectInfo] 
+   * 
+   */
+  private def performInspectTypeByIdReq(typeId: Int) : Option[org.ensime.api.TypeInspectInfo] = {
+      
+    val typeInspectInfo = ensimeClient.inspectTypeById(typeId) 
+
+    val requestDetails = s""""Request details: TypeId: $typeId"""
+    
+      //println("Waiting before next InspectTypeReq is send (" + c.pauseBetweenReq_InspectTypeById + " ms)")
+      //Thread.sleep(c.pauseBetweenReq_InspectTypeById)
+      
+      
+          try {
+            val result = Await.result(typeInspectInfo,  Duration(c.timeout_InspectTypeByIdReq, MILLISECONDS))
+                Some(result)
+          }  catch {
+            case timeout : TimeoutException => { 
+              logger.error("[RequestError] [Timeout]\tInspectTypeByIdReq:\t" + timeout.getMessage + "\n" + requestDetails)
+              None
+            }
+            case e : Throwable => {
+              logger.error("[RequestError] \tInspectTypeByIdReq:\t" + e.getMessage + "\n" + requestDetails)
+              None
+            } 
+          }
+  }
+   
   
   
   
@@ -841,92 +996,8 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   }
   
   
-  /**
-   * Performs a InspectTypeByIdReq.
-   * @param typeId  Internal type id assigned to type by ensime-server.
-   * @return        Option[org.ensime.api.TypeInspectInfo] 
-   * 
-   */
-  private def performInspectTypeByIdReq(typeId: Int) : Option[org.ensime.api.TypeInspectInfo] = {
-		  val typeInspectInfo = ensimeClient.inspectTypeById(typeId) 
+  
 
-      //println("Waiting before next InspectTypeReq is send (" + c.pauseBetweenReq_InspectTypeById + " ms)")
-      //Thread.sleep(c.pauseBetweenReq_InspectTypeById)
-      
-      
-				  try {
-					  val result = Await.result(typeInspectInfo,  Duration(c.timeout_InspectTypeByIdReq, MILLISECONDS))
-							  Some(result)
-				  }  catch {
-				    case timeout : TimeoutException => { 
-					    logger.error("[RequestError] [Timeout]\tInspectTypeByIdReq:\t" + timeout.getMessage)
-					    None
-				    }
-				    case e : Throwable => {
-              logger.error("[RequestError] \tInspectTypeByIdReq:\t" + e.getMessage + 
-                  "\nRequest details: " + "typeId: " + typeId)
-					    None
-				    } 
-				  }
-  }
-   
-  
-  /**
-   * Performs a ImplicitInfoReq.
-   * @param file  File
-   * @param start Range begin
-   * @param end   Range end
-   * @return    Some(SymbolInfo)
-   */
-  private def performImplicitInfoReq(file: File, start: Int, end: Int) : Option[org.ensime.api.ImplicitInfos] = {
-     
-    val implicitInfo = ensimeClient.implicitInfoReq(file,OffsetRange(start,end))
-    
-    val ret = try {
-      val result = Await.result(implicitInfo,  Duration(c.timeout_ImplicitInfoReq, MILLISECONDS))
-      Some(result)
-         
-      } catch {
-        case timeout : TimeoutException => {
-          logger.error("[RequestError] [Timeout]\tImplicitInfoReq:\t" + timeout.getMessage)
-          None
-        }
-        case e : Throwable => {
-          logger.error("[RequestError] \tImplicitInfoReq:\t" + e.getMessage + 
-              "\nRequest details: " + "file: " + file + " - start: " + start + " - end: " + end)
-          None
-        }
-    }
-    ret  
-  }
-  
- 
-   /**
-   * Performs a InspectPackageByPath.
-   * @param   packagePath Package path like org.codeprose.xyz
-   * @return              Some(PackageInfo)
-   */
-  private def performInspectPackageByPathReq(packagePath: String) : Option[org.ensime.api.PackageInfo] = {
-     
-    val packageInfo = ensimeClient.inspectPackageByPath(packagePath)
-    
-    val ret = try {
-      val result = Await.result(packageInfo,  Duration(c.timeout_InspectPackageByPathReq, MILLISECONDS))
-      Some(result)
-         
-      } catch {
-        case timeout : TimeoutException => {
-          logger.error("[RequestError] [Timeout]\tInspectPackageByPathReq:\t" + timeout.getMessage)
-          None
-        }
-        case e : Throwable => {
-          logger.error("[RequestError] \tInspectPackageByPathReq:\t" + e.getMessage + 
-              "\nRequest details: " + "package path: " + packagePath)
-          None
-        }
-    }
-    ret  
-  }
   
   
   /**
@@ -958,6 +1029,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
           tokens.slice(beg+1, end).map(e=> e.text).mkString.trim()
         } else { "" }
       } else { "" }
+      
     (file,packageStr)
     }).toMap
     

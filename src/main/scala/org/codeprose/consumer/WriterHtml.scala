@@ -107,24 +107,36 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
       
       // File listing
       
-      val filesHeadline = "<h2>" + "Files" +"</h2>\n"                 
+      val filesTitle = "Files"                 
        
       val entries = (srcFilenames zip ( labels zip links)).map{e => (e._1,e._2._1,e._2._2)}
-      val filesEntries = entries.map({e => s"""<li>\n<a href="""" + e._3 + s"""" title="Source file:""" + e._1 + s"""">""" + e._2 + s"""</a>\n</li>"""}).mkString("<ul>\n","\n","</ul>\n")
+      val filesEntries = entries.map({e => s"""<li style="margin-top:0.2em;">\n<a href="""" + e._3 + s"""" title="Source file: """ + e._1 + s"""">""" + e._2 + s"""</a>\n</li>"""}).mkString("<ul>\n","\n","</ul>\n")
       
-      val filesList = filesHeadline + filesEntries
+      val filesList = htmlContext.packageContent(filesTitle,filesEntries) 
       
       // Classes/Traits/ ... 
       
-      val otherHeadline = "<h2>" + "Other..." +"</h2>\n"                 
+      val otherTitle = "Other..."                 
       val otherEntries = ""     
       
-      val otherList = otherHeadline + otherEntries
+      val otherList = htmlContext.packageContent(otherTitle,otherEntries)
       
-      // TODO Add other information to overview
+      // Project summaries
+      
+      val projectSummariesTitle = "Project Summaries"
+      val projectSummariesEntries = s"""
+<ul>
+<li style="margin-top:0.4em;">
+<a href="./typeInformationSummary.html" title="Type information">Type information</a>
+</li>
+<li style="margin-top:0.4em;">
+<a href="./whereUsedSummary.html" title="Where used information by type">Where used information</a>
+</li>
+</ul>"""
+      val projectSummaries = htmlContext.packageContent(projectSummariesTitle,projectSummariesEntries)
       
       // create output
-      val content = List(filesList,otherList).map(e=>htmlContext.packageContent(e)).mkString("\n\n")  
+      val content = List(filesList,otherList,projectSummaries).mkString("\n\n")  
         
      FileUtil.writeToFile(outputFilename,htmlContext.getBegin(indexFileTitle,"",false) + content  + htmlContext.getEnd())      
     } else {
@@ -142,17 +154,43 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
     
        logger.info("\t" + "type information \t" + relFileName.get)
        
+       val outputFilename= new File(c.outputMainPath.getAbsolutePath + relFileName.get)
+       
        val htmlContext = new HtmlSummaryFileContext()      
     
        val title = "Type information"
        
-       
-       
+       val script = s"""
+$$(document).ready(function(){ 
+  
+
+  function getTypeInformationSummary(){
+    var domElemToAppend = "#ContentTypeInformationSummary";
+    $$(domElemToAppend).append("Not yet implemented.");
+  };
+
+
+  function getTypeInformationDetails(){
+    var domElemToAppend = "#ContentTypeInformationDetails";
+    $$(domElemToAppend).append("Not yet implemented.");
+  };
+
+  getTypeInformationSummary();
+  getTypeInformationDetails();
+  
+}); 
+         
+         """
+      val content = htmlContext.packageContent("Summary",s"""<div id="ContentTypeInformationSummary"></div>""") +
+      htmlContext.packageContent("Details",s"""<div id="ContentTypeInformationDetails"></div>""")
+           
+      // create output
+        
+      FileUtil.writeToFile(outputFilename,htmlContext.getBegin(title,script,true) + content + htmlContext.getEnd())      
     
     } else {
       logger.error("Unable to generate type summary file. No file name provided!")
     }          
-    
     
   }
   
@@ -167,61 +205,108 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
          
       val htmlContext = new HtmlSummaryFileContext()      
     
-      val title = "Where Used by Type Id"
-      
+      val title = "Where Used by Type Id"   
       
       val script =s"""
  $$(document).ready(function(){ 
   
-  // Where used information with code sample by type id
-  function whereUsedInfoWithSampleCode(){
 
-    console.log("Getting where used information with sample code ... ");
-
-    var domElemToAppend = "#ContentWhereUsedWithSourceSample";
+  /*
+   * Creates a table with type id and name.
+     * Type names link to the where used entries below.
+   */
+  function getWhereUsedOverview() {
+    var domElemToAppend = "#ContentWhereUsedWithSourceSamplesSummary";
 
     var typeIds = getTypeIds();
     
-    for(var i = 0;i<typeIds.length;i++){
-      var currentId = typeIds[i];
+    if(typeIds == null || typeIds.length==0){
+      $$(domElemToAppend).append("<b>No type information found.</b>");
+    } else {
+      
+      $$(domElemToAppend).append("<table>");
+      $$(domElemToAppend).append("<tr>" + "<th style='width:6em;text-align:center;padding-bottom:0.4em;border-bottom:1px solid #CFCFCF;'>" + "<b>Type Id</b>" + "</th>" + "<th style='width:40em;text-align:center;border-bottom:1px solid #CFCFCF;'>" + "<b>Name</b>" + "</th>"+"</tr>");
 
-      var whereUsedInfo = whereUsedInformation(currentId);
-      var tInfo = typeInformation(currentId);
-  
-      var toAppend = "<div style='margin-top:3em;' id='TYPEID" + currentId +"'><b>" + tInfo.fullname + "</b>" + " &nbsp;&nbsp;&nbsp;&nbsp;" + "(Type Id: " +  String(currentId) + ")</div>";
+          for(var i = 0;i<typeIds.length;i++){
+        
+        var currentTypeId = typeIds[i];
+        var typeInfo = typeInformation(currentTypeId);
+        
+        var summaryTableEntry = "<tr>" + "<td style='text-align:right;padding-right:2em;padding-top:0.4em;'>" + currentTypeId + "</td>" + "<td style='padding-left:3em;'>" + "<a href='#TYPEID" + currentTypeId + "'>" + typeInfo.fullname + "</a>"+ "</td>"+"</tr>";
+        $$(domElemToAppend).append(summaryTableEntry);
 
-      if(whereUsedInfo == null){
-        toAppend += "<div style='margin-top:2em;'>" + "no where used information found" + "</div>";
-      } else {
-        var text = "";    
-        for (pos = 0; pos < whereUsedInfo.length; pos++) {
-
-          var sampleCode = whereUsedInfo[pos].sourceSample;
-          if(whereUsedInfo[pos].sourceSample.length>2){
-            // TODO: Highlight token
-            sampleCode = whereUsedInfo[pos].sourceSample[0] +whereUsedInfo[pos].sourceSample[1] + whereUsedInfo[pos].sourceSample[2]; 
-            //sampleCode = whereUsedInfo[pos].sourceSample[0] + "<span style='background-color:yellow;'>"+whereUsedInfo[pos].sourceSample[1] +"</span>" + whereUsedInfo[pos].sourceSample[2];       
-          }   
-          var srcSampleDiv = "<div style='border-top:1px solid;margin-top:2em;padding-top:1em;'>" + 
-          "<b>" + whereUsedInfo[pos].srcFilename + "</b><br/><br/>" + 
-"<div class='table-code-code'>" + "<a class='in-code' href='."+whereUsedInfo[pos].link + "#T" + whereUsedInfo[pos].tokenId + "'><span style='color:black;'><pre>" + sampleCode + "</pre></span></a>" +"</div>"+"</div>";
-
-          text += srcSampleDiv;
-        }
-  
-        toAppend += "<div style='margin-top:2em;'>" + text + "</div>";
       }
-      $$(domElemToAppend).append(toAppend);      
+      $$(domElemToAppend).append("</table>");
+  
     }
   };
+  
+  function getWhereUsedDetails(){
+    
+    var domElemToAppend = "#ContentWhereUsedWithSourceSampleDetails";
 
-  whereUsedInfoWithSampleCode();
-
-});       
-
-"""
+    var typeIds = getTypeIds();
+    console.log(typeIds);   
+    if(typeIds == null || typeIds.length==0){
+      $$(domElemToAppend).append("<b>No type information found.</b>");
+    } else {
       
-      val content = htmlContext.packageContent(s"""<div id="ContentWhereUsedWithSourceSample"></div>""")
+      // For all type ids
+      for(var i = 0;i<typeIds.length;i++){
+        
+        var currentTypeId = typeIds[i];
+              var whereUsedInfo = whereUsedInformation(currentTypeId);
+        var typeInfo = typeInformation(currentTypeId);
+
+        $$(domElemToAppend).append("<div style='margin-top:3em;' id='TYPEID" + currentTypeId +"'><b>" + typeInfo.fullname + "</b>" + "&nbsp;&nbsp;&nbsp;&nbsp;" + "(Type Id: " +  currentTypeId + ")</div>");
+
+
+        if(whereUsedInfo == null || whereUsedInfo.length==0){
+          $$(domElemToAppend).append("<div style='margin-top:2em;'>" + "no where used information found" + "</div>");
+        } else {
+
+          var whereUsedExamples = getWhereUsedDetailsHandleWhereUsedEntires(whereUsedInfo);
+          $$(domElemToAppend).append(whereUsedExamples);
+        }
+      }
+    }
+
+  };
+
+  function getWhereUsedDetailsHandleWhereUsedEntires(whereUsedInfo) {
+    var divsToAppend = "";
+    // For all source positions       
+    for(var srcPos=0;srcPos<whereUsedInfo.length;srcPos++){
+      var filename = whereUsedInfo[srcPos].srcFilename;
+      var codeSample = whereUsedInfo[srcPos].sourceSample;
+      var linkToSrcFile = whereUsedInfo[srcPos].link;
+      var tokenId = whereUsedInfo[srcPos].tokenId;
+
+      divsToAppend += getWhereUsedCodeSampleDiv(filename,codeSample,linkToSrcFile,tokenId);
+    }
+    return divsToAppend;
+  };
+
+
+  function getWhereUsedCodeSampleDiv(filename,codeSample,linkToSrcFile,tokenId){
+    sampleCode = ""
+    if(codeSample.length>2){
+                // TODO: Highlight token
+                sampleCode = codeSample[0] + codeSample[1] + codeSample[2]; 
+                //sampleCode = codeSample[0] + "<span style='background-color:yellow;'>"+codeSample[1] +"</span>" + codeSample[2];       
+            }   
+            var srcSampleDiv = "<div style='border-top:1px solid #CFCFCF;margin-top:2em;margin-left:2em;padding-top:1em;padding-left:1em;'>" + "<b>" + filename + "</b><br/><br/>" + "<div class='table-code-code'>" + "<a class='in-code' href='."+linkToSrcFile + "#T" + tokenId + "'><span style='color:black;'><pre>" + sampleCode + "</pre></span></a>" +"</div>"+"</div>";
+
+          return srcSampleDiv;
+  };
+
+  getWhereUsedOverview();
+  getWhereUsedDetails();
+
+}); """
+      
+      val content = htmlContext.packageContent("Summary",s"""<div id="ContentWhereUsedWithSourceSamplesSummary"></div>""") +
+      htmlContext.packageContent("Details",s"""<div id="ContentWhereUsedWithSourceSampleDetails"></div>""")
            
       // create output
         

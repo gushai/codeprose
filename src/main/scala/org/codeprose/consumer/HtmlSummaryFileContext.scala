@@ -54,11 +54,11 @@ $script
   /**
    * 
    */
-  def packageContent(content: String) : String = {
+  def packageContent(title: String, content: String) : String = {
 	  
-    val frameBeg = s"""<div class="textbox">\n"""
+    val frameBeg = s"""<div class="textframe">\n<h2>$title</h2>\n <div class="textbox">\n"""
 	  
-    val frameEnd = s"""\n</div>\n"""
+    val frameEnd = s"""\n</div>\n</div>\n\n"""
     
     frameBeg + content + frameEnd
 

@@ -101,7 +101,7 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
     
       val srcFilenames = htmlOutputContext.srcFiles
       val labels = htmlOutputContext.filenamesShortened
-      val links = htmlOutputContext.outputFilenames
+      val links = htmlOutputContext.relativeOutputFilenames.map(e=>"."+e)
       
       val indexFileTitle = "Overview"
       

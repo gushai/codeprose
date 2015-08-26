@@ -112,7 +112,7 @@ class HtmlSrcFileContext(
         typeId = $$(elem).data("cp-typeid")
 
         // Declaration
-        rawLinkToDeclaration = $$(elem).data("cp-declaredat");
+        rawLinkToDeclaration = $$(elem).data("cp-declaration");
         linkToDeclaration = ""
         if(rawLinkToDeclaration){
           console.log( rawLinkToDeclaration);

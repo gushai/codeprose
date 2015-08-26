@@ -374,9 +374,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
               logger.error("[enrichTokenWithSymbolInfo]\t Unknown declaredAt source position type.")
             }
           }
-          case None => {
-            
-          }
+          case None => {}
         }
                 
         // Complex information

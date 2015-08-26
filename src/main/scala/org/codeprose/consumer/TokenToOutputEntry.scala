@@ -20,7 +20,7 @@ trait TokenToOutputEntry {
 
 //class TokenToOutputEntryHtml(val filenamesOriginalToOutputNames: Array[(String,String)]) extends TokenToOutputEntry {
 class TokenToOutputEntryHtml(htmlOutputContext: HtmlOutputContext) 
-    extends TokenToOutputEntry with HtmlDataAttributeGen { 
+    extends HtmlDataAttributeGen(htmlOutputContext) with TokenToOutputEntry { 
        
   /**
    * Returns wrapper for tocken.text.
@@ -322,6 +322,7 @@ class TokenToOutputEntryHtml(htmlOutputContext: HtmlOutputContext)
 	  //val tInfo = token.toString().replace(";", ";\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
     val rawTitleElements = List(token(fullName).getOrElse(""),
                                 "TypeId: " + token(typeId).getOrElse(""),
+                                "TokenType: " + token(tokenType).getOrElse(""),
                                 "Offset: " + token.offset).mkString("\n")
     
     val title = s""" title="""" + rawTitleElements + s"""" """

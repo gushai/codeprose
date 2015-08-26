@@ -5,7 +5,9 @@ import org.codeprose.api.Token
 import org.codeprose.api.ScalaLang.ScalaTokenType
 import org.codeprose.api.ScalaLang.Tokens
 
-trait HtmlDataAttributeGen {
+
+
+class HtmlDataAttributeGen(htmlOutputContext: HtmlOutputContext) {
   
   val htmlDataAttributePrefix  = "data-cp-" 
   
@@ -85,6 +87,20 @@ trait HtmlDataAttributeGen {
          dataAttributes += ((htmlDataAttributePrefix + "whereusedinfile",s""""""" + tokenIds + s""""""")) }
           case None => {}
       } 
+    
+    token(declaredAt) match {
+      case Some(srcPos) => {
+        htmlOutputContext.getRelativeOutputFilename(srcPos.filename) match {
+          case Some(relLinkToOtherSrcOutputFile) => {
+            val tId = srcPos.tokenId
+            val link = ".." + relLinkToOtherSrcOutputFile + "#" + "T" + tId.toString
+            dataAttributes += ((htmlDataAttributePrefix + "declaration",s""""""" + link + s"""""""))
+        } 
+        case None => {}
+        }
+      } 
+      case None => {}
+    }
     
     
     //    token(whereUsed_WithinFileTokenIdSrcPos) match {

@@ -140,7 +140,7 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
             }).mkString("<ul><li style='margin-top:0.6em;'>  </li>\n","\n","</ul>\n")
             println("fileEntires: " + fileEntries)
         
-            val packageEntry = s"""<li style="margin-top:0.6em;"><b>$packName</b>:""" + fileEntries + s"""</li>"""
+            val packageEntry = s"""<li style="margin-top:0.6em;"><b>$packName</b>""" + fileEntries + s"""</li>"""
             packageEntry
             }).mkString("<ul>\n","\n","</ul>\n")
          

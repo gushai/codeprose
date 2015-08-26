@@ -108,15 +108,61 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
       // File listing
       
       val filesTitle = "Files"                 
-       
-      val entries = (srcFilenames zip ( labels zip links)).map{e => (e._1,e._2._1,e._2._2)}
-      val filesEntries = entries.map({e => s"""<li style="margin-top:0.2em;">\n<a href="""" + e._3 + s"""" title="Source file: """ + e._1 + s"""">""" + e._2 + s"""</a>\n</li>"""}).mkString("<ul>\n","\n","</ul>\n")
+      
+      import org.codeprose.api.ScalaLang.packageNamePerFile
+      val filesEntries = projectInfo.summary(packageNamePerFile) match {
+        case Some(packageNamesPerFile) => {
+          
+          val packageNamesPerFileSorted = srcFilenames.map( f => packageNamesPerFile.get(f) match {
+            case Some(name) => name
+            case None => ""
+          })
+          
+          val entriesFileWithLinkAndLabel = (srcFilenames zip ( labels zip links)).map{e => (e._1,e._2._1,e._2._2)}
+          //val entriesByPackage = packageNamesPerFile.zip(entriesFileWithLinkAndLabel).map(e=>(e._1._2,e._2._1,e._2._2,e._2._3)).groupBy(e=>e._1)
+          val entriesByPackage = packageNamesPerFileSorted.zip(entriesFileWithLinkAndLabel).map(e=>(e._1,e._2._1,e._2._2,e._2._3)).groupBy(e=>e._1)
+          
+          
+          entriesByPackage.foreach(t=>println(t._1 + "\n\t" + t._2))
+          println(entriesByPackage.size)
+          val entires = entriesByPackage.map({ e => 
+            val packName = e._1
+            //val fileEntries = e._2.map( f => {
+                 //s"""<li style="margin-top:0.2em;">\n<a href="""" + f._3 + s"""" title="Source file: """ + f._1 + s"""">""" + f._2 + s"""</a>\n</li>"""
+               //  f._3
+            //  }).mkString("<ul>\n","\n","</ul>\n")
+            val fileEntries = e._2.map(f => {
+              val titleText = "Package: " + f._1 +"\nSource file: " + f._2.getAbsolutePath
+              s"""<li style="margin-top:0.25em;">\n""" + 
+              s"""<a href="""" + f._4 + s"""" title="""" + titleText + s"""">""" + f._3 + s"""</a>""" +
+              "\n</li>"
+              
+            }).mkString("<ul><li style='margin-top:0.6em;'>  </li>\n","\n","</ul>\n")
+            println("fileEntires: " + fileEntries)
+        
+            val packageEntry = s"""<li style="margin-top:0.6em;"><b>$packName</b>:""" + fileEntries + s"""</li>"""
+            packageEntry
+            }).mkString("<ul>\n","\n","</ul>\n")
+         
+            println(entires)
+            
+          // val entriesOld = (srcFilenames zip ( labels zip links)).map{e => (e._1,e._2._1,e._2._2)}
+          // entriesOld.map({e => s"""<li style="margin-top:0.2em;">\n<a href="""" + e._3 + s"""" title="Source file: """ + e._1 + s"""">""" + e._2 + s"""</a>\n</li>"""}).mkString("<ul>\n","\n","</ul>\n")
+          entires
+        } 
+        case None => {
+          val entries = (srcFilenames zip ( labels zip links)).map{e => (e._1,e._2._1,e._2._2)}
+          entries.map({e => s"""<li style="margin-top:0.2em;">\n<a href="""" + e._3 + s"""" title="Source file: """ + e._1 + s"""">""" + e._2 + s"""</a>\n</li>"""}).mkString("<ul>\n","\n","</ul>\n")
+        }
+      }
+      
+      
       
       val filesList = htmlContext.packageContent(filesTitle,filesEntries) 
       
       // Classes/Traits/ ... 
       
-      val otherTitle = "Other..."                 
+      val otherTitle = "Other Stuff"                 
       val otherEntries = ""     
       
       val otherList = htmlContext.packageContent(otherTitle,otherEntries)

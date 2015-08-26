@@ -1092,12 +1092,11 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
 //           // DEBUG
 //           if(idxMain.size>1){
 //             println("[Several tokens found: " + idxMain)
-//             println(srcPos)
+//             println(srcPos) 
 //           }
            
            val sampleText = if(idxMain.size>0){
       
-          // TODO: Adjust to actual source code lines
           // Find preceding tokens
           val idxNewLines = tokens(0).zipWithIndex.filter { e => 
             if(e._1.text.contains("\n")) 
@@ -1106,8 +1105,6 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
               false
             }.map(e=>e._2)
           
-          //idxNewLines.foreach(e=> print(e+","))
-          //println("["+idxMain(0)+"]" + "\n\n")
           val idxNewLineBefore = idxNewLines.filter(e=> 
               if(e<idxMain(0))
                 true
@@ -1118,14 +1115,14 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
           } else {
             0
           }
-         // val idxStart = math.max(idxNewLineBefore(idxNewLineBefore) - 10,0)
+
           // Find following tokens
           val idxNewLineAfter = idxNewLines.filter(e=> 
               if(e>idxMain(0))
                 true
               else 
                 false)
-          //val idxEnd = math.min(idxMain(0)+10,tokens(0).length-1)
+
           val idxEnd = if(idxNewLineAfter.length>numberOfLinesAfter){
             idxNewLineAfter(numberOfLinesAfter)
           } else{ tokens(0).length-1 } 

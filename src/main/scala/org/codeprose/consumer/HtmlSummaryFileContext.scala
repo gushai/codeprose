@@ -40,6 +40,7 @@ $script
 <div style="float:right;">$linkToOverview</div>
 </div>
 <div class="content">
+<noscript><div style="margin:2em;"><b>Activate JavaScript for more features</b>.</div></noscript>\n
 """
   }
   /**
@@ -56,7 +57,7 @@ $script
    */
   def packageContent(title: String, content: String) : String = {
 	  
-    val frameBeg = s"""<div class="textframe">\n<h2>$title</h2>\n <div class="textbox">\n"""
+    val frameBeg = s"""<div class="textframe">\n<h2>$title</h2>\n<div class="textbox">\n"""
 	  
     val frameEnd = s"""\n</div>\n</div>\n\n"""
     

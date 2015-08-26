@@ -227,7 +227,8 @@ s"""\n});
 <span style="font-size:1.5em;font-weight:bold;" title="$filename">$fileNameWithoutPath&nbsp;</span><span style="font-size:1em;">$packagName</span></div>
 <div style="float:right;"><a style="color:black;font-weight:bold;" href="../index.html">overview</a></div>
 </div>
-<div class="content">\n"""
+<div class="content">
+<noscript><div style="margin:2em;"><b>Activate JavaScript for more features</b>.</div></noscript>\n"""
       }
 			
       /**

@@ -179,10 +179,10 @@ $$(document).ready(function(){
   getTypeInformationDetails();
   
 }); 
-         
-         """
-      val content = htmlContext.packageContent("Summary",s"""<div id="ContentTypeInformationSummary"></div>""") +
-      htmlContext.packageContent("Details",s"""<div id="ContentTypeInformationDetails"></div>""")
+"""
+      val noscriptTag = s"""<noscript><div style="margin-left:2em;">Activate JavaScript for this feature.</div></noscript>"""
+      val content = htmlContext.packageContent("Summary",noscriptTag + s"""<div id="ContentTypeInformationSummary"></div>""") +
+      htmlContext.packageContent("Details",noscriptTag + s"""<div id="ContentTypeInformationDetails"></div>""")
            
       // create output
         
@@ -304,9 +304,11 @@ $$(document).ready(function(){
   getWhereUsedDetails();
 
 }); """
+      val noscriptTag = s"""<noscript><div style="margin-left:2em;">Activate JavaScript for this feature.</div></noscript>"""
+      val whereUsedSummary = htmlContext.packageContent("Summary",noscriptTag + s"""<div id="ContentWhereUsedWithSourceSamplesSummary"></div>""")
+			val whereUsedDetails = htmlContext.packageContent("Details",noscriptTag + s"""<div id="ContentWhereUsedWithSourceSampleDetails"></div>""") 
+      val content =  whereUsedSummary + whereUsedDetails 
       
-      val content = htmlContext.packageContent("Summary",s"""<div id="ContentWhereUsedWithSourceSamplesSummary"></div>""") +
-      htmlContext.packageContent("Details",s"""<div id="ContentWhereUsedWithSourceSampleDetails"></div>""")
            
       // create output
         

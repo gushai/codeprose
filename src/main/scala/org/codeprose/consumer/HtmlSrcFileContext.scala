@@ -128,10 +128,8 @@ class HtmlSrcFileContext(
         }       
 
         // Where used in project
-        rawLinkToWhereUsedProject = "../whereUsedSummary.html"+ "#TYPEID" + typeId
-          
-        linkToWhereUsedInProject = "" 
-        if(rawLinkToWhereUsedProject.length  !=  0){
+        if(typeId!=null){
+          rawLinkToWhereUsedProject = "../whereUsedSummary.html"+ "#TYPEID" + typeId
           linkToWhereUsedInProject = "<a href='" + rawLinkToWhereUsedProject + "'>Where used in project</a>" + "<br/>";
         }      
     

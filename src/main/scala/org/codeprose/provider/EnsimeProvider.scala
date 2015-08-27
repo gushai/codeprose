@@ -43,7 +43,7 @@ class EnsimeProviderContext(
   val timeout_SymbolDesignationsReq = 700
   val timeout_ImplicitInfoReq = 700
   val timeout_UsesOfSymbolAtPointReq = 700
-  val timeout_InspectTypeByIdReq = 500
+  val timeout_InspectTypeByIdReq = 3000
   val timeout_InspectPackageByPathReq = 700
   
   val pauseBetweenReq_InspectTypeById = 250
@@ -908,10 +908,12 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     
     // Some filtering?
     // TODO Remove after debugging
-//    println("Raw typeIds found w/ name:")
-//    getOccuringTypesWithName().foreach(e => {
-//      println(e._1 + "\t" + e._2)
-//    })
+    println("Raw typeIds found w/ name:")
+    getOccuringTypesWithName().foreach(e => {
+      println(e._1 + "\t" + e._2)
+    })
+    // Debug
+    //val detailedTypeInfo = getOccuringTypesWithName().map(e => {(e._1,None)}).toMap
     
     val detailedTypeInfo = getOccuringTypesWithName().map(e => {
       
@@ -935,21 +937,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
    * 
    */
   private def getWhereUsedByTypeIdInformation() : Map[Int,List[ERangePositionWithTokenId]] = {
-    // TODO: ONLY FAKE!!!
-   
-//    getWhereUsedAllTypes().foreach( e => {
-//      println(e._1)
-//      println(e._2)
-//      println("\n")
-//    })
-    
-//    // Test data
-//      getOccuringTypesWithName().map( e => {
-//       (e._1,List[ERangePositionWithTokenId](
-//           new ERangePositionWithTokenId("pathToFile1.scala",0,0,41,66),
-//           new ERangePositionWithTokenId("pathToFile1.scala",0,0,456,644),
-//           new ERangePositionWithTokenId("pathToFile2.scala",0,0,41,111)) )}).toMap   
-    
+       
     getWhereUsedAllTypes().map(e => {
       // TODO: Provide ordering for ERangePositionWithTokenId!
       // TODO: Sorting results in Issue with ToJson formater!

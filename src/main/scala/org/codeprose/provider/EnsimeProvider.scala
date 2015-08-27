@@ -43,7 +43,7 @@ class EnsimeProviderContext(
   val timeout_SymbolDesignationsReq = 700
   val timeout_ImplicitInfoReq = 700
   val timeout_UsesOfSymbolAtPointReq = 700
-  val timeout_InspectTypeByIdReq = 3000
+  val timeout_InspectTypeByIdReq = 1500
   val timeout_InspectPackageByPathReq = 700
   
   val pauseBetweenReq_InspectTypeById = 250
@@ -59,7 +59,8 @@ class EnsimeProviderContext(
  *    2.) getProjectInformation(files: List[File])
  *    3.) close()
  *  
- * @param 
+ * @param c EnsimeProviderContext contains the information needed to setup the EnsimeProvider.
+ *          Most importantly, it includes <host:port> of the ensime server.
  *     
  */
 class EnsimeProvider(implicit c: EnsimeProviderContext )

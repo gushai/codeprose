@@ -44,24 +44,50 @@ object ERangePositionWithTokenId {
 }
 
 
-class SymbolInfo(
-  val typeId: Int,
-  val fullname: String,
-  val whereUsedWithinFile: List[Int]
-) {
-  
-}
+// Copy of ensime information types.
 
+
+
+sealed abstract class DeclaredAs(val symbol: scala.Symbol)
+
+object DeclaredAs {
+  case object Method extends DeclaredAs('method)
+  case object Trait extends DeclaredAs('trait)
+  case object Interface extends DeclaredAs('interface)
+  case object Object extends DeclaredAs('object)
+  case object Class extends DeclaredAs('class)
+  case object Field extends DeclaredAs('field)
+  case object Nil extends DeclaredAs('nil)
+
+  def allDeclarations = Seq(Method, Trait, Interface, Object, Class, Field, Nil)
+}
 
 trait EntityInfo {
   def name: String 
   def members: Iterable[EntityInfo]
 }
 
-trait TypeInfo extends EntityInfo {
+case class PackageInfo(
+    name: String,
+    fullName: String,
+    members: Seq[EntityInfo]
+) extends EntityInfo {}
+
+case class NamedTypeMemberInfo(
+    name: String,
+    tpe: TypeInfo,
+    pos: Option[SourcePosition],
+    signatureString: Option[String],
+    declAs: DeclaredAs
+) extends EntityInfo {
+  override def members = List.empty
+}
+
+
+sealed trait TypeInfo extends EntityInfo {
   def name: String
   def typeId: Int
-  def declAs: String
+  def declAs: DeclaredAs
   def fullName: String
   def typeArgs: Iterable[TypeInfo]
   def members: Iterable[EntityInfo]
@@ -73,6 +99,60 @@ trait TypeInfo extends EntityInfo {
 }
 
 
+case class BasicTypeInfo(
+  name: String,
+  typeId: Int,
+  declAs: DeclaredAs,
+  fullName: String,
+  typeArgs: Iterable[TypeInfo],
+  members: Iterable[EntityInfo],
+  pos: Option[SourcePosition],
+  outerTypeId: Option[Int]
+) extends TypeInfo
+
+case class ArrowTypeInfo(
+    name: String,
+    typeId: Int,
+    resultType: TypeInfo,
+    paramSections: Iterable[ParamSectionInfo]
+) extends TypeInfo {
+  def declAs = DeclaredAs.Nil
+  def fullName = name
+  def typeArgs = List.empty
+  def members = List.empty
+  def pos = None
+  def outerTypeId = None
+}
+
+case class ParamSectionInfo(
+  params: Iterable[(String, TypeInfo)],
+  isImplicit: Boolean
+)
+
+case class InterfaceInfo(
+    tpe: TypeInfo,
+    viaView: Option[String]
+)
+
+
+case class TypeInspectInfo(
+    tpe: TypeInfo,
+    companionId: Option[Int],
+    interfaces: Iterable[InterfaceInfo]
+){}
+
+
+case class SymbolInfo(
+    name: String,
+    localName: String,
+    declPos: Option[SourcePosition],
+    tpe: TypeInfo,
+    isCallable: Boolean,
+    ownerTypeId: Option[Int]
+) {}
+
+
+// 
 
 case class TypeInformation(
     typeId: Int,
@@ -81,18 +161,7 @@ case class TypeInformation(
    override def toString() : String = { s"""($typeId,$fullname,$interfaces)""" }  
 }
 
-//class TypeInfo(
-//    name: String, 
-//    members: Iterable[EntityInfo],
-//    typeId: Int,
-//    declAs: String,
-//    fullName: String,
-//    typeArgs: Iterable[TypeInfo],
-//    pos: Option[SourcePosition],
-//    outerTypeId: Option[Int]
-//    ) extends EntityInfo(name,members) {
-//  
-//}
+
 
 
 

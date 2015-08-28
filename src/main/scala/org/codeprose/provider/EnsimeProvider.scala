@@ -16,6 +16,7 @@ import org.codeprose.api.Token
 import org.codeprose.api._
 import org.ensime.api._
 import scala.util.Sorting
+import org.codeprose.util.EnsimeApiToCodeproseApi
 
 
 trait Provider {
@@ -380,6 +381,8 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
                 
         // Complex information
         
+        
+        println("Translated SymbolInfo: \n" + org.codeprose.util.EnsimeApiToCodeproseApi.convertToSymbolInfo(symbolInfo) + "\n")
         
 //        case sI: SymbolInfo => {
 //          
@@ -913,18 +916,43 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     getOccuringTypesWithName().foreach(e => {
       println(e._1 + "\t" + e._2)
     })
+    
     // Debug
     //val detailedTypeInfo = getOccuringTypesWithName().map(e => {(e._1,None)}).toMap
     
-    val detailedTypeInfo = getOccuringTypesWithName().map(e => {
+    val ensimeTypeInfoPerTypeId = getOccuringTypesWithName().map(e => {
       
       val typeInspectInfo = performInspectTypeByIdReq(e._1)
+      (e._1,typeInspectInfo)
+    }).toMap
+    
+    
+    val detailedTypeInfo = ensimeTypeInfoPerTypeId.map(e => {
+      
+      val typeInspectInfo = e._2
       
       import org.codeprose.util.EnsimeApiToCodeproseApi
-      val typeInformation = org.codeprose.util.EnsimeApiToCodeproseApi.TypeInspectInfoToTypeInformation(typeInspectInfo)
+      val typeInformation = EnsimeApiToCodeproseApi.TypeInspectInfoToTypeInformation(typeInspectInfo)
       (e._1, typeInformation)      
     }).toMap
     
+     val testTInfo = ensimeTypeInfoPerTypeId.map(e=>e._2).flatten.map(e=>e.`type`).toList
+     
+     testTInfo.foreach(eTI => {
+       println("Org: \n" + eTI +"\n\n")
+       val test = EnsimeApiToCodeproseApi.convertToTypeInfo(eTI)
+       println("Converted: \n" + test +" \n")
+     })
+     
+     println("\n\nTypeInspectInfo: \n")
+     val testTInspectInfo = ensimeTypeInfoPerTypeId.map(e=>e._2).flatten.toList
+     testTInspectInfo.foreach(etII => {
+       //println("Org: \n" + etII +"\n\n")
+       val test = EnsimeApiToCodeproseApi.convertToTypeInspectInfo(etII)
+       println("Converted: \n" + test +" \n")
+     })
+     
+     
    // TODO Remove after debugging
 //    println("\n\nInspectTypeInfo:")
 //    detailedTypeInfo.foreach(e => {

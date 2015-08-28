@@ -269,7 +269,7 @@ object SourceSymbol {
         
         // Currently not in use.
         
-        val declaredAs = new Key('declaredAs) { type Value = String }
+        val declaredAs = new Key('declaredAs) { type Value = DeclaredAs }
         
         
                   

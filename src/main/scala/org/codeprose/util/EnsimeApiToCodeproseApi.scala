@@ -1,5 +1,10 @@
 package org.codeprose.util
 
+import java.io.File
+import scala.collection.mutable.ArrayBuffer
+
+import org.codeprose.api.Token
+
 import org.codeprose.api.TypeInformation
 import org.codeprose.api.SourcePosition
 import org.codeprose.api.TypeInfo
@@ -21,8 +26,9 @@ import org.codeprose.api.ImplicitParamInfo
 import org.codeprose.api.ImplicitParamInfo
 
 
+// TODO: Delete - Beg
 object EnsimeApiToCodeproseApiDELETE {
-  // TODO: Delete - Beg
+  
   
   def TypeInspectInfoToTypeInformation(typeInspectInfo: Option[org.ensime.api.TypeInspectInfo]) : Option[TypeInformation] = {
 
@@ -39,11 +45,12 @@ object EnsimeApiToCodeproseApiDELETE {
      
   }
 
-  // Delete - end
-
 }
+// Delete - end
 
-object EnsimeApiToCodeproseApi extends CodeproseApiCreator {
+class EnsimeApiToCodeproseApi(
+    enrichedTokensPerFile: ArrayBuffer[(File,ArrayBuffer[Token])], 
+    findTokenId: (String, Int, ArrayBuffer[(File,ArrayBuffer[Token])]) => Int) extends CodeproseApiCreator {
   
     
   def convertToSymbolInfo(symInfo: org.ensime.api.SymbolInfo) : SymbolInfo = {
@@ -101,7 +108,7 @@ object EnsimeApiToCodeproseApi extends CodeproseApiCreator {
   def convertToSourcePosition(srcPos: org.ensime.api.SourcePosition) : Option[OffsetSourcePositionWithTokenId] = {
     srcPos match {
       case pos : org.ensime.api.OffsetSourcePosition => {
-        val tokenId = -1
+        val tokenId = findTokenId(pos.file.getAbsolutePath,pos.offset,enrichedTokensPerFile)
         Some(OffsetSourcePositionWithTokenId(pos.file.getAbsolutePath,pos.offset,tokenId))
       } 
       case _ => { None }

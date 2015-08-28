@@ -38,7 +38,7 @@ case class SourceSample(
 //  ){
 //  
 //}
-
-class PackageInformation(
-    val packageName: String){}
+//
+//class PackageInformation(
+//    val packageName: String){}
 

@@ -267,6 +267,9 @@ object SourceSymbol {
 
         val whereUsedWithInFile = new Key('whereUsedWithinFile){ type Value = List[ERangePositionWithTokenId] }
         
+      
+        
+        
         // Currently not in use.
         
         val declaredAs = new Key('declaredAs) { type Value = DeclaredAs }
@@ -313,7 +316,10 @@ object SourceSymbol {
       
       val packageNamePerFile = new Key('packageOfFiles){ type Value = Map[File,String] }
   
-      val packageInformation = new Key('packageInformation){ type Value = Map[String,Option[PackageInformation]] }
+      val packageInformation = new Key('packageInformation){ type Value = Map[String,Option[PackageInfo]] }
+      
+      val typeInspectInformation = new Key('typeInspectInformation){ type Value = Map[Int,Option[TypeInspectInfo]] }
+      
 }
 
 object ScalaLang extends ScalaLang

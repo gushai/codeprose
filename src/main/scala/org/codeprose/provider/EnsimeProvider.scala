@@ -17,7 +17,9 @@ import org.codeprose.api._
 import org.ensime.api._
 import scala.util.Sorting
 import org.codeprose.util.EnsimeApiToCodeproseApi
-
+import org.codeprose.util.EnsimeApiToCodeproseApi
+import org.codeprose.api.TypeInspectInfo
+import org.codeprose.api.PackageInfo
 
 trait Provider {
 	def initialize() : Unit 
@@ -173,13 +175,14 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       val packNamesPerFile = getPackageNamesPerFile(tokens)
       val packageNamesUnique = packNamesPerFile.map(e => e._2).toSet.toList
       summary.set(packageNamePerFile)(packNamesPerFile)
-      summary.set(packageInformation)(getPackageInformaton(packageNamesUnique))
-      
+      summary.set(packageInformation)(getPackageInformaton(packageNamesUnique,tokens))
       
       // Used types
       logger.info("\t" + "type information")
-      summary.set(typeInformation)(getDetailedTypeInformation())
-      
+      val (tpeInformation,tpeInspectInfo) = getDetailedTypeInformation(tokens)
+      summary.set(typeInformation)(tpeInformation)
+      summary.set(typeInspectInformation)(tpeInspectInfo)
+            
       // Where used in project
       logger.info("\t" + "where used information")
       summary.set(whereUsedByTypeId)(getWhereUsedByTypeIdInformation())
@@ -908,7 +911,8 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
    * Notes:
    * Uses occuringTypeIds.
    */
-  private def getDetailedTypeInformation() : Map[Int,Option[TypeInformation]] = {
+  private def getDetailedTypeInformation(enrichedTokens: ArrayBuffer[(File,ArrayBuffer[Token])]) : 
+  (Map[Int,Option[TypeInformation]],Map[Int,Option[TypeInspectInfo]]) = {
     
     // Some filtering?
     // TODO Remove after debugging
@@ -920,14 +924,14 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     // Debug
     //val detailedTypeInfo = getOccuringTypesWithName().map(e => {(e._1,None)}).toMap
     
-    val ensimeTypeInfoPerTypeId = getOccuringTypesWithName().map(e => {
+    val ensimeTypeInspectInfoPerTypeId = getOccuringTypesWithName().map(e => {
       
       val typeInspectInfo = performInspectTypeByIdReq(e._1)
       (e._1,typeInspectInfo)
     }).toMap
     
     
-    val detailedTypeInfo = ensimeTypeInfoPerTypeId.map(e => {
+    val detailedTypeInfo = ensimeTypeInspectInfoPerTypeId.map(e => {
       
       val typeInspectInfo = e._2
       
@@ -936,15 +940,28 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       (e._1, typeInformation)      
     }).toMap
     
-//     val testTInfo = ensimeTypeInfoPerTypeId.map(e=>e._2).flatten.map(e=>e.`type`).toList
-//     
-//     testTInfo.foreach(eTI => {
-//       println("Org: \n" + eTI +"\n\n")
-//       val test = EnsimeApiToCodeproseApi.convertToTypeInfo(eTI)
-//       println("Converted: \n" + test +" \n")
-//     })
-//     
-//     println("\n\nTypeInspectInfo: \n")
+    val apiConverter = new EnsimeApiToCodeproseApi(enrichedTokens,ProviderUtil.getTokenIdToOffsetSourcePosition)
+    
+    val typeInspectInfo = ensimeTypeInspectInfoPerTypeId.map(e=> {
+      
+     val tpeInspectInfo = e._2 match {
+        case Some(tpeInsp) => {
+          try{
+            Some(apiConverter.convertToTypeInspectInfo(tpeInsp))
+          } catch {
+            case _ : Throwable => {
+              logger.error("Unable to convert TypeInspectInfo.")
+              None }
+          }
+        }
+        case None => {
+          None
+        }
+      }
+      (e._1,tpeInspectInfo)
+      
+    })
+    
 //     val testTInspectInfo = ensimeTypeInfoPerTypeId.map(e=>e._2).flatten.toList
 //     testTInspectInfo.foreach(etII => {
 //       //println("Org: \n" + etII +"\n\n")
@@ -959,7 +976,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
 //      println(e._1 +"\t" + e._2)
 //    })
         
-    detailedTypeInfo
+    (detailedTypeInfo,typeInspectInfo)
   }
   
   /**
@@ -981,35 +998,33 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   /**
    * 
    */
-  private def getPackageInformaton(packageNames: List[String]) : Map[String,Option[PackageInformation]] = {
+  private def getPackageInformaton(
+      packageNames: List[String],tokens: ArrayBuffer[(File,ArrayBuffer[Token])]) 
+  : Map[String,Option[PackageInfo]] = {
     
-    
-    val ret =  packageNames.map(name => {
+    val ensimePackageInfo = packageNames.map(name => {
       val packageInfoOpt = performInspectPackageByPathReq(name)
-      packageInfoOpt match {
-        case Some(pI) => {
-          
-//          println("\n[InspectPackageInfo]"+"\n")
-//          println("Fullname:\t" + pI.fullName)
-//          println("name:\t" + pI.name)
-//          println("Members:\t")
-//          pI.members.foreach(e=>println(e + "\n"))
-//            import org.codeprose.util.EnsimeApiToCodeproseApi
-//            
-//            println("converted packageInfo:\n" + EnsimeApiToCodeproseApi.convertToPackageInfo(pI) +"\n")
-          
-          val pInformation = new PackageInformation(name)
-          (name,Some(pInformation))    
-        } 
-        case None => { (name,None) }
-      }
+      (name,packageInfoOpt)}).toMap
+    
+     val apiConverter = new EnsimeApiToCodeproseApi(tokens,ProviderUtil.getTokenIdToOffsetSourcePosition) 
       
-    }).toMap
-    
-        
-    
-    ret
-    
+    val packageInformation = ensimePackageInfo.map( e=> {
+      val packInfo = e._2 match {
+        case Some(ensimePackInfo) => {
+          try {
+            Some(apiConverter.convertToPackageInfo(ensimePackInfo))
+          } catch {
+            case _ : Throwable => {
+              logger.error("Unable to convert PackageInfo.")
+              None }
+          }
+        } 
+        case None => { None }
+      } 
+      (e._1,packInfo)
+    }) 
+   
+    packageInformation
   }
   
   

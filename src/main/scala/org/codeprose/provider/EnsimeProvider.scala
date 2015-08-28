@@ -382,7 +382,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
         // Complex information
         
         
-        println("Translated SymbolInfo: \n" + org.codeprose.util.EnsimeApiToCodeproseApi.convertToSymbolInfo(symbolInfo) + "\n")
+       // println("Translated SymbolInfo: \n" + org.codeprose.util.EnsimeApiToCodeproseApi.convertToSymbolInfo(symbolInfo) + "\n")
         
 //        case sI: SymbolInfo => {
 //          
@@ -931,26 +931,26 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       
       val typeInspectInfo = e._2
       
-      import org.codeprose.util.EnsimeApiToCodeproseApi
-      val typeInformation = EnsimeApiToCodeproseApi.TypeInspectInfoToTypeInformation(typeInspectInfo)
+      import org.codeprose.util.EnsimeApiToCodeproseApiDELETE
+      val typeInformation = EnsimeApiToCodeproseApiDELETE.TypeInspectInfoToTypeInformation(typeInspectInfo)
       (e._1, typeInformation)      
     }).toMap
     
-     val testTInfo = ensimeTypeInfoPerTypeId.map(e=>e._2).flatten.map(e=>e.`type`).toList
-     
-     testTInfo.foreach(eTI => {
-       println("Org: \n" + eTI +"\n\n")
-       val test = EnsimeApiToCodeproseApi.convertToTypeInfo(eTI)
-       println("Converted: \n" + test +" \n")
-     })
-     
-     println("\n\nTypeInspectInfo: \n")
-     val testTInspectInfo = ensimeTypeInfoPerTypeId.map(e=>e._2).flatten.toList
-     testTInspectInfo.foreach(etII => {
-       //println("Org: \n" + etII +"\n\n")
-       val test = EnsimeApiToCodeproseApi.convertToTypeInspectInfo(etII)
-       println("Converted: \n" + test +" \n")
-     })
+//     val testTInfo = ensimeTypeInfoPerTypeId.map(e=>e._2).flatten.map(e=>e.`type`).toList
+//     
+//     testTInfo.foreach(eTI => {
+//       println("Org: \n" + eTI +"\n\n")
+//       val test = EnsimeApiToCodeproseApi.convertToTypeInfo(eTI)
+//       println("Converted: \n" + test +" \n")
+//     })
+//     
+//     println("\n\nTypeInspectInfo: \n")
+//     val testTInspectInfo = ensimeTypeInfoPerTypeId.map(e=>e._2).flatten.toList
+//     testTInspectInfo.foreach(etII => {
+//       //println("Org: \n" + etII +"\n\n")
+//       val test = EnsimeApiToCodeproseApi.convertToTypeInspectInfo(etII)
+//       println("Converted: \n" + test +" \n")
+//     })
      
      
    // TODO Remove after debugging
@@ -994,7 +994,9 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
 //          println("name:\t" + pI.name)
 //          println("Members:\t")
 //          pI.members.foreach(e=>println(e + "\n"))
-          
+//            import org.codeprose.util.EnsimeApiToCodeproseApi
+//            
+//            println("converted packageInfo:\n" + EnsimeApiToCodeproseApi.convertToPackageInfo(pI) +"\n")
           
           val pInformation = new PackageInformation(name)
           (name,Some(pInformation))    

@@ -15,12 +15,13 @@ import org.codeprose.api.InterfaceInfo
 import org.codeprose.api.SymbolInfo
 import org.codeprose.api.PackageInfo
 import org.codeprose.api.NamedTypeMemberInfo
+import org.codeprose.api.ImplicitInfo
+import org.codeprose.api.ImplicitConversionInfo
+import org.codeprose.api.ImplicitParamInfo
+import org.codeprose.api.ImplicitParamInfo
 
 
-
-
-object EnsimeApiToCodeproseApi {
-  
+object EnsimeApiToCodeproseApiDELETE {
   // TODO: Delete - Beg
   
   def TypeInspectInfoToTypeInformation(typeInspectInfo: Option[org.ensime.api.TypeInspectInfo]) : Option[TypeInformation] = {
@@ -39,14 +40,19 @@ object EnsimeApiToCodeproseApi {
   }
 
   // Delete - end
+
+}
+
+object EnsimeApiToCodeproseApi extends CodeproseApiCreator {
   
+    
   def convertToSymbolInfo(symInfo: org.ensime.api.SymbolInfo) : SymbolInfo = {
     val tpe = convertToTypeInfo(symInfo.`type`)
     val declPos = symInfo.declPos match {
           case Some(p) => { convertToSourcePosition(p) }
           case None => { None }
         }
-    CodeproseApiCreator.SymbolInfo(symInfo.name, symInfo.localName, declPos, tpe, symInfo.isCallable, symInfo.ownerTypeId)
+    SymbolInfo(symInfo.name, symInfo.localName, declPos, tpe, symInfo.isCallable, symInfo.ownerTypeId)
   }
   
   
@@ -75,7 +81,7 @@ object EnsimeApiToCodeproseApi {
         
         val declaredAt = convertDelaredAs(typeInfo.declAs)
         
-        CodeproseApiCreator.BasicTypeInfo(typeInfo.name,typeInfo.typeId,declaredAt,typeInfo.fullName,typeArgs,members,srcPos,typeInfo.outerTypeId)
+        BasicTypeInfo(typeInfo.name,typeInfo.typeId,declaredAt,typeInfo.fullName,typeArgs,members,srcPos,typeInfo.outerTypeId)
       }
       case tree : org.ensime.api.ArrowTypeInfo => {
         
@@ -86,8 +92,7 @@ object EnsimeApiToCodeproseApi {
           tree.paramSections.map(e=>convertToParamSectionInfo(e))
         }
         
-        
-        CodeproseApiCreator.ArrowTypeInfo(tree.name,tree.typeId,resultType,paramSections) 
+        ArrowTypeInfo(tree.name,tree.typeId,resultType,paramSections) 
       }
     } 
     tpeInfo
@@ -109,7 +114,7 @@ object EnsimeApiToCodeproseApi {
     } else {
       paramSection.params.map(e => (e._1,convertToTypeInfo(e._2)))
       }
-    CodeproseApiCreator.ParamSectionInfo(params, paramSection.isImplicit)
+    ParamSectionInfo(params, paramSection.isImplicit)
     
   }
   
@@ -120,12 +125,12 @@ object EnsimeApiToCodeproseApi {
     } else {
       typeInspectInfo.interfaces.map(e=>convertToInterfaceInfo(e))
       }
-    CodeproseApiCreator.TypeInspectInfo(tpe, typeInspectInfo.companionId, interfaces)
+    TypeInspectInfo(tpe, typeInspectInfo.companionId, interfaces)
   }
   
   def convertToInterfaceInfo(interfaceInfo: org.ensime.api.InterfaceInfo) : InterfaceInfo = {
     val tpe = convertToTypeInfo(interfaceInfo.`type`)
-    CodeproseApiCreator.InterfaceInfo(tpe, interfaceInfo.viaView)
+    InterfaceInfo(tpe, interfaceInfo.viaView)
   }
   
   def convertDelaredAs(declAs: org.ensime.api.DeclaredAs) : DeclaredAs = {
@@ -145,7 +150,7 @@ object EnsimeApiToCodeproseApi {
       List[EntityInfo]()
     } else {packInfo.members.map(e=>convertToEntityInfo(e))
       }
-    CodeproseApiCreator.PackageInfo(packInfo.name, packInfo.fullName, members)
+    PackageInfo(packInfo.name, packInfo.fullName, members)
   }
   
   def convertToNamedTypeMemberInfo(namedTypeMemInfo: org.ensime.api.NamedTypeMemberInfo) : NamedTypeMemberInfo = {
@@ -155,7 +160,7 @@ object EnsimeApiToCodeproseApi {
           case None => { None }
         }
     val declAs = convertDelaredAs(namedTypeMemInfo.declAs)
-    CodeproseApiCreator.NamedTypeMemberInfo(namedTypeMemInfo.name,tpe, pos, namedTypeMemInfo.signatureString, declAs)
+    NamedTypeMemberInfo(namedTypeMemInfo.name,tpe, pos, namedTypeMemInfo.signatureString, declAs)
   }
   
   
@@ -175,61 +180,54 @@ object EnsimeApiToCodeproseApi {
    eInfo
   }
   
+  def convertToImplicitInfo(implInfo: org.ensime.api.ImplicitInfo) : ImplicitInfo = {
+    val implicitInfo = implInfo match {
+      case implInfo : org.ensime.api.ImplicitConversionInfo => {
+        val fun = convertToSymbolInfo(implInfo.fun)
+        ImplicitConversionInfo(implInfo.start, implInfo.end, fun)
+      }
+      case implInfo : org.ensime.api.ImplicitParamInfo => {
+        val fun = convertToSymbolInfo(implInfo.fun)
+        val params = if(implInfo.params == List.empty){
+          List[SymbolInfo]()
+        } else {
+          implInfo.params.map(e=>convertToSymbolInfo(e))
+        }
+        ImplicitParamInfo(implInfo.start, implInfo.end, fun, params, implInfo.funIsImplicit)
+      }
+    }
+    implicitInfo
+  }
+  
 }
 
 
 
 
-object CodeproseApiCreator extends CodeproseApiCreator
 
 trait CodeproseApiCreator {
   
-  def BasicTypeInfo( 
-    name: String,
-    typeId: Int,
-    declAs: DeclaredAs,
-    fullName: String,
-    typeArgs: Iterable[TypeInfo],
-    members: Iterable[EntityInfo],
-    pos: Option[SourcePosition],
-    outerTypeId: Option[Int]) : TypeInfo = {
-   
+  protected def BasicTypeInfo(name: String,typeId: Int,declAs: DeclaredAs,fullName: String,typeArgs: Iterable[TypeInfo],members: Iterable[EntityInfo],pos: Option[SourcePosition],outerTypeId: Option[Int]) : TypeInfo = {
     new BasicTypeInfo(name,typeId,declAs,fullName,typeArgs,members,pos,outerTypeId)
   }
   
-  def ArrowTypeInfo(
-    name: String,
-    typeId: Int,
-    resultType: TypeInfo,
-    paramSections: Iterable[ParamSectionInfo]) : TypeInfo = {
-    
+  protected def ArrowTypeInfo(name: String,typeId: Int,resultType: TypeInfo,paramSections: Iterable[ParamSectionInfo]) : TypeInfo = {
     new ArrowTypeInfo(name,typeId,resultType,paramSections)
   }
   
-  def ParamSectionInfo(
-      params: Iterable[(String, TypeInfo)],
-      isImplicit: Boolean) : ParamSectionInfo = {
+  protected  def ParamSectionInfo(params: Iterable[(String, TypeInfo)],isImplicit: Boolean) : ParamSectionInfo = {
     new ParamSectionInfo(params, isImplicit)
   }
   
-   def TypeInspectInfo(tpe: TypeInfo,
-                      companionId: Option[Int],
-                      interfaces: Iterable[InterfaceInfo]) : TypeInspectInfo = {
+  protected def TypeInspectInfo(tpe: TypeInfo,companionId: Option[Int],interfaces: Iterable[InterfaceInfo]) : TypeInspectInfo = {
     new TypeInspectInfo(tpe,companionId,interfaces)
   }
   
-  def InterfaceInfo(tpe: TypeInfo,
-                    viaView: Option[String]) : InterfaceInfo = {
+  def InterfaceInfo(tpe: TypeInfo,viaView: Option[String]) : InterfaceInfo = {
     new InterfaceInfo(tpe,viaView)
   }
   
-  def SymbolInfo(  
-      name: String,
-      localName: String,
-      declPos: Option[SourcePosition],
-      tpe: TypeInfo,
-      isCallable: Boolean,
-      ownerTypeId: Option[Int]) : SymbolInfo = {
+  def SymbolInfo(name: String,localName: String,declPos: Option[SourcePosition],tpe: TypeInfo,isCallable: Boolean,ownerTypeId: Option[Int]) : SymbolInfo = {
     new SymbolInfo(name,localName,declPos,tpe,isCallable,ownerTypeId)
   }
   
@@ -238,16 +236,17 @@ trait CodeproseApiCreator {
     new PackageInfo(name,fullName, members)
   }
   
-  def NamedTypeMemberInfo(    
-      name: String,
-      tpe: TypeInfo,
-      pos: Option[SourcePosition],
-      signatureString: Option[String],
-      declAs: DeclaredAs) : NamedTypeMemberInfo = {
-        new NamedTypeMemberInfo(name, tpe, pos, signatureString, declAs)
+  def NamedTypeMemberInfo(name: String,tpe: TypeInfo,pos: Option[SourcePosition],signatureString: Option[String],declAs: DeclaredAs) : NamedTypeMemberInfo = {
+      new NamedTypeMemberInfo(name, tpe, pos, signatureString, declAs)
   }
   
+  def ImplicitConversionInfo( start: Int, end: Int, fun: SymbolInfo) : ImplicitConversionInfo = {
+    new ImplicitConversionInfo(start,end,fun)
+  }
   
+  def ImplicitParamInfo(start: Int,end: Int,fun: SymbolInfo,params: List[SymbolInfo],funIsImplicit: Boolean) : ImplicitParamInfo = {
+    new ImplicitParamInfo(start,end,fun,params,funIsImplicit)
+  }
 }
 
 

@@ -151,6 +151,22 @@ case class SymbolInfo(
     ownerTypeId: Option[Int]
 ) {}
 
+trait ImplicitInfo
+
+case class ImplicitConversionInfo(
+  start: Int,
+  end: Int,
+  fun: SymbolInfo
+) extends ImplicitInfo
+
+case class ImplicitParamInfo(
+  start: Int,
+  end: Int,
+  fun: SymbolInfo,
+  params: List[SymbolInfo],
+  funIsImplicit: Boolean
+) extends ImplicitInfo
+
 
 // 
 
@@ -184,21 +200,21 @@ case class TypeInformation(
 //}
 
 
-class ArgumentList(){
-  ???
-}
+//class ArgumentList(){
+//  ???
+//}
 
 
-class ImplicitConversionInfo(
+//class ImplicitConversionInfo(
 //    val fullname: String,
 //    val typeId: Int,
 //    val args: String,
 //    val typeArgs: String,
 //    val whereUsedWithinFile_OffsetBased: SourcePosition,
 //    var whereUsedWithinFile_TokenBase: SourcePositionWithTokenId
-    ) {}
+//    ) {}
 
-class ImplicitParameterInfo(){}
+//class ImplicitParameterInfo(){}
 
 
 

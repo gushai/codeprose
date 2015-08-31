@@ -209,6 +209,7 @@ class HtmlSrcFileContext(
 <script src="http://ajax.aspnetcdn.com/ajax/jquery.ui/1.10.0/jquery-ui.js"></script>
 <script src="../js/codeprose.typeinformation.js"></script>
 <script src="../js/codeprose.whereusedinformation.js"></script>   
+<script src="../js/codeprose.packageinformation.js"></script>
             
 <script type="text/javascript">
 

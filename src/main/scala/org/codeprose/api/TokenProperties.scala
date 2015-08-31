@@ -125,7 +125,7 @@ case class ArrowTypeInfo(
   def members = List.empty
   def pos = None
   def outerTypeId = None
-  def _infoType = "BasicTypeInfo"
+  def _infoType = "ArrowTypeInfo"
 }
 
 case class ParamSectionInfo(

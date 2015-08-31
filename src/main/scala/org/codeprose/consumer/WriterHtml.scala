@@ -17,6 +17,8 @@ import org.codeprose.util.CodeproseJsonFormat._
 import spray.json._
 import org.codeprose.api.ERangePositionWithTokenId
 import org.codeprose.api.SourcePositionLinkWithCodeSample
+import org.codeprose.api.PackageInfo
+import org.codeprose.api.TypeInspectInfo
 
 
 class ResourceRelPaths(val base: String, val target: String)
@@ -40,7 +42,8 @@ class WriterContextHtml(
                                 "summary.packageinfo" -> "/packageSummary.html",
                                 "summary.whereUsed" -> "/whereUsedSummary.html",
                                 "js.global.typeinfo" -> "/js/codeprose.typeinformation.js",
-                                "js.global.whereusedinfo" -> "/js/codeprose.whereusedinformation.js")
+                                "js.global.whereusedinfo" -> "/js/codeprose.whereusedinformation.js",
+                                "js.global.packageinfo" -> "/js/codeprose.packageinformation.js")
 }
 
 
@@ -163,6 +166,9 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
 <a href="./typeInformationSummary.html" title="Type information">Type information</a>
 </li>
 <li style="margin-top:0.4em;">
+<a href="./packageSummary.html" title="Package information">Package information</a>
+</li>
+<li style="margin-top:0.4em;">
 <a href="./whereUsedSummary.html" title="Where used information by type">Where used information</a>
 </li>
 </ul>"""
@@ -241,8 +247,10 @@ $$(document).ready(function(){
       val title = "Where Used by Type Id"   
       
       val script =s"""
- $$(document).ready(function(){ 
+ 
+  $$(document).ready(function(){ 
   
+
 
   /*
    * Creates a table with type id and name.
@@ -265,7 +273,16 @@ $$(document).ready(function(){
         var currentTypeId = typeIds[i];
         var typeInfo = typeInformation(currentTypeId);
         
-        var summaryTableEntry = "<tr>" + "<td style='text-align:right;padding-right:2em;padding-top:0.4em;'>" + currentTypeId + "</td>" + "<td style='padding-left:3em;'>" + "<a href='#TYPEID" + currentTypeId + "'>" + typeInfo.fullname + "</a>"+ "</td>"+"</tr>";
+  var typeName = "";
+  if(typeInfo.tpe._infoType === "BasicTypeInfo"){
+    typeName+= typeInfo.tpe.fullName;
+  } else if(typeInfo.tpe._infoType === "ArrowTypeInfo"){
+    typeName+= typeInfo.tpe.name;
+  } else { 
+    typeName+="-- Unknown -- ";
+  }
+
+        var summaryTableEntry = "<tr>" + "<td style='text-align:right;padding-right:2em;padding-top:0.4em;'>" + currentTypeId + "</td>" + "<td style='padding-left:3em;'>" + "<a href='#TYPEID" + currentTypeId + "'>" + typeName + "</a>"+ "</td>"+"</tr>";
         $$(domElemToAppend).append(summaryTableEntry);
 
       }
@@ -288,10 +305,19 @@ $$(document).ready(function(){
       for(var i = 0;i<typeIds.length;i++){
         
         var currentTypeId = typeIds[i];
-              var whereUsedInfo = whereUsedInformation(currentTypeId);
+        var whereUsedInfo = whereUsedInformation(currentTypeId);
         var typeInfo = typeInformation(currentTypeId);
 
-        $$(domElemToAppend).append("<div style='margin-top:3em;' id='TYPEID" + currentTypeId +"'><b>" + typeInfo.fullname + "</b>" + "&nbsp;&nbsp;&nbsp;&nbsp;" + "(Type Id: " +  currentTypeId + ")</div>");
+    var typeName = "";
+    if(typeInfo.tpe._infoType === "BasicTypeInfo"){
+      typeName+= typeInfo.tpe.fullName;
+    } else if(typeInfo.tpe._infoType === "ArrowTypeInfo"){
+      typeName+= typeInfo.tpe.name;
+    } else { 
+      typeName+="-- Unknown -- ";
+    }
+
+        $$(domElemToAppend).append("<div style='margin-top:3em;' id='TYPEID" + currentTypeId +"'><b>" + typeName + "</b>" + "&nbsp;&nbsp;&nbsp;&nbsp;" + "(Type Id: " +  currentTypeId + ")</div>");
 
 
         if(whereUsedInfo == null || whereUsedInfo.length==0){
@@ -336,7 +362,8 @@ $$(document).ready(function(){
   getWhereUsedOverview();
   getWhereUsedDetails();
 
-}); """
+});     
+"""
       val noscriptTag = s"""<noscript><div style="margin-left:2em;">Activate JavaScript for this feature.</div></noscript>"""
       val whereUsedSummary = htmlContext.packageContent("Summary",noscriptTag + s"""<div id="ContentWhereUsedWithSourceSamplesSummary"></div>""")
 			val whereUsedDetails = htmlContext.packageContent("Details",noscriptTag + s"""<div id="ContentWhereUsedWithSourceSampleDetails"></div>""") 
@@ -360,8 +387,114 @@ $$(document).ready(function(){
     
     if(relFileName.isDefined){
     
-       logger.info("\t" + "package information \t" + relFileName.get)
+      logger.info("\t" + "package information \t" + relFileName.get)
+           
+      val outputFilename= new File(c.outputMainPath.getAbsolutePath + relFileName.get)
+         
+      val htmlContext = new HtmlSummaryFileContext()      
     
+      val title = "Package Information"   
+      
+      val script =s"""
+$$(document).ready(function(){ 
+  
+
+  function getPackageInformationSummary(){
+    var domElemToAppend = "#ContentPackgeInformationSummary";
+    var availPackages = getPackageNames();
+
+  
+  if(availPackages.length>0){
+    
+    $$(domElemToAppend).append("<ul>");
+    for(var i=0;i<availPackages.length;i++){
+      var packName = availPackages[i];
+      $$(domElemToAppend).append("<li style='margin-top:0.4em;'><a href='#PACK" + packName + "'>" + packName + "</a></li>");
+    }
+    $$(domElemToAppend).append("</ul>");
+  } else {
+    $$(domElemToAppend).append("No package information found.");
+  }
+
+  };
+
+
+  function getPackageInformationDetails(){
+    var domElemToAppend = "#ContentPackageInformationDetails";
+
+  var availPackages = getPackageNames();
+  console.log(availPackages); 
+  
+  for(var i=0;i<availPackages.length;i++){
+
+    var packName = availPackages[i] 
+    var packInfo = getPackageInformation(availPackages[i]);
+
+    console.log(packInfo);
+    $$(domElemToAppend).append("<b id='PACK" + packInfo.fullName +"'>" + packInfo.fullName + "</b><br><br>");
+    var memberInformation = getPackageInfoMemberDetails(packInfo.members);
+
+    $$(domElemToAppend).append(memberInformation);
+
+  }
+
+  };
+
+function getPackageInfoMemberDetails(members){
+  var retString = "";
+
+  if(members.length>0){
+    console.log(members.length);
+    retString += "Members:";
+    retString += "<ul>";
+    for(var mem=0;mem<members.length;mem++){
+      var member = members[mem];
+      
+      
+      if(member._infoType==="BasicTypeInfo"){
+        var typeId = member.typeId;
+        var declaredAs = member.declAs;
+        var memInfo = "<li style='margin-top:0.25em;'><a href='typeInformationSummary.html#TYPEID" + typeId + "'  title='Declared as: " + declaredAs + "' >" + member.fullName +"</a></li>";
+
+        retString += memInfo;
+      } else if(member._infoType==="ArrowTypeInfo"){
+        var memInfo = "<li style='margin-top:0.25em;'>" +  member.fullName +"</li>";
+        retString += memInfo;
+      } else if(member._infoType==="PackageInfo"){
+        var memInfo = "<li style='margin-top:0.25em;'>" +  member.fullName +"</li>";
+        retString += memInfo;
+      } else {
+    
+        var memInfo = "<li style='margin-top:0.25em;'>" +  member.fullName +"</li>";
+        retString += memInfo;
+      } 
+    }
+
+    retString += "</ul>";/**/
+  } else {
+      retString += "<ul><li>" +"Has no members" + "</li></ul>";
+  }
+
+  return retString;
+};
+
+
+  getPackageInformationSummary();
+  getPackageInformationDetails();
+  
+});         
+        
+ """
+      val noscriptTag = s"""<noscript><div style="margin-left:2em;">Activate JavaScript for this feature.</div></noscript>"""
+      val packageSummary = htmlContext.packageContent("Summary",noscriptTag + s"""<div id="ContentPackgeInformationSummary"></div>""")
+      val packageDetails = htmlContext.packageContent("Details",noscriptTag + s"""<div id="ContentPackageInformationDetails"></div>""") 
+      val content =  packageSummary + packageDetails 
+      
+           
+      // create output
+        
+      FileUtil.writeToFile(outputFilename,htmlContext.getBegin(title,script,true) + content + htmlContext.getEnd())      
+       
     } else {
       logger.error("Unable to package summary file. No file name provided!")
     }    
@@ -377,11 +510,11 @@ $$(document).ready(function(){
     
     logger.info("Generating js information files ...")
     
-    import org.codeprose.api.ScalaLang.typeInformation
+    import org.codeprose.api.ScalaLang.typeInspectInformation
     
-    projectSummary(typeInformation) match {
-      case Some(tpeInfos) => {
-        generateGlobalJSTypeInfo(tpeInfos)
+    projectSummary(typeInspectInformation) match {
+      case Some(tpeInspectInfos) => {
+        generateGlobalJSTypeInfo(tpeInspectInfos)
       } 
       case None => { logger.error("No type information provided in project summary.") }
     }
@@ -393,6 +526,16 @@ $$(document).ready(function(){
         generateGlobalJSWhereUsedInfo(whereUsed,htmlOutputContext)
       } 
       case None => { logger.error("No where used information provided in project summary.") }
+    }
+    
+    
+    import org.codeprose.api.ScalaLang.packageInformation
+    
+    projectSummary(packageInformation) match {
+      case Some(packageInfo) => {
+        generateGlobalJSPackageInfo(packageInfo,htmlOutputContext)
+      } 
+      case None => { logger.error("No package information provided in project summary.") }
     }
 
     
@@ -416,7 +559,7 @@ $$(document).ready(function(){
    * 
    * @param typeInfos Type information by type id.
    */
-  private def generateGlobalJSTypeInfo(typeInfos: Map[Int,Option[TypeInformation]]) : Unit = {
+  private def generateGlobalJSTypeInfo(typeInfos: Map[Int,Option[TypeInspectInfo]]) : Unit = {
     
     val relFileName = c.summaryFilesRelPath.get("js.global.typeinfo")
     
@@ -462,6 +605,38 @@ function typeInformation(typeId){
       }).mkString("\n")
       
       val contentTypeInfo = begTypeInfo + entriesTypeInfo + endTypeInfo
+      
+      
+//      // Inspect Type
+//      
+//        val begTypeInspectInfo = s"""
+//// type inspect information
+//function typeInspectInfo(typeId){ 
+//  tInfo = null;
+//  switch(typeId){
+//"""
+//        
+//      val endTypeInspectInfo = s"""
+//  default: \n\t\t tInfo=null;
+//  }
+//  return tInfo;
+//};"""
+//      
+//      val entriesTypeInspectInfo = typeInfos.map(e => {
+//        val typeId = e._1
+//        e._2 match {
+//          case Some(tI) => {            
+//            val jsonStr = tI.toJson.compactPrint
+//            s"""\tcase $typeId:\n\t\ttInfo=""" + jsonStr + s"""; break;"""
+//          } 
+//          case None => {""}
+//        }
+//        
+//      }).mkString("\n")
+//      
+//      val contentTypeInspectInfo = begTypeInspectInfo + entriesTypeInspectInfo + endTypeInspectInfo
+//      
+      
       
       // Generate output      
       val content = List(contentTypeId,contentTypeInfo)
@@ -574,6 +749,74 @@ function whereUsedInformation(typeId){
       logger.error("Unable to generate js file with where used information! No file name provided.")
     }
   }
+  
+  
+  /**
+   * Saves where used information to disk in js file.
+   * @param whereUsed Source positions by type id.
+   */
+  private def generateGlobalJSPackageInfo(
+      packageInfo: Map[String,Option[PackageInfo]],
+      htmlOutputContext: HtmlOutputContext): Unit = {
+    
+    val relFileName = c.summaryFilesRelPath.get("js.global.packageinfo")
+    
+    if(relFileName.isDefined){
+      
+      val outputFilename= new File(c.outputMainPath.getAbsolutePath + relFileName.get)
+      logger.info("\t" + "packages information: \t" + relFileName.get)
+
+      // Packge names
+      val packageNamesBeg = s"""
+// Package Names
+function getPackageNames(){\n"""
+      val packageNamesEntries = s"""\treturn """ + packageInfo.map(e => e._1).toList.sorted.toJson.compactPrint +";"
+      val packageNamesEnd = "\n};"
+            
+      val packageNamesContent = packageNamesBeg+packageNamesEntries+packageNamesEnd
+      
+      // PackageInformation 
+      val packageBeg = s"""
+// PackageInformation
+function getPackageInformation(pack){
+  var packInfo = null;
+  if(false){}\n"""
+
+      val packageEntires =  packageInfo.map(e => {
+        val name = e._1
+        e._2 match {
+          case Some(pInfo) => {            
+            val jsonStr = pInfo.toJson.compactPrint
+            s"""\telse if(pack === "$name"){\n\t\tpackInfo=""" + jsonStr + s"""; \n\t}"""
+          } 
+          case None => {""}
+        }
+        
+      }).mkString("\n")
+      
+        
+      val packageEnd = s"""
+  else {
+    packInfo=null;
+  }
+  return packInfo;
+};"""
+        
+    
+        
+      
+      val packageContent = packageBeg + packageEntires + packageEnd
+      
+      val content = List(packageNamesContent,packageContent).mkString("\n")
+      
+      FileUtil.writeToFile(outputFilename,content)      
+
+    } else {
+      logger.error("Unable to generate js file with where used information! No file name provided.")
+    }
+  }
+  
+  
   
   /**
    * Sets up the output folders and copies resources.

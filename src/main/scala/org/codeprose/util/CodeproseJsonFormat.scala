@@ -21,8 +21,11 @@ import org.codeprose.api.ImplicitInfo
 import org.codeprose.api.ImplicitConversionInfo
 import org.codeprose.api.ImplicitParamInfo
 import org.codeprose.api.OffsetSourcePositionWithTokenId
+import com.typesafe.scalalogging.LazyLogging
 
-object CodeproseJsonFormat extends DefaultJsonProtocol {
+object CodeproseJsonFormat extends DefaultJsonProtocol with LazyLogging {
+  
+  
   implicit val typeInformationFormat = jsonFormat3(TypeInformation)
   //implicit val ERangePositionWithTokenIdsFormat = jsonFormat5(ERangePositionWithTokenId)
   implicit val SourcePositionLinkWithCodeSampleFormat = jsonFormat4(SourcePositionLinkWithCodeSample)
@@ -67,6 +70,7 @@ object CodeproseJsonFormat extends DefaultJsonProtocol {
           CodeproseJsonFormat.TypeInfoFormat.write(typeInfo)
         }
         case _ => {
+          logger.error("Unknown EntityInfo type!")
           val v = entity.members.map(e=>CodeproseJsonFormat.EntityInfoFormat.write(e)).toList
           val members =JsArray(v)
           JsObject("name" -> entity.name.toJson,
@@ -124,7 +128,9 @@ object CodeproseJsonFormat extends DefaultJsonProtocol {
         case pos: OffsetSourcePositionWithTokenId => {
           pos.toJson
         }
-        case _ => { JsObject() }
+        case _ => {
+          logger.error("Unknown SourcePosition!")
+          JsObject() }
       }
     }
     def read(value: JsValue) =  ??? 

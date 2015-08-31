@@ -65,13 +65,14 @@ object DeclaredAs {
 trait EntityInfo {
   def name: String 
   def members: Iterable[EntityInfo]
+  def _infoType: String
 }
 
 case class PackageInfo(
     name: String,
     fullName: String,
     members: Seq[EntityInfo]
-) extends EntityInfo {}
+) extends EntityInfo {def _infoType = "PackageInfo"}
 
 case class NamedTypeMemberInfo(
     name: String,
@@ -81,6 +82,7 @@ case class NamedTypeMemberInfo(
     declAs: DeclaredAs
 ) extends EntityInfo {
   override def members = List.empty
+  def _infoType = "NamedTypeMemberInfo"
 }
 
 
@@ -93,9 +95,8 @@ sealed trait TypeInfo extends EntityInfo {
   def members: Iterable[EntityInfo]
   def pos: Option[SourcePosition]
   def outerTypeId: Option[Int]
-
-  final def declaredAs = declAs
-  final def args = typeArgs
+ // final def declaredAs = declAs
+ // final def args = typeArgs
 }
 
 
@@ -108,7 +109,9 @@ case class BasicTypeInfo(
   members: Iterable[EntityInfo],
   pos: Option[SourcePosition],
   outerTypeId: Option[Int]
-) extends TypeInfo
+) extends TypeInfo {
+  def _infoType = "BasicTypeInfo"
+}
 
 case class ArrowTypeInfo(
     name: String,
@@ -122,6 +125,7 @@ case class ArrowTypeInfo(
   def members = List.empty
   def pos = None
   def outerTypeId = None
+  def _infoType = "BasicTypeInfo"
 }
 
 case class ParamSectionInfo(
@@ -157,7 +161,9 @@ case class ImplicitConversionInfo(
   start: Int,
   end: Int,
   fun: SymbolInfo
-) extends ImplicitInfo
+) extends ImplicitInfo {
+  def _infoType = "ImplicitConversionInfo"
+}
 
 case class ImplicitParamInfo(
   start: Int,
@@ -165,7 +171,9 @@ case class ImplicitParamInfo(
   fun: SymbolInfo,
   params: List[SymbolInfo],
   funIsImplicit: Boolean
-) extends ImplicitInfo
+) extends ImplicitInfo {
+  def _infoType = "ImplicitParamInfo"
+}
 
 
 // 

@@ -43,7 +43,8 @@ class WriterContextHtml(
                                 "summary.whereUsed" -> "/whereUsedSummary.html",
                                 "js.global.typeinfo" -> "/js/codeprose.typeinformation.js",
                                 "js.global.whereusedinfo" -> "/js/codeprose.whereusedinformation.js",
-                                "js.global.packageinfo" -> "/js/codeprose.packageinformation.js")
+                                "js.global.packageinfo" -> "/js/codeprose.packageinformation.js",
+                                "js.global.helper" -> "/js/codeprose.helper.js")
 }
 
 
@@ -200,24 +201,150 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
        val title = "Type information"
        
        val script = s"""
+
 $$(document).ready(function(){ 
   
 
   function getTypeInformationSummary(){
     var domElemToAppend = "#ContentTypeInformationSummary";
-    $$(domElemToAppend).append("Not yet implemented.");
+
+    var typeIds = getTypeIds();
+    
+    if(typeIds == null || typeIds.length==0){
+      $$(domElemToAppend).append("<b>No type information found.</b>");
+    } else {
+      
+      $$(domElemToAppend).append("<table>");
+      $$(domElemToAppend).append("<tr>" + "<th style='width:6em;text-align:center;padding-bottom:0.4em;border-bottom:1px solid #CFCFCF;'>" + "<b>Type Id</b>" + "</th>" + "<th style='width:40em;text-align:center;border-bottom:1px solid #CFCFCF;'>" + "<b>Name</b>" + "</th>"+"</tr>");
+
+          for(var i = 0;i<typeIds.length;i++){
+        
+        var currentTypeId = typeIds[i];
+        var typeInfo = typeInformation(currentTypeId);
+        
+  var typeName = "";
+  if(typeInfo.tpe._infoType === "BasicTypeInfo"){
+    typeName+= typeInfo.tpe.fullName;
+  } else if(typeInfo.tpe._infoType === "ArrowTypeInfo"){
+    typeName+= typeInfo.tpe.name;
+  } else { 
+    typeName+="-- Unknown -- ";
+  }
+
+        var summaryTableEntry = "<tr>" + "<td style='text-align:right;padding-right:2em;padding-top:0.4em;'>" + currentTypeId + "</td>" + "<td style='padding-left:3em;'>" + "<a href='#TYPEID" + currentTypeId + "'>" + typeName + "</a>"+ "</td>"+"</tr>";
+        $$(domElemToAppend).append(summaryTableEntry);
+
+      }
+      $$(domElemToAppend).append("</table>");
+  
+    }
   };
+  
+
+function getTypeInformationDetails(){ 
+  var domElemToAppend = "#ContentTypeInformationDetails";
+    var typeIds = getTypeIds();
+      console.log(typeIds);
+  
+  if(typeIds == null || typeIds.length==0){
+      $$(domElemToAppend).append("<b>No type information found.</b>");
+    } else {
+  for(i=0;i<typeIds.length;i++){
+    var currentId = typeIds[i];
+    var typeInspectInfo = typeInformation(currentId);
+    //console.log(typeInspectInfo);
+    var typeInfoEntry = getEntryForTypeInspectInfo(currentId,typeInspectInfo);
+    
+    $$(domElemToAppend).append(typeInfoEntry);
+  }
+  
+    }
+};
+
+function getEntryForTypeInspectInfo(currentId,typeInfo){
+  retString="";
+  
+  var typeName = "";
+  var declaredAs = ""
+    if(typeInfo.tpe._infoType === "BasicTypeInfo"){
+      typeName+= typeInfo.tpe.fullName;
+      declaredAs = typeInfo.tpe.declAs; 
+    } else if(typeInfo.tpe._infoType === "ArrowTypeInfo"){
+      typeName+= typeInfo.tpe.name;
+    } else { 
+      typeName+="-- Unknown -- ";
+    }
+  
+  
+
+  var headline = "<div style='margin-top:3em;'><div id='TYPEID"+ currentId +"'>(" + currentId + ")&nbsp;&nbsp;<span style='font-weight:bold; font-size:1.2em;'>" + typeName + "</span>&nbsp; - " +  declaredAs+ "</div>";
+  
+  retString += headline ;
 
 
-  function getTypeInformationDetails(){
-    var domElemToAppend = "#ContentTypeInformationDetails";
-    $$(domElemToAppend).append("Not yet implemented.");
-  };
+  for(var k=0;k<typeInfo.interfaces.length;k++){
+    var interfaceEntry = getInterfaceEntry(typeInfo.interfaces[k]);
+    retString += interfaceEntry;
+  }
+
+  
+  retString += "</div>";
+  return retString;
+};
+
+
+function getInterfaceEntry(intrface){
+
+  //console.log("interface");
+  //console.log(intrface);
+
+  var typeInfo = intrface.tpe;
+  //console.log(typeInfo);
+  var retString = "";
+
+  var typeName="";
+  var declAs = "";
+  if(typeInfo._infoType === "BasicTypeInfo"){
+      typeName+= typeInfo.fullName;
+      declAs = typeInfo.declAs;
+    } else if(typeInfo._infoType === "ArrowTypeInfo"){
+      typeName+= typeInfo.name;
+    } else { 
+      typeName+="-- Unknown -- ";
+   }
+  
+  
+  var members = typeInfo.members;
+  console.log("--");
+//  console.log(typeInfo);
+//  console.log(typeInfo.members);
+//  console.log(members);
+  
+  retString += "<div style='margin-top:2em;margin-left:2em;'>"
+  retString += "<span style='font-weight:bold;'>" + typeName + "</span>&nbsp; - " + declAs + "";
+  retString += "<table style='margin-top:1.5em;'>";
+  for(var mem=0;mem<members.length;mem++){
+    var memName = "<pre>" + members[mem].name + "</pre>";
+    var memSigStr = members[mem].signatureString;
+
+    var entry = "<tr>" + "<td style='width:20em;'>" + memName +"</td> <td>" + memSigStr + "</td>" + "</tr>";
+
+    retString += entry;
+  }
+
+  retString += "</table>";
+/**/
+  retString += "</div>"
+  return retString;
+};
+
 
   getTypeInformationSummary();
   getTypeInformationDetails();
   
+  
 }); 
+      
 """
       val noscriptTag = s"""<noscript><div style="margin-left:2em;">Activate JavaScript for this feature.</div></noscript>"""
       val content = htmlContext.packageContent("Summary",noscriptTag + s"""<div id="ContentTypeInformationSummary"></div>""") +
@@ -539,15 +666,8 @@ function getPackageInfoMemberDetails(members){
     }
 
     
-//    import org.codeprose.api.ScalaLang.whereUsedByTypeId
-//    
-//    projectSummary(whereUsedByTypeId) match {
-//      case Some(whereUsed) => {
-//        generateGlobalJSWhereUsedInfo(whereUsed)
-//      } 
-//      case None => { logger.error("No where used information provided in project summary.") }
-//    }
-    
+    generateGlobalJSHelper() 
+        
   }
   
   /**
@@ -814,6 +934,42 @@ function getPackageInformation(pack){
     } else {
       logger.error("Unable to generate js file with where used information! No file name provided.")
     }
+  }
+  
+  
+  /**
+   * Saves type information to disk in js file.
+   * 
+   * Functions:
+   *  - getTypeIds()  returns a list of all typeIds found
+   *  - typeInformation(typeId) returns TypeInformation or null
+   * 
+   * @param typeInfos Type information by type id.
+   */
+  private def generateGlobalJSHelper() : Unit = {
+    
+    val relFileName = c.summaryFilesRelPath.get("js.global.helper")
+    
+    if(relFileName.isDefined){
+      
+      val outputFilename= new File(c.outputMainPath.getAbsolutePath + relFileName.get)
+      logger.info("\t" + "helper functions: \t\t" + relFileName.get)      
+
+      
+      val contentSrcFileToRelLink = "// Helper"
+      
+      
+      
+      
+      
+      // Generate output      
+      val content = List(contentSrcFileToRelLink)
+      FileUtil.writeToFile(outputFilename,content.mkString("\n\n"))      
+
+    } else {
+      logger.error("Unable to generate js file with helper functions. No file name provided!")
+    }
+    
   }
   
   

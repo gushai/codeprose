@@ -916,10 +916,10 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     
     // Some filtering?
     // TODO Remove after debugging
-    println("Raw typeIds found w/ name:")
-    getOccuringTypesWithName().foreach(e => {
-      println(e._1 + "\t" + e._2)
-    })
+//    println("Raw typeIds found w/ name:")
+//    getOccuringTypesWithName().foreach(e => {
+//      println(e._1 + "\t" + e._2)
+//    })
     
     // Debug
     //val detailedTypeInfo = getOccuringTypesWithName().map(e => {(e._1,None)}).toMap

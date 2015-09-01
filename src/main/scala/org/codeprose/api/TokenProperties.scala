@@ -21,15 +21,6 @@ case class ERangePositionWithTokenId(
   override def toString() : String = { s"""($filename,$offset,$start,$end,$tokenId)""" }
 }
 
-case class SourcePositionLinkWithCodeSample(
-    srcFilename: String,
-    link: String,
-    tokenId: Int,
-    sourceSample: List[String]){
-  override def toString() : String = { val sample = sourceSample.mkString("") 
-    s"""($srcFilename,$link,$tokenId,$sample)""" }
-}
-
 object ERangePositionWithTokenId {
   implicit val ord = new Ordering[ERangePositionWithTokenId] {
     def compare(a: ERangePositionWithTokenId, b: ERangePositionWithTokenId): Int = {
@@ -41,7 +32,19 @@ object ERangePositionWithTokenId {
       
     }
   }
+}  
+  
+case class SourcePositionLinkWithCodeSample(
+    srcFilename: String,
+    link: String,
+    tokenId: Int,
+    sourceSample: List[String]){
+  override def toString() : String = { val sample = sourceSample.mkString("") 
+    s"""($srcFilename,$link,$tokenId,$sample)""" }
 }
+
+
+
 
 
 // Copy of ensime information types.

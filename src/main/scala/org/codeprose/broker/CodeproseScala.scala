@@ -22,22 +22,8 @@ import scopt.OptionParser
 
 
 
-
-
-
-
-case class CodeproseScalaConfig(
-    ensimeFile: File = new File("."),
-    inputFolder: File = new File("."),
-    outputFolder: File = new File("."),
-    ensimeHost: String = "127.0.0.1",
-    includeTests: Boolean = false,
-    verbose: Boolean = false
-    )
-  
-  
 /**
- * 
+ * Codeprose scala application. 
  */
 object Codeprose extends LazyLogging {
   
@@ -45,7 +31,6 @@ object Codeprose extends LazyLogging {
   
     val configParser = getConfigParser()
   
-    
     configParser.parse(args, CodeproseScalaConfig()) match {
       case Some(config) =>
         val ensimeFile = config.ensimeFile    
@@ -76,53 +61,17 @@ object Codeprose extends LazyLogging {
       val bc = getBrokerContext(host,ensimePort,ensimeFile,mainSrcFolders,outputPath,verbose,outputType)
       runCodeprose(bc) 
         
-
       case None => {}
     }
-  
-  
-
-   
-    
-    
-    
-    
-//    // Get inputs
-//    if(args.length!=2 ){      
-//      println(help())
-//      return
-//    }
-//    
-//    val ensimeFile = new File(args(0))    
-//    val mainSrcFolder = new File(ensimeFile.getParent() +"/src/main/scala/")
-//    val outputPath = if(!args(1).endsWith("/")){
-//        new File(args(1)+"/")
-//    } else new File(args(1))
-//            
-//    val host = "127.0.0.1"
-//    val pathToPortFile=EnsimeServerUtil.getPathToPortFile(ensimeFile)
-//    val port = if(pathToPortFile.exists()){
-//      EnsimeServerUtil.readPortFromPortFile(pathToPortFile)
-//    } else -1
-//    val verbose = true
-//    val outputType = "html"
-//    
-//    if(port == -1){
-//      logger.error("Port file could not be determined! Shutting down.")
-//      return
-//    }
-//    
-//    
-//    // create broker context 
-//    val bc = getBrokerContext(host,port,ensimeFile,mainSrcFolder,outputPath,verbose,outputType)    
-//    runCodeprose(bc) 
-    
   }
   
-  
+  /**
+   * Parses the args input of the main and constructs a input config. 
+   * @return OptionParser[CodeproseScalaConfig] input options for codeprose scala.
+   */
   def getConfigParser() : OptionParser[CodeproseScalaConfig] = {
     val parser = new scopt.OptionParser[CodeproseScalaConfig]("codeprose") {
-      head("codeprose", "0.314")
+      head("codeprose", "0.1")
     
       opt[File]('e', "ensimeFile") required() valueName("<file>") action { (x, c) =>
         c.copy(ensimeFile = x) } text("ensimeFile: Path to the ensime file of the project.")
@@ -146,22 +95,32 @@ object Codeprose extends LazyLogging {
       note(s"""\t codeprose -e "/pathTo/.ensime" -o "pathTo/output/" -i "pathTo/input/ --includeTests""")
       
       note("\nNotes:\n")
-      
+      note(s"""\t- codeprose processes only .scala files. All others are ignored.""")
       help("help") text("prints this usage text")
        
     }
     parser
   }
   
-  def runCodeprose(implicit bc: BrokerContext): Unit = {
+  
+  /**
+   * Runs the scala broker.
+   * 
+   * @param bc BrokerContextScala with information needed for BrokerScala.
+   */
+  def runCodeprose(implicit bc: BrokerContextScala): Unit = {
     logger.info("Run starting codeprose broker.")
-    val broker = new CodeproseBroker()
+    val broker = new BrokerScala()
+    broker.initialize()
     val info = broker.analyzeSourceCode()
     broker.generateOutput(info)           
     broker.close()
-    
   }
   
+  /**
+   * Returns a context for the Scala Broker.
+   * @return BrokerContextScala
+   */
   def getBrokerContext(
     host: String,
     port: Int,
@@ -170,83 +129,25 @@ object Codeprose extends LazyLogging {
     outputPath: File,
     verbose: Boolean,
     outputType: String
-  ) : BrokerContext = {
+  ) : BrokerContextScala = {
 
     val filesToProcess = mainSrcFolders.map(folder => FileUtil.getAllScalaFilesIncludingSubDir(folder).sorted).flatten      
-    return new BrokerContext(host,port,ensimeFile,mainSrcFolders.map(e=>e.getAbsolutePath),filesToProcess,outputPath,outputType,verbose)   
+    return new BrokerContextScala(host,port,ensimeFile,mainSrcFolders.map(e=>e.getAbsolutePath),filesToProcess,outputPath,outputType,verbose)   
   }
        
 }
 
 /**
- * Central point in the application. Requests information on project from
- * Provider and hands them off to the consumers.
- * 
+ * Input config for the main args.
+ * Used with scopt.
  */
-trait Broker {
-  import org.codeprose.api.Api
-  def analyzeSourceCode() : ProjectInfo  
-  def generateOutput(projectInfo: ProjectInfo) : Unit    
-  def close() : Unit
-}
-
-
-/**
- * Provides information to the broker.
- * Assumes ensime-server started externally.  
- */
-class BrokerContext(
-    val host: String,
-    val port: Int,
-    val ensimeFile: File,
-    val srcMainFolders : List[String],
-    val filesToProcess: List[File],
-    val outputPath: File,
-    val outputType: String,
-    val verbose: Boolean
-    ){}
+case class CodeproseScalaConfig(
+    ensimeFile: File = new File("."),
+    inputFolder: File = new File("."),
+    outputFolder: File = new File("."),
+    ensimeHost: String = "127.0.0.1",
+    includeTests: Boolean = false,
+    verbose: Boolean = false)
 
 
 
-
-class CodeproseBroker()(implicit bc: BrokerContext)
-    extends Broker with LazyLogging {
-    
-  import org.codeprose.api.Api
-  
-  private val provider = initializeProvider()
-  private val consumer = initializeWriter()
-    
-  private def initializeProvider() : EnsimeProvider = {
-      val pc = new EnsimeProviderContext(bc.host,bc.port,bc.verbose,bc.srcMainFolders)
-      val p = new EnsimeProvider()(pc)
-      p.initialize()
-      return p
-  }
-    
-    
-  def analyzeSourceCode() :  ProjectInfo = {
-    import org.codeprose.api.Api
-    logger.info("Analysing source code ... ")
-    val projectInfo = provider.getProjectInformation(bc.filesToProcess.toList)
-    projectInfo
-  }
-   
-  def generateOutput(projectInfo: ProjectInfo): Unit = {
-   consumer.generateOutput(projectInfo: ProjectInfo)
-  }
-    
-  def close() : Unit = {
-    provider.close()
-  }
-
-  private def initializeWriter() : Consumer = {
-    if(bc.outputType == "html") {      
-      implicit val c = new WriterContextHtml(bc.outputPath,true)  
-      new WriterHtml()     
-    } else {
-      throw new Exception("Unknown output type requested!")
-    }
-    
-  }
-}

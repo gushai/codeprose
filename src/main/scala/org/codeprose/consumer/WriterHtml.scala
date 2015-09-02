@@ -196,7 +196,6 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
        val title = "Type information"
        
        val script = s"""
-
 $$(document).ready(function(){ 
   
 
@@ -208,31 +207,65 @@ $$(document).ready(function(){
     if(typeIds == null || typeIds.length==0){
       $$(domElemToAppend).append("<b>No type information found.</b>");
     } else {
-      
-      $$(domElemToAppend).append("<table>");
-      $$(domElemToAppend).append("<tr>" + "<th style='width:6em;text-align:center;padding-bottom:0.4em;border-bottom:1px solid #CFCFCF;'>" + "<b>Type Id</b>" + "</th>" + "<th style='width:40em;text-align:center;border-bottom:1px solid #CFCFCF;'>" + "<b>Name</b>" + "</th>"+"</tr>");
+
+  var typeInfoCollection = {};
 
           for(var i = 0;i<typeIds.length;i++){
         
-        var currentTypeId = typeIds[i];
-        var typeInfo = typeInformation(currentTypeId);
+          var currentTypeId = typeIds[i];
+          var typeInfo = typeInformation(currentTypeId);
         
-  var typeName = "";
-  if(typeInfo.tpe._infoType === "BasicTypeInfo"){
-    typeName+= typeInfo.tpe.fullName;
-  } else if(typeInfo.tpe._infoType === "ArrowTypeInfo"){
-    typeName+= typeInfo.tpe.name;
-  } else { 
-    typeName+="-- Unknown -- ";
-  }
-
-        var summaryTableEntry = "<tr>" + "<td style='text-align:right;padding-right:2em;padding-top:0.4em;'>" + currentTypeId + "</td>" + "<td style='padding-left:3em;'>" + "<a href='#TYPEID" + currentTypeId + "'>" + typeName + "</a>"+ "</td>"+"</tr>";
-        $$(domElemToAppend).append(summaryTableEntry);
-
-      }
-      $$(domElemToAppend).append("</table>");
-  
+    var typeName = "";
+    var isArrow = false;
+    var declaredAs = "";  
+    
+    if(typeInfo.tpe._infoType === "BasicTypeInfo"){
+        typeName+= typeInfo.tpe.fullName;
+        declaredAs = typeInfo.tpe.declAs;
+    } else if(typeInfo.tpe._infoType === "ArrowTypeInfo"){
+        typeName+= typeInfo.tpe.name;
+        isArrow=true;
+        declaredAs="arrow";
+    } else { 
+        typeName+="-- Unknown -- ";
     }
+
+    var tInfo = {};
+      tInfo.name = typeName;
+      tInfo.id = currentTypeId;
+  
+    if(typeInfoCollection[declaredAs]!=null){
+      var tmp = typeInfoCollection[declaredAs];
+      tmp.push(tInfo);  
+      typeInfoCollection[declaredAs] = tmp;
+    
+    } else {
+      typeInfoCollection[declaredAs] = [tInfo];
+    }
+  }
+  
+  $$(domElemToAppend).append("<table>");
+  $$(domElemToAppend).append("<tr>" + "<th style='width:6em;text-align:center;padding-bottom:0.4em;border-bottom:1px solid #CFCFCF;'>" + "<b>Type</b>" + "</th>" + "<th style='width:40em;text-align:center;border-bottom:1px solid #CFCFCF;'>" + "<b>Name</b>" + "</th>"+"</tr>")
+  for (var key in typeInfoCollection){
+
+    var keyHeadline = "<tr>" + "<td style='text-align:center;padding-left:1.3em;padding-top:0.8em;'><b>" + key.toString() + "</b></td>" + "<td style='padding-left:3em;'>"+ "</td>"+"</tr>";
+    $$(domElemToAppend).append(keyHeadline);
+  
+    var typeGroup = typeInfoCollection[key];
+    
+    for(var i=0;i<typeGroup.length;i++){
+      var id = typeGroup[i].id;
+      var tpeName = typeGroup[i].name;
+
+      var title=key;
+      var tableEntry = "<tr>" + "<td style='text-align:right;padding-right:2em;padding-top:0.6em;margin-top:0.4em;'>" + "</td>" + "<td style='padding-left:3em;padding-top:0.6em;'>" + "<a href='#TYPEID" + id + "' title='" + title + "'>" + tpeName + "</a>"+ "</td>"+"</tr>";
+      $$(domElemToAppend).append(tableEntry);
+    }
+
+  }
+  $$(domElemToAppend).append("</table>");
+}
+
   };
   
 
@@ -272,7 +305,7 @@ function getEntryForTypeInspectInfo(currentId,typeInfo){
   
   
 
-  var headline = "<div style='margin-top:3em;'><div id='TYPEID"+ currentId +"'>(" + currentId + ")&nbsp;&nbsp;<span style='font-weight:bold; font-size:1.2em;'>" + typeName + "</span>&nbsp; - " +  declaredAs+ "</div>";
+  var headline = "<div style='margin-top:3em;'><div id='TYPEID"+ currentId +"'>" +  "<span style='font-weight:bold; font-size:1.2em;'>" + typeName + "</span>&nbsp; - " +  declaredAs+ "</div>";
   
   retString += headline ;
 
@@ -290,11 +323,7 @@ function getEntryForTypeInspectInfo(currentId,typeInfo){
 
 function getInterfaceEntry(intrface){
 
-  //console.log("interface");
-  //console.log(intrface);
-
   var typeInfo = intrface.tpe;
-  //console.log(typeInfo);
   var retString = "";
 
   var typeName="";
@@ -304,16 +333,13 @@ function getInterfaceEntry(intrface){
       declAs = typeInfo.declAs;
     } else if(typeInfo._infoType === "ArrowTypeInfo"){
       typeName+= typeInfo.name;
+      declAs = "arrow";
     } else { 
       typeName+="-- Unknown -- ";
    }
   
   
   var members = typeInfo.members;
-  console.log("--");
-//  console.log(typeInfo);
-//  console.log(typeInfo.members);
-//  console.log(members);
   
   retString += "<div style='margin-top:2em;margin-left:2em;'>"
   retString += "<span style='font-weight:bold;'>" + typeName + "</span>&nbsp; - " + declAs + "";
@@ -339,6 +365,7 @@ function getInterfaceEntry(intrface){
   
   
 }); 
+      
       
 """
       val noscriptTag = s"""<noscript><div style="margin-left:2em;">Activate JavaScript for this feature.</div></noscript>"""
@@ -381,36 +408,69 @@ function getInterfaceEntry(intrface){
   function getWhereUsedOverview() {
     var domElemToAppend = "#ContentWhereUsedWithSourceSamplesSummary";
 
-    var typeIds = getTypeIds();
+       var typeIds = getTypeIds();
     
     if(typeIds == null || typeIds.length==0){
       $$(domElemToAppend).append("<b>No type information found.</b>");
     } else {
-      
-      $$(domElemToAppend).append("<table>");
-      $$(domElemToAppend).append("<tr>" + "<th style='width:6em;text-align:center;padding-bottom:0.4em;border-bottom:1px solid #CFCFCF;'>" + "<b>Type Id</b>" + "</th>" + "<th style='width:40em;text-align:center;border-bottom:1px solid #CFCFCF;'>" + "<b>Name</b>" + "</th>"+"</tr>");
+
+  var typeInfoCollection = {};
 
           for(var i = 0;i<typeIds.length;i++){
         
-        var currentTypeId = typeIds[i];
-        var typeInfo = typeInformation(currentTypeId);
+          var currentTypeId = typeIds[i];
+          var typeInfo = typeInformation(currentTypeId);
         
-  var typeName = "";
-  if(typeInfo.tpe._infoType === "BasicTypeInfo"){
-    typeName+= typeInfo.tpe.fullName;
-  } else if(typeInfo.tpe._infoType === "ArrowTypeInfo"){
-    typeName+= typeInfo.tpe.name;
-  } else { 
-    typeName+="-- Unknown -- ";
-  }
-
-        var summaryTableEntry = "<tr>" + "<td style='text-align:right;padding-right:2em;padding-top:0.4em;'>" + currentTypeId + "</td>" + "<td style='padding-left:3em;'>" + "<a href='#TYPEID" + currentTypeId + "'>" + typeName + "</a>"+ "</td>"+"</tr>";
-        $$(domElemToAppend).append(summaryTableEntry);
-
-      }
-      $$(domElemToAppend).append("</table>");
-  
+    var typeName = "";
+    var isArrow = false;
+    var declaredAs = "";  
+    
+    if(typeInfo.tpe._infoType === "BasicTypeInfo"){
+        typeName+= typeInfo.tpe.fullName;
+        declaredAs = typeInfo.tpe.declAs;
+    } else if(typeInfo.tpe._infoType === "ArrowTypeInfo"){
+        typeName+= typeInfo.tpe.name;
+        isArrow=true;
+        declaredAs="arrow";
+    } else { 
+        typeName+="-- Unknown -- ";
     }
+
+    var tInfo = {};
+      tInfo.name = typeName;
+      tInfo.id = currentTypeId;
+  
+    if(typeInfoCollection[declaredAs]!=null){
+      var tmp = typeInfoCollection[declaredAs];
+      tmp.push(tInfo);  
+      typeInfoCollection[declaredAs] = tmp;
+    
+    } else {
+      typeInfoCollection[declaredAs] = [tInfo];
+    }
+  }
+  
+      $$(domElemToAppend).append("<table>");
+$$(domElemToAppend).append("<tr>" + "<th style='width:6em;text-align:center;padding-bottom:0.4em;border-bottom:1px solid #CFCFCF;'>" + "<b>Type</b>" + "</th>" + "<th style='width:40em;text-align:center;border-bottom:1px solid #CFCFCF;'>" + "<b>Name</b>" + "</th>"+"</tr>")
+  for (var key in typeInfoCollection){
+
+    var keyHeadline = "<tr>" + "<td style='text-align:center;padding-left:1.3em;padding-top:0.8em;'><b>" + key.toString() + "</b></td>" + "<td style='padding-left:3em;'>"+ "</td>"+"</tr>";
+    $$(domElemToAppend).append(keyHeadline);
+  
+    var typeGroup = typeInfoCollection[key];
+    
+    for(var i=0;i<typeGroup.length;i++){
+      var id = typeGroup[i].id;
+      var tpeName = typeGroup[i].name;
+
+      var title=key;
+      var tableEntry = "<tr>" + "<td style='text-align:right;padding-right:2em;padding-top:0.6em;margin-top:0.4em;'>" + "</td>" + "<td style='padding-left:3em;padding-top:0.6em;'>" + "<a href='#TYPEID" + id + "' title='" + title + "'>" + tpeName + "</a>"+ "</td>"+"</tr>";
+      $$(domElemToAppend).append(tableEntry);
+    }
+
+  }
+  $$(domElemToAppend).append("</table>");
+}
   };
   
   function getWhereUsedDetails(){
@@ -688,7 +748,7 @@ function getTypeIds(){\n"""
       
       val contentTypeId = begTypeId + entriesTypeId + endTypeId
       
-      // Type information
+      // Type inspect info
       
       val begTypeInfo = s"""
 // type information
@@ -716,38 +776,6 @@ function typeInformation(typeId){
       }).mkString("\n")
       
       val contentTypeInfo = begTypeInfo + entriesTypeInfo + endTypeInfo
-      
-      
-//      // Inspect Type
-//      
-//        val begTypeInspectInfo = s"""
-//// type inspect information
-//function typeInspectInfo(typeId){ 
-//  tInfo = null;
-//  switch(typeId){
-//"""
-//        
-//      val endTypeInspectInfo = s"""
-//  default: \n\t\t tInfo=null;
-//  }
-//  return tInfo;
-//};"""
-//      
-//      val entriesTypeInspectInfo = typeInfos.map(e => {
-//        val typeId = e._1
-//        e._2 match {
-//          case Some(tI) => {            
-//            val jsonStr = tI.toJson.compactPrint
-//            s"""\tcase $typeId:\n\t\ttInfo=""" + jsonStr + s"""; break;"""
-//          } 
-//          case None => {""}
-//        }
-//        
-//      }).mkString("\n")
-//      
-//      val contentTypeInspectInfo = begTypeInspectInfo + entriesTypeInspectInfo + endTypeInspectInfo
-//      
-      
       
       // Generate output      
       val content = List(contentTypeId,contentTypeInfo)

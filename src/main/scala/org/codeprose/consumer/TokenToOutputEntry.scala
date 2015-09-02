@@ -373,37 +373,7 @@ class TokenToOutputEntryHtml(htmlOutputContext: HtmlOutputContext)
 	  ("","")
   }
 
-  
-   
-//  /**
-//   * Maps source file names to output file names.
-//   * @param srcFileName Source file name.
-//   * @return            Matching output file for link.
-//   */
-//  def getOutputFilenameFromOriginalFile(srcFile: String) : String = {
-//    
-//    //hmtlOutputContext.filenamesOriginalToOutputNames.filter( e => e._1 == orgFile).map(e => "./" + e._2)
-////    if(paths.size > 0){
-////          paths(0)
-////        } else {
-////          ""
-////        }
-//	  
-//			  
-//  }
-//
-//  def getRelativeOutputFilenameFromOriginalFile(orgFile: String) : String = {
-//
-//	  val absPath = getOutputFilenameFromOriginalFile(orgFile)
-//			  if(absPath.length > 0){
-//				  
-//			  } else {
-//				  ""
-//			  }
-//
-//  }
-
-  
+    
 }
 
 

@@ -17,7 +17,8 @@ import org.codeprose.api.ProjectInfo
  */
 trait Provider {
 	def initialize() : Unit 
-	def getProjectInformation(files: List[File]) : ProjectInfo 
+	def getProjectInformation(files: List[File]) : ProjectInfo
+  def enrichProjectInformation(projectInfo: ProjectInfo) : ProjectInfo
   def close() : Unit      
 }
 

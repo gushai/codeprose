@@ -140,6 +140,10 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
      new ProjectInfo(enrichedTokenPerFile,summary)
    }
   
+   def enrichProjectInformation(projectInfo: ProjectInfo) : ProjectInfo =  {
+    ???
+    }
+   
    
    /**
     * Creates project summary information. 

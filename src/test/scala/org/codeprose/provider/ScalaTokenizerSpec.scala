@@ -30,7 +30,7 @@ class ScalaTokenizerSpec extends FunSpec {
             
       // Tokenize (internal format)      
       val tokens = ScalaTokenizer.tokenize(source)
-      import org.codeprose.api.ScalaLang._      
+      import org.codeprose.api.scalalang.ScalaLang._      
       
       assert(otherTokens.length == tokens.length)     
 
@@ -71,7 +71,7 @@ class ScalaTokenizerSpec extends FunSpec {
       import org.codeprose.provider.ScalaTokenizer
       val tokens = ScalaTokenizer.tokenize(source)      
       tokens.foreach(println)      
-      import org.codeprose.api.ScalaLang._     
+      import org.codeprose.api.scalalang.ScalaLang._     
       assert(tokens(0)(tokenType).get == Tokens.WS)
       assert(tokens(1)(tokenType).get == Tokens.MULTILINE_COMMENT)
       assert(tokens(2)(tokenType).get == Tokens.WS)

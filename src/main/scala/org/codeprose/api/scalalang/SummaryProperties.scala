@@ -1,5 +1,5 @@
 package org.codeprose.api.scalalang
 
-class SummaryProperties {
-  
-}
+case class SourceSample(
+    srcPos: ERangePositionWithTokenId,
+    srcCodeLines: List[String]){}

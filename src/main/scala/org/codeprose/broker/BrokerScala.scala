@@ -76,6 +76,7 @@ class BrokerScala()(implicit bc: BrokerContextScala)
   def initialize() : Unit = {
     logger.info("Initializing provider and consumer ... ")
     provider.initialize()
+    consumer.initialize()
   }
   
   /**
@@ -102,6 +103,7 @@ class BrokerScala()(implicit bc: BrokerContextScala)
    */
   def close() : Unit = {
     provider.close()
+    consumer.close()
   }
 
   

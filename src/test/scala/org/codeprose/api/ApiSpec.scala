@@ -28,7 +28,7 @@ object HelloWorld {
     
     it("should generate a ..."){
       
-      import org.codeprose.api.ScalaLang._
+      import org.codeprose.api.scalalang.ScalaLang._
       
       
       assert(tokens.size == otherTokens.length)

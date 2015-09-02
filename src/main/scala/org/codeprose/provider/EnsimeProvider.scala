@@ -13,23 +13,26 @@ import java.util.concurrent.TimeoutException
 import org.ensime.client.ClientContext
 import scala.collection.mutable.ArrayBuffer
 import org.codeprose.api.Token
-import org.codeprose.api._
-import org.ensime.api._
 import scala.util.Sorting
 import org.codeprose.util.EnsimeApiToCodeproseApi
-import org.codeprose.util.EnsimeApiToCodeproseApi
-import org.codeprose.api.TypeInspectInfo
-import org.codeprose.api.PackageInfo
-
-trait Provider {
-	def initialize() : Unit 
-	def close() : Unit      
-  def getProjectInformation(files: List[File]) : ProjectInfo 
-}
+import org.codeprose.api._
+import org.codeprose.api.scalalang._
 
 
-trait ProviderContext { val verbose: Boolean }
 
+/**
+ * Contains information for the EnsimeProvider and 
+ * request options for the ensime-client.
+ * 
+ * - Number of lines in the source code samples.
+ * - Timeouts for the async ensime-client requests. 
+ * 
+ * @param host          Ensime-server address.
+ * @param port          Ensime-server port.
+ * @param verbose       Print verbose.
+ * @param inputFolders  List of folders from which files are processed. 
+ *                      Used to determinate if source position is in project. 
+ */
 class EnsimeProviderContext(
 		val host: String,
 		val port: Int,
@@ -82,7 +85,6 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
    * 
 	 * Sets isInitialized to true if test successful. Tokens are only enriched 
    * with information from ensime if test successful.
-   * 
    *  
 	 */
 	def initialize(): Unit = {
@@ -162,34 +164,31 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     val summary = new ProjectSummary()
     if(isInitialized){
 
-      import org.codeprose.api.ScalaLang._
-      
       logger.info("Getting project summary information ...")
       
       // Files
       logger.info("\t" + "files")
-      summary.set(fileList)(files)
+      summary.set(ScalaLang.fileList)(files)
       
       // Package information
       logger.info("\t" + "package information")
       val packNamesPerFile = getPackageNamesPerFile(tokens)
       val packageNamesUnique = packNamesPerFile.map(e => e._2).toSet.toList
-      summary.set(packageNamePerFile)(packNamesPerFile)
-      summary.set(packageInformation)(getPackageInformaton(packageNamesUnique,tokens))
+      summary.set(ScalaLang.packageNamePerFile)(packNamesPerFile)
+      summary.set(ScalaLang.packageInformation)(getPackageInformaton(packageNamesUnique,tokens))
       
       // Used types
       logger.info("\t" + "type information")
-      val (tpeInformation,tpeInspectInfo) = getDetailedTypeInformation(tokens)
-      summary.set(typeInformation)(tpeInformation)
-      summary.set(typeInspectInformation)(tpeInspectInfo)
+      val tpeInspectInfo = getDetailedTypeInformation(tokens)
+      summary.set(ScalaLang.typeInspectInformation)(tpeInspectInfo)
             
       // Where used in project
       logger.info("\t" + "where used information")
-      summary.set(whereUsedByTypeId)(getWhereUsedByTypeIdInformation())
+      summary.set(ScalaLang.whereUsedByTypeId)(getWhereUsedByTypeIdInformation())
       
       // Where used in project source positions
       logger.info("\t" + "source code samples for where used information")
-      summary.set(whereUsedByTypeIdWithCodeSample)(getSourceSamplesForWhereUsed(tokens,c.whereUsedSourceCodeSamplesNumberOfLinesBefore,c.whereUsedSourceCodeSamplesNumberOfLinesAfter))
+      summary.set(ScalaLang.whereUsedByTypeIdWithCodeSample)(getSourceSamplesForWhereUsed(tokens,c.whereUsedSourceCodeSamplesNumberOfLinesBefore,c.whereUsedSourceCodeSamplesNumberOfLinesAfter))
     }
     summary
   } 
@@ -283,7 +282,6 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   ArrayBuffer[(File,ArrayBuffer[Token])] = {
     
     import org.codeprose.util.FileUtil
-    import org.codeprose.api.ScalaLang._
     
     logger.info("Generating raw tokens.")
     val tokensPerFile = ArrayBuffer[(File,ArrayBuffer[Token])]()
@@ -296,8 +294,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       val tokens = org.codeprose.provider.ScalaTokenizer.tokenize(srcContent)
       val tokensWithInternalId = tokens.map(t => {
         tokenId+=1
-        import org.codeprose.api.ScalaLang._
-        t.set(internalTokenId)(tokenId)
+        t.set(ScalaLang.internalTokenId)(tokenId)
         t
       })
       
@@ -316,9 +313,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   private def enrichToken(
       token: Token, file: File, info: ArrayBuffer[(File,ArrayBuffer[Token])]) : Token = {
     
-    import org.codeprose.api.ScalaLang._
-    
-    token(tokenType) match {
+    token(ScalaLang.tokenType) match {
       case Some(tt) => {
         
         if(tt.isId){
@@ -362,11 +357,9 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
         
               
         // Save type information on token
-        import org.codeprose.api.ScalaLang._
-        
         // Simple information
-        token.set(typeId)(tpeId)
-        token.set(fullName)(fullNameStr)
+        token.set(ScalaLang.typeId)(tpeId)
+        token.set(ScalaLang.fullName)(fullNameStr)
         
         // Declared At information
         symbolInfo.declPos match {
@@ -374,7 +367,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
             if(srcPos.isInstanceOf[org.ensime.api.OffsetSourcePosition]){
               val offsetSrcPos = srcPos.asInstanceOf[org.ensime.api.OffsetSourcePosition]
               val tokenId = ProviderUtil.getTokenIdToOffsetSourcePosition(offsetSrcPos.file.getAbsolutePath, offsetSrcPos.offset, info)
-              token.set(declaredAt)(OffsetSourcePositionWithTokenId(offsetSrcPos.file.getAbsolutePath,offsetSrcPos.offset,tokenId))
+              token.set(ScalaLang.declaredAt)(OffsetSourcePositionWithTokenId(offsetSrcPos.file.getAbsolutePath,offsetSrcPos.offset,tokenId))
             } else {
               logger.error("[enrichTokenWithSymbolInfo]\t Unknown declaredAt source position type.")
             }
@@ -441,7 +434,6 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   private def enrichTokenWithUsesOfSymbolInfo(
       token: Token, file: File, info: ArrayBuffer[(File,ArrayBuffer[Token])]) : Token = {
    
-    import org.codeprose.api.ScalaLang._
     
     val usesOfSymbolsOption = performUsesOfSymbolReq(file, token.offset)
     
@@ -464,7 +456,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
           val srcPosWithTokenId = srcPosWithinProject.map( srcPos => {
                 // Find referenced token id
                 val tokenId = ProviderUtil.getTokenIdToOffsetSourcePosition(srcPos.file, srcPos.offset, info)
-                new org.codeprose.api.ERangePositionWithTokenId(srcPos.file,srcPos.offset,srcPos.start,srcPos.end,tokenId)
+                new ERangePositionWithTokenId(srcPos.file,srcPos.offset,srcPos.start,srcPos.end,tokenId)
                 })
           
           // Where used within same file
@@ -475,10 +467,10 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
               false
           })
           
-          token.set(whereUsedWithInFile)(srcPosWithinFile)
+          token.set(ScalaLang.whereUsedWithInFile)(srcPosWithinFile)
           
           // Save source positions within type id
-          token(typeId) match {
+          token(ScalaLang.typeId) match {
             case Some(tpeId) => {
               srcPosWithTokenId.foreach( srcPos => {
                 addWhereUsedInformation(tpeId, srcPos)  
@@ -585,10 +577,8 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       if(idxAffectedTokens.size!=0){
          for(idx <- idxAffectedTokens){
            
-             import org.codeprose.api.ScalaLang._
-           
              // Mark token that implicit information is applied
-             tokens(idx).set(implicitConversion_indicator)(true)
+             tokens(idx).set(ScalaLang.implicitConversion_indicator)(true)
            
              // println("[TEST] conversion")
              
@@ -640,10 +630,8 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       if(idxAffectedTokens.size!=0){
          for(idx <- idxAffectedTokens){
            
-           import org.codeprose.api.ScalaLang._
-           
            // Mark token that implicit information is applied
-           tokens(idx).set(implicitParameter_indicator)(true)
+           tokens(idx).set(ScalaLang.implicitParameter_indicator)(true)
            
            // println("[TEST] parameter")
            
@@ -685,8 +673,6 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     
     symbolDesignationsOption match {
       case Some(symbolDesignations) => {
-        import org.codeprose.api.ScalaLang._
-        import org.codeprose.api.ScalaLang.SourceSymbol
     
         symbolDesignations.syms.foreach { symDes => {
         val idx = tokens.indexWhere({ t =>
@@ -694,7 +680,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
            symDes.start <= idx && symDes.end > idx
           },0)
           if(idx != -1){
-            tokens(idx).set(symbolDesignation)(SourceSymbol.mapEnsimeToCodeprose(symDes.symType))
+            tokens(idx).set(ScalaLang.symbolDesignation)(ScalaLang.SourceSymbol.mapEnsimeToCodeprose(symDes.symType))
           }
         } 
       }    
@@ -814,7 +800,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
    */
   private def performImplicitInfoReq(file: File, start: Int, end: Int) : Option[org.ensime.api.ImplicitInfos] = {
      
-    val implicitInfo = ensimeClient.implicitInfoReq(file,OffsetRange(start,end))
+    val implicitInfo = ensimeClient.implicitInfoReq(file,org.ensime.api.OffsetRange(start,end))
     
     val requestDetails = s""""Request details: File: """ + file.getAbsolutePath + s""" - Range:  $start - $end"""
     
@@ -912,7 +898,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
    * Uses occuringTypeIds.
    */
   private def getDetailedTypeInformation(enrichedTokens: ArrayBuffer[(File,ArrayBuffer[Token])]) : 
-  (Map[Int,Option[TypeInformation]],Map[Int,Option[TypeInspectInfo]]) = {
+  Map[Int,Option[TypeInspectInfo]] = {
     
     // Some filtering?
     // TODO Remove after debugging
@@ -929,17 +915,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       val typeInspectInfo = performInspectTypeByIdReq(e._1)
       (e._1,typeInspectInfo)
     }).toMap
-    
-    
-    val detailedTypeInfo = ensimeTypeInspectInfoPerTypeId.map(e => {
       
-      val typeInspectInfo = e._2
-      
-      import org.codeprose.util.EnsimeApiToCodeproseApiDELETE
-      val typeInformation = EnsimeApiToCodeproseApiDELETE.TypeInspectInfoToTypeInformation(typeInspectInfo)
-      (e._1, typeInformation)      
-    }).toMap
-    
     val apiConverter = new EnsimeApiToCodeproseApi(enrichedTokens,ProviderUtil.getTokenIdToOffsetSourcePosition)
     
     val typeInspectInfo = ensimeTypeInspectInfoPerTypeId.map(e=> {
@@ -976,7 +952,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
 //      println(e._1 +"\t" + e._2)
 //    })
         
-    (detailedTypeInfo,typeInspectInfo)
+    typeInspectInfo
   }
   
   /**
@@ -1045,17 +1021,15 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       val file = e._1
       val tokens = e._2
         
-      import org.codeprose.api.ScalaLang._
-      
       // Find package token
-      val beg = tokens.indexWhere { t => t(tokenType).get == Tokens.PACKAGE }
+      val beg = tokens.indexWhere { t => t(ScalaLang.tokenType).get == ScalaLang.Tokens.PACKAGE }
       var notFound=false
       
       val packageStr = if(beg != -1){
         
         // Find WS token with newline
         val end = tokens.indexWhere({ t => 
-          t(tokenType).get == Tokens.WS && t.text.contains("\n")},beg)
+          t(ScalaLang.tokenType).get == ScalaLang.Tokens.WS && t.text.contains("\n")},beg)
           
         if(end != 1){
           tokens.slice(beg+1, end).map(e=> e.text).mkString.trim()
@@ -1742,10 +1716,8 @@ object ProviderUtil {
         t.offset == offset
       })
       
-      import org.codeprose.api.ScalaLang._
-      
-      val ret = if(t.length>0 && t(0)(internalTokenId).isDefined){
-        t(0)(internalTokenId).get
+      val ret = if(t.length>0 && t(0)(ScalaLang.internalTokenId).isDefined){
+        t(0)(ScalaLang.internalTokenId).get
       } else {
         -1
       }

@@ -4,49 +4,9 @@ import java.io.File
 import scala.collection.mutable.ArrayBuffer
 
 import org.codeprose.api.Token
+import org.codeprose.api._
+import org.codeprose.api.scalalang._
 
-import org.codeprose.api.TypeInformation
-import org.codeprose.api.SourcePosition
-import org.codeprose.api.TypeInfo
-import org.codeprose.api.EntityInfo
-import org.codeprose.api.BasicTypeInfo
-import org.codeprose.api.ArrowTypeInfo
-import org.codeprose.api.ParamSectionInfo
-import org.codeprose.api.DeclaredAs
-import org.codeprose.api.OffsetSourcePositionWithTokenId
-import org.codeprose.api.TypeInspectInfo
-import org.codeprose.api.TypeInspectInfo
-import org.codeprose.api.InterfaceInfo
-import org.codeprose.api.SymbolInfo
-import org.codeprose.api.PackageInfo
-import org.codeprose.api.NamedTypeMemberInfo
-import org.codeprose.api.ImplicitInfo
-import org.codeprose.api.ImplicitConversionInfo
-import org.codeprose.api.ImplicitParamInfo
-import org.codeprose.api.ImplicitParamInfo
-
-
-// TODO: Delete - Beg
-object EnsimeApiToCodeproseApiDELETE {
-  
-  
-  def TypeInspectInfoToTypeInformation(typeInspectInfo: Option[org.ensime.api.TypeInspectInfo]) : Option[TypeInformation] = {
-
-    typeInspectInfo match {
-      case Some(tII) => {
-      val typeId = tII.`type`.typeId
-      val fullname = tII.`type`.fullName
-      val interfaces = tII.supers.map ( e => { e.tpe.fullName } ).toList
-    
-    Some(new TypeInformation(typeId,fullname,interfaces))    
-      }
-      case None => None
-    }
-     
-  }
-
-}
-// Delete - end
 
 class EnsimeApiToCodeproseApi(
     enrichedTokensPerFile: ArrayBuffer[(File,ArrayBuffer[Token])], 

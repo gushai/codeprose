@@ -1,9 +1,12 @@
-package org.codeprose.api
+package org.codeprose.api.scalalang
 
 import org.codeprose.util.DynamicPropertyMap
 import java.io.File
+import org.codeprose.api._
+
 
 object ScalaLang extends ScalaLang
+
 
 /*
  * Contains information needed for processing Scala source code.
@@ -22,7 +25,7 @@ trait ScalaLang extends DefaultLang {
    */
   case class ScalaTokenType(val name: String, isXml: Boolean = false) extends TokenType {
   
-    import org.codeprose.api.ScalaLang.Tokens._
+    import ScalaLang.Tokens._
     def isNewline = this == Tokens.NEWLINE || this == Tokens.NEWLINES
     
     def isKeyword = Tokens.KEYWORDS contains this 
@@ -240,7 +243,7 @@ object SourceSymbol {
         
         //val declaredAt_SrcPosWithTokenId = new Key('declaredAt_TokenIdSrcPos){ type Value = OffsetSourcePositionWithTokenId }
         val fullName = new Key('fullName) { type Value = String }
-        val symbolDesignation = new Key('symbolDesignation){ type Value = org.codeprose.api.ScalaLang.SourceSymbol.SourceSymbol }
+        val symbolDesignation = new Key('symbolDesignation){ type Value = ScalaLang.SourceSymbol.SourceSymbol }
         
         
         val implicitConversion_indicator = new Key('implicitConversion_indicator){ type Value = Boolean }
@@ -291,7 +294,7 @@ object SourceSymbol {
       // ============================================================================
     
       val fileList = new Key('files){ type Value = List[File] }
-      val typeInformation = new Key('typeInformation){ type Value = Map[Int,Option[TypeInformation]] }
+      // obsolete val typeInformation = new Key('typeInformation){ type Value = Map[Int,Option[TypeInformation]] }
       val whereUsedByTypeId = new Key('whereUsedByTypeId){ type Value = Map[Int,List[ERangePositionWithTokenId]] }
       val whereUsedByTypeIdWithCodeSample = new Key('whereUsedByTypeIdWithCodeSample){ type Value = Map[Int,List[(ERangePositionWithTokenId, List[String])]] }
       

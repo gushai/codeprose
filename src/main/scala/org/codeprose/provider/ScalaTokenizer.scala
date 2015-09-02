@@ -2,24 +2,44 @@ package org.codeprose.provider
 
 import scala.collection.mutable.ArrayBuffer
 import org.codeprose.api.Token
+import org.codeprose.api.scalalang._
 import java.io.File
 import com.typesafe.scalalogging.LazyLogging
 
+
+/**
+ * Tokenizes scala source code with scalariform and converts the tokens into
+ * codeprose tokens.
+ * 
+ */
 trait ScalaTokenizer extends Tokenizer with LazyLogging {
   
-  import org.codeprose.api.ScalaLang
-  
+  /**
+   * Tokenizes scala source code.
+   * @param src Scala source code.
+   * @return    Codeprose tokens.
+   */
   def tokenize(src: String) : ArrayBuffer[Token] = {    
     val otherTokens = getTokensWithDifferentSpec(src)
     transformTokens(otherTokens)
   }
 
+  /**
+   * Generates underlying tokens, n this case scalariform tokens.
+   * @param src Scala source code.
+   * @return    Scalariform scala tokens.
+   */
   private def getTokensWithDifferentSpec(src: String) : List[scalariform.lexer.Token] = {
       import scalariform.lexer.Token
       import scalariform.lexer.{ScalaLexer => Lexer}
       Lexer.rawTokenise(src)        
   }
   
+  /**
+   * Transforms scalariform tokens into codeprose tokens.
+   * @param otherTokens Scalariform tokens.
+   * @return            Codeprose tokens.
+   */
   private def transformTokens(otherTokens: List[scalariform.lexer.Token]) : ArrayBuffer[org.codeprose.api.Token] = {
     val tokens = ArrayBuffer[org.codeprose.api.Token]()
     for( t<-otherTokens){         
@@ -28,15 +48,24 @@ trait ScalaTokenizer extends Tokenizer with LazyLogging {
       tokens
   }
 
-  private def convertIndividualToken(t: scalariform.lexer.Token) : org.codeprose.api.Token = {
-      import org.codeprose.api.ScalaLang._
+  /**
+   * Converts scalariform tokens into codeprose tokens.
+   * @param t Scalariform token.
+   * @return  Codeprose token.
+   */
+  private def convertIndividualToken(t: scalariform.lexer.Token) : Token = {
       val token = new org.codeprose.api.Token(t.offset,t.rawText)      
-      token.set(tokenType)(getTokenType(t))
+      token.set(ScalaLang.tokenType)(getTokenType(t))
       token
   }
   
-  private def getTokenType(t: scalariform.lexer.Token) : org.codeprose.api.ScalaLang.ScalaTokenType = {
-   import org.codeprose.api.ScalaLang._ 
+  /**
+   * Maps from scalariform token type to codeprose scala token type.
+   * @param t Scalariform token.
+   * @reutrn  Codeprose Scala token type.
+   */
+  private def getTokenType(t: scalariform.lexer.Token) : ScalaLang.ScalaTokenType = {
+   import ScalaLang._ 
       t.tokenType match {
       case scalariform.lexer.Tokens.PACKAGE => {ScalaTokenType("PACKAGE")}
       case scalariform.lexer.Tokens.STAR => { ScalaTokenType("STAR") }
@@ -144,3 +173,4 @@ trait ScalaTokenizer extends Tokenizer with LazyLogging {
 }
 
 object ScalaTokenizer extends ScalaTokenizer
+

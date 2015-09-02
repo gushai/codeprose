@@ -1,33 +1,13 @@
 package org.codeprose.util
 
 import spray.json._
-import org.codeprose.api.TypeInformation
-import org.codeprose.api.ERangePositionWithTokenId
-import org.codeprose.api.SourcePositionLinkWithCodeSample
-import org.codeprose.api.OffsetSourcePositionWithTokenId
-import org.codeprose.api.EntityInfo
-import org.codeprose.api.TypeInspectInfo
-import org.codeprose.api.TypeInfo
-import org.codeprose.api.BasicTypeInfo
-import org.codeprose.api.ArrowTypeInfo
-import org.codeprose.api.InterfaceInfo
-import org.codeprose.api.PackageInfo
-import org.codeprose.api.ParamSectionInfo
-import org.codeprose.api.NamedTypeMemberInfo
-import org.codeprose.api.DeclaredAs
-import org.codeprose.api.SourcePosition
-import org.codeprose.api.SymbolInfo
-import org.codeprose.api.ImplicitInfo
-import org.codeprose.api.ImplicitConversionInfo
-import org.codeprose.api.ImplicitParamInfo
-import org.codeprose.api.OffsetSourcePositionWithTokenId
+import org.codeprose.api._
+import org.codeprose.api.scalalang._
 import com.typesafe.scalalogging.LazyLogging
 
 object CodeproseJsonFormat extends DefaultJsonProtocol with LazyLogging {
   
   
-  implicit val typeInformationFormat = jsonFormat3(TypeInformation)
-  //implicit val ERangePositionWithTokenIdsFormat = jsonFormat5(ERangePositionWithTokenId)
   implicit val SourcePositionLinkWithCodeSampleFormat = jsonFormat4(SourcePositionLinkWithCodeSample)
   
   implicit val OffsetSourcePositionWithTokenIdFormat = jsonFormat3(OffsetSourcePositionWithTokenId)
@@ -36,7 +16,7 @@ object CodeproseJsonFormat extends DefaultJsonProtocol with LazyLogging {
   implicit object DeclaredAsFormat extends RootJsonFormat[DeclaredAs] {
     def write(declAs: DeclaredAs) = {
 
-      import org.codeprose.api.DeclaredAs._
+      import org.codeprose.api.scalalang.DeclaredAs._
       
       declAs match {
         case Method => JsString("method") 

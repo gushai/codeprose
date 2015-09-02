@@ -1,9 +1,10 @@
 package org.codeprose.consumer
 
 import scala.collection.mutable.ArrayBuffer
-import org.codeprose.api.Token
-import org.codeprose.api.ScalaLang.ScalaTokenType
-import org.codeprose.api.ScalaLang.Tokens
+import org.codeprose.api._
+import org.codeprose.api.scalalang._
+import org.codeprose.api.scalalang.ScalaLang.ScalaTokenType
+import org.codeprose.api.scalalang.ScalaLang.Tokens
 
 
 
@@ -18,9 +19,7 @@ class HtmlDataAttributeGen(htmlOutputContext: HtmlOutputContext) {
    */
   def getHtmlDataAttributes(token: Token) : ArrayBuffer[(String,String)] = {
 
-    import org.codeprose.api.ScalaLang._
-
-    token(tokenType) match {
+    token(ScalaLang.tokenType) match {
     case Some(tt) => {
 
       if(tt.isId){
@@ -52,7 +51,7 @@ class HtmlDataAttributeGen(htmlOutputContext: HtmlOutputContext) {
   private def getHtmlDataAttributesIds(token: Token) : ArrayBuffer[(String,String)] = {
     val dataAttributes = ArrayBuffer[(String,String)]()
     
-    import org.codeprose.api.ScalaLang._
+    import ScalaLang._
     
     
     token(fullName) match {
@@ -172,7 +171,7 @@ class HtmlDataAttributeGen(htmlOutputContext: HtmlOutputContext) {
 
     val dataAttributes = ArrayBuffer[(String,String)]()
 
-        import org.codeprose.api.ScalaLang._
+        import ScalaLang._
 
         token(tokenType) match {
         case Some(name) => { 

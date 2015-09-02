@@ -1,24 +1,18 @@
 package org.codeprose.consumer
 
 import java.io.File
-import org.codeprose.api.ScalaLang._
-import org.codeprose.api.Token
+import com.typesafe.scalalogging.LazyLogging
+import scala.collection.mutable.ArrayBuffer
+import spray.json._
+import org.codeprose.api._
+import org.codeprose.api.scalalang._
 import org.codeprose.consumer.util.CommentUtil
 import org.codeprose.consumer.util.MarkdownConverter
+import org.codeprose.consumer.util.OutputContextSetter
 import org.codeprose.util.FileUtil
 import org.codeprose.util.StringUtil
-import com.typesafe.scalalogging.LazyLogging
-import org.codeprose.consumer.util.OutputContextSetter
-import scala.collection.mutable.ArrayBuffer
-import org.codeprose.api.ProjectInfo
-import org.codeprose.api.ProjectSummary
-import org.codeprose.api.TypeInformation
 import org.codeprose.util.CodeproseJsonFormat._
-import spray.json._
-import org.codeprose.api.ERangePositionWithTokenId
-import org.codeprose.api.SourcePositionLinkWithCodeSample
-import org.codeprose.api.PackageInfo
-import org.codeprose.api.TypeInspectInfo
+
 
 
 class ResourceRelPaths(val base: String, val target: String)
@@ -51,7 +45,9 @@ class WriterContextHtml(
 
 class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLogging {
  
-    
+  def initialize() : Unit = {}
+  def close() : Unit = {}
+  
 	def generateOutput(projectInfo: ProjectInfo) : Unit = {
     
     val htmlOutputContext = new HtmlOutputContext(c.outputMainPath,projectInfo.enrichedTokens.map(e => e._1).toList)
@@ -113,8 +109,7 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
       
       val filesTitle = "Files"                 
       
-      import org.codeprose.api.ScalaLang.packageNamePerFile
-      val filesEntries = projectInfo.summary(packageNamePerFile) match {
+      val filesEntries = projectInfo.summary(ScalaLang.packageNamePerFile) match {
         case Some(packageNamesPerFile) => {
           
           val packageNamesPerFileSorted = srcFilenames.map( f => packageNamesPerFile.get(f) match {
@@ -637,18 +632,16 @@ function getPackageInfoMemberDetails(members){
     
     logger.info("Generating js information files ...")
     
-    import org.codeprose.api.ScalaLang.typeInspectInformation
     
-    projectSummary(typeInspectInformation) match {
+    projectSummary(ScalaLang.typeInspectInformation) match {
       case Some(tpeInspectInfos) => {
         generateGlobalJSTypeInfo(tpeInspectInfos)
       } 
       case None => { logger.error("No type information provided in project summary.") }
     }
     
-    import org.codeprose.api.ScalaLang.whereUsedByTypeIdWithCodeSample
     
-    projectSummary(whereUsedByTypeIdWithCodeSample) match {
+    projectSummary(ScalaLang.whereUsedByTypeIdWithCodeSample) match {
       case Some(whereUsed) => {
         generateGlobalJSWhereUsedInfo(whereUsed,htmlOutputContext)
       } 
@@ -656,9 +649,7 @@ function getPackageInfoMemberDetails(members){
     }
     
     
-    import org.codeprose.api.ScalaLang.packageInformation
-    
-    projectSummary(packageInformation) match {
+    projectSummary(ScalaLang.packageInformation) match {
       case Some(packageInfo) => {
         generateGlobalJSPackageInfo(packageInfo,htmlOutputContext)
       } 
@@ -1019,8 +1010,7 @@ function getPackageInformation(pack){
       logger.info("\t" + srcFileLabel)
 
       // Get package name for file
-      import org.codeprose.api.ScalaLang._
-      val packageName = projectSummary(packageNamePerFile) match {
+      val packageName = projectSummary(ScalaLang.packageNamePerFile) match {
         case Some(packagePerFile) => {
           packagePerFile.get(srcFile).getOrElse("")
         }
@@ -1049,7 +1039,6 @@ function getPackageInformation(pack){
     tokens.map(e=> e.text)
     
     // Group entries into: List[List[Token]] where each List contains a line of src code or a MultilineComment
-    import org.codeprose.api.ScalaLang._
     
     var idx_toProcess_Beg = 0;
     var idx_toProcess_End = 0;
@@ -1058,7 +1047,7 @@ function getPackageInformation(pack){
     var codeTableClose = false  // true: close code table environment
     val htmlEntries = scala.collection.mutable.ArrayBuffer[String]()
 
-    // TODO: Unsave???
+    // TODO: check again
     while(idx_toProcess_End<(tokens.length-1)){
       
       // Find section to process next
@@ -1102,8 +1091,8 @@ function getPackageInformation(pack){
     var idx = idxLastTokenToProcessedNow
     do { idx += 1 }  while(
         idx<tokens.length &&
-        tokens(idx)(tokenType).isDefined && 
-        tokens(idx)(tokenType).get != Tokens.MULTILINE_COMMENT && 
+        tokens(idx)(ScalaLang.tokenType).isDefined && 
+        tokens(idx)(ScalaLang.tokenType).get != ScalaLang.Tokens.MULTILINE_COMMENT && 
         !tokens(idx).text.contains("\n"))
       idx
   }
@@ -1123,6 +1112,8 @@ function getPackageInformation(pack){
       codeTableOpen: Boolean,
       codeTableClose: Boolean
       )(implicit htmlContext: HtmlSrcFileContext) : (Array[String],Int,Boolean) = {
+    
+    
     
     var currentLineUpdate = currentLine
     var codeTableOpenUpdate = codeTableOpen
@@ -1196,7 +1187,7 @@ function getPackageInformation(pack){
         if(t.text.contains('\n')){
           
           // WS token          
-          if(t(tokenType).isDefined && t(tokenType).get == Tokens.WS){
+          if(t(ScalaLang.tokenType).isDefined && t(ScalaLang.tokenType).get == ScalaLang.Tokens.WS){
                
             val numNewLines = t.text.count(_ == '\n')
             val idx_FirstNewLine = t.text.indexOf("\n")
@@ -1285,10 +1276,10 @@ function getPackageInformation(pack){
 			  } else {
 				  val nextIdx = idxLastTokenToProcessedNow+1
 						  val nextToken = tokens(nextIdx)
-						  val nextTokenType = nextToken(tokenType)
+						  val nextTokenType = nextToken(ScalaLang.tokenType)
 
 						  if (nextTokenType.isDefined && 
-								  nextTokenType.get == Tokens.MULTILINE_COMMENT &&
+								  nextTokenType.get == ScalaLang.Tokens.MULTILINE_COMMENT &&
 								  !CommentUtil.isScalaDocComment(nextToken.text)){ 
 							  true
 						  } else {
@@ -1304,8 +1295,8 @@ function getPackageInformation(pack){
    */
   private def toTextEntry(toProcess: Array[Token]) : Boolean = {
    if(toProcess.length==1 && 
-       toProcess(0)(tokenType).isDefined &&
-       toProcess(0)(tokenType).get == Tokens.MULTILINE_COMMENT && 
+       toProcess(0)(ScalaLang.tokenType).isDefined &&
+       toProcess(0)(ScalaLang.tokenType).get == ScalaLang.Tokens.MULTILINE_COMMENT && 
        !CommentUtil.isScalaDocComment(toProcess(0).text)
        ){
      true

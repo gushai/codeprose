@@ -2,8 +2,8 @@ package org.codeprose.consumer
 
 import scala.collection.mutable.ArrayBuffer
 import org.codeprose.api.Token
-import org.codeprose.api.ScalaLang.ScalaTokenType
-import org.codeprose.api.ScalaLang.Tokens
+import org.codeprose.api.scalalang._
+import org.codeprose.api.scalalang.ScalaLang._
 
 
 /**
@@ -29,8 +29,6 @@ class TokenToOutputEntryHtml(htmlOutputContext: HtmlOutputContext)
    *              (beg,end) : (String,String) beg + token.text + end 
    */
   def getTokenEntryWrapper(token: Token) : (String,String) = {
-     
-     import org.codeprose.api.ScalaLang._
      
      token(tokenType) match {
        case Some(tt) => {
@@ -99,10 +97,8 @@ class TokenToOutputEntryHtml(htmlOutputContext: HtmlOutputContext)
     */
    private def handleKeywords(token: Token, tokenTpe: ScalaTokenType) : (String,String) = {
       
-	  import org.codeprose.api.ScalaLang.Tokens._
+	  import org.codeprose.api.scalalang.ScalaLang.Tokens._
 
-	  //val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
-    
     val title = s""" title="""" + tokenTpe + s"""" """
 
 	  tokenTpe match {
@@ -228,9 +224,8 @@ class TokenToOutputEntryHtml(htmlOutputContext: HtmlOutputContext)
     * @return          Wrapper
    */
   private def handleLiterals(token: Token, tokenTpe: ScalaTokenType) : (String,String) = {
-	  import org.codeprose.api.ScalaLang.Tokens._
+	  import org.codeprose.api.scalalang.ScalaLang.Tokens._
 
-	  //val tInfo = token.toString().replace(",", ",\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
 	  val title = s""" title="""" + tokenTpe + "\nOffset: " + token.offset  + s"""" """
 
 	  val dataAttributes = getHtmlDataAttributes(token).map(e=> e._1 + "=" + e._2).mkString(" "," "," ")
@@ -279,7 +274,7 @@ class TokenToOutputEntryHtml(htmlOutputContext: HtmlOutputContext)
    */
   private def handleIds(token: Token, tokenTpe: ScalaTokenType) : (String,String) = {
 
-	  import org.codeprose.api.ScalaLang.Tokens._ 
+	  import org.codeprose.api.scalalang.ScalaLang.Tokens._ 
 
 	  tokenTpe match {
   	  case VARID => {
@@ -316,12 +311,11 @@ class TokenToOutputEntryHtml(htmlOutputContext: HtmlOutputContext)
    */
   private def handleID(token: Token) : (String, String) = {
 	  
-    import org.codeprose.api.ScalaLang._
+    import ScalaLang._
     
     // Fill title information
 	  //val tInfo = token.toString().replace(";", ";\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
     val rawTitleElements = List(token(fullName).getOrElse(""),
-                                "TypeId: " + token(typeId).getOrElse(""),
                                 "TokenType: " + token(tokenType).getOrElse(""),
                                 "Offset: " + token.offset).mkString("\n")
     

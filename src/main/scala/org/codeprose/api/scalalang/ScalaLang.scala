@@ -241,52 +241,39 @@ object SourceSymbol {
         
         val declaredAt = new Key('declaredAt) { type Value = OffsetSourcePositionWithTokenId }
         
-        //val declaredAt_SrcPosWithTokenId = new Key('declaredAt_TokenIdSrcPos){ type Value = OffsetSourcePositionWithTokenId }
         val fullName = new Key('fullName) { type Value = String }
         val symbolDesignation = new Key('symbolDesignation){ type Value = ScalaLang.SourceSymbol.SourceSymbol }
-        
         
         val implicitConversion_indicator = new Key('implicitConversion_indicator){ type Value = Boolean }
         val implicitParameter_indicator = new Key('implicitParameter_indicator){ type Value = Boolean }
 
+        val implicitConversion_ids = new Key('implicitConversion_ids){ type Value = List[Int] }
+        val implicitParameter_ids = new Key('implicitParameter_ids){ type Value = List[Int] }
+        
         val whereUsedWithInFile = new Key('whereUsedWithinFile){ type Value = List[ERangePositionWithTokenId] }
         
       
         
         
         // Currently not in use.
-        
-        val declaredAs = new Key('declaredAs) { type Value = DeclaredAs }
-        
-        
-                  
-        val isArrowType = new Key('isArrowType) { type Value = Boolean }
-        
-        val outerTypeId = new Key('outerTypeId) { type Value = Int }
-        
-        val args = new Key('args){ type Value = String }
-        val typeArgs = new Key('typeArgs){ type Value = String }
-        val members = new Key('members){ type Value = String }
+//        
+//        val declaredAs = new Key('declaredAs) { type Value = DeclaredAs }
+//        
+//        val isArrowType = new Key('isArrowType) { type Value = Boolean }
+//        
+//        val outerTypeId = new Key('outerTypeId) { type Value = Int }
+//        
+//        val args = new Key('args){ type Value = String }
+//        val typeArgs = new Key('typeArgs){ type Value = String }
+//        val members = new Key('members){ type Value = String }
         
      
     
       
-  //    val implicitConversion_sourcePosition = new Key('implicitConversion_sourcePosition){ type Value = SourcePosition }
-  //    val implicitConversion_sourcePositionWithTokenId = new Key('implicitConversion_sourcePosition){ type Value = SourcePositionWithTokenId }
-  //    val implicitConversion_fullName = new Key('implicitConversion_fullName){ type Value = String }
-  //    val implicitConversion_argNames = new Key('implicitConversion_argNamesName){ type Value = String }
-  //    
   
-  //    val implicitParameter_sourcePosition = new Key('implicitParameter_sourcePosition){ type Value = SourcePosition }
-  //    val implicitParameter_fullName = new Key('implicitParameter_fullname){ type Value = String }
-  //    val implicitParameter_sourcePositionWithTokenId = new Key('implicitParameter_sourcePositionWithTokenId){ type Value = SourcePositionWithTokenId }
   
-        //val whereUsedWithInFile = new Key('whereUsedWithinFile){ type Value = List[Int] }
         
-  //    val whereUsed = new Key('whereUsed){ type Value = List[ERangePosition]}
-  //    val whereUsed_WithinFileTokenIdSrcPos = new Key('whereUsed_WithinFileTokenIdSrcPos){ type Value = List[SourcePositionWithTokenId]}
    
-    //}
  
    
         
@@ -304,6 +291,8 @@ object SourceSymbol {
       
       val typeInspectInformation = new Key('typeInspectInformation){ type Value = Map[Int,Option[TypeInspectInfo]] }
       
+      val implicitConversion_information = new Key('implicitConversion_information){ type Value = Map[Int,SymbolInfo] }
+      val implicitParameter_information = new Key('implicitParameter_information){ type Value = Map[Int,SymbolInfo] }
 }
 
 

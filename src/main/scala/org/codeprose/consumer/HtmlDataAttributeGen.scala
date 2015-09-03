@@ -5,7 +5,8 @@ import org.codeprose.api._
 import org.codeprose.api.scalalang._
 import org.codeprose.api.scalalang.ScalaLang.ScalaTokenType
 import org.codeprose.api.scalalang.ScalaLang.Tokens
-
+import spray.json._
+import org.codeprose.util.CodeproseJsonFormat._
 
 
 class HtmlDataAttributeGen(htmlOutputContext: HtmlOutputContext) {
@@ -72,12 +73,26 @@ class HtmlDataAttributeGen(htmlOutputContext: HtmlOutputContext) {
     // Implicit indicators
     token(implicitConversion_indicator) match {
       case Some(bool) => { dataAttributes += ((htmlDataAttributePrefix + "implicitconversion",s""""""" + true + s""""""")) }
-      case None => { } 
+      case None => {} 
+    }
+    
+    token(implicitConversion_ids) match {
+      case Some(ids) => { val idsJson = ids.toJson.compactPrint 
+        dataAttributes += ((htmlDataAttributePrefix + "implicitconversionids",s""""""" + idsJson + s""""""")) 
+      } 
+      case None => {}
     }
     
     token(implicitParameter_indicator) match {
       case Some(bool) => { dataAttributes += ((htmlDataAttributePrefix + "implicitparameter",s""""""" + true + s""""""")) }
-      case None => { } 
+      case None => {} 
+    }
+    
+    token(implicitParameter_ids) match {
+      case Some(ids) => { val idsJson = ids.toJson.compactPrint 
+        dataAttributes += ((htmlDataAttributePrefix + "implicitparameterids",s""""""" + idsJson + s""""""")) 
+      } 
+      case None => {}
     }
     
     token(whereUsedWithInFile) match {
@@ -86,6 +101,8 @@ class HtmlDataAttributeGen(htmlOutputContext: HtmlOutputContext) {
          dataAttributes += ((htmlDataAttributePrefix + "whereusedinfile",s""""""" + tokenIds + s""""""")) }
           case None => {}
       } 
+    
+    
     
     token(declaredAt) match {
       case Some(srcPos) => {
@@ -173,7 +190,7 @@ class HtmlDataAttributeGen(htmlOutputContext: HtmlOutputContext) {
 
         import ScalaLang._
 
-        token(tokenType) match {
+    token(tokenType) match {
         case Some(name) => { 
           dataAttributes += ((htmlDataAttributePrefix + "fullname",s""""""" + name.toString + s""""""")) 
         }
@@ -187,40 +204,29 @@ class HtmlDataAttributeGen(htmlOutputContext: HtmlOutputContext) {
       case None => { } 
     }
     
+    token(implicitConversion_ids) match {
+      case Some(ids) => { val idsJson = ids.toJson.compactPrint 
+        dataAttributes += ((htmlDataAttributePrefix + "implicitconversionids",s""""""" + idsJson + s""""""")) 
+      } 
+      case None => {}
+    }
+    
     token(implicitParameter_indicator) match {
       case Some(bool) => { dataAttributes += ((htmlDataAttributePrefix + "implicitparameter",s""""""" + true + s""""""")) }
       case None => { } 
     }
+    
+    token(implicitParameter_ids) match {
+      case Some(ids) => { val idsJson = ids.toJson.compactPrint 
+        dataAttributes += ((htmlDataAttributePrefix + "implicitparameterids",s""""""" + idsJson + s""""""")) 
+      } 
+      case None => {}
+    }
 
-    //    token(implicitConversion_indicator) match {
-    //      case Some(name) => { 
-    //        dataAttributes += ((dataAttributesPrefix + "implicitconversion",s""""""" + true + s""""""")) 
-    //        // Add others: Name and Tokenbased source position 
-    //      }
-    //      case None => { } 
-    //    }
-    //    
-    //    token(implicitConversion_fullName) match {
-    //      case Some(name) => { 
-    //        dataAttributes += ((dataAttributesPrefix + "implicitconversionfullname",s""""""" + name + s""""""")) 
-    //      }
-    //      case None => { } 
-    //    }
-    //
-    //    token(implicitConversion_sourcePosition) match {
-    //      case Some(srcPos) => { 
-    //        // TODO: ADD token ID
-    //          val link = "." + getRelativeOutputFilenameFromOriginalFile(srcPos.filename) + "#" + "T" + ""
-    //          dataAttributes += ((dataAttributesPrefix + "implicitconversiondeclaredat",s""""""" + link + s"""""""))
-    //      }
-    //      case None => { } 
-    //    }
-
-
-
+    // Tooltip indicator
     dataAttributes += ((htmlDataAttributePrefix + "tooltipdisplay",s""""""" + true + s"""""""))
 
-        dataAttributes
+    dataAttributes
 
   }
   

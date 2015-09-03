@@ -37,7 +37,8 @@ class WriterContextHtml(
                                 "js.global.typeinfo" -> "/js/codeprose.typeinformation.js",
                                 "js.global.whereusedinfo" -> "/js/codeprose.whereusedinformation.js",
                                 "js.global.packageinfo" -> "/js/codeprose.packageinformation.js",
-                                "js.global.helper" -> "/js/codeprose.helper.js")
+                                "js.global.helper" -> "/js/codeprose.helper.js",
+                                "js.global.implicitinfo" -> "/js/codeprose.implicitinformation.js")
 }
 
 
@@ -769,6 +770,14 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
       case None => { logger.error("No package information provided in project summary.") }
     }
 
+    val implicitConv = projectSummary(ScalaLang.implicitConversion_information).getOrElse(null)
+    val implicitParam = projectSummary(ScalaLang.implicitParameter_information).getOrElse(null)
+    if(implicitConv != null && implicitParam!=null){
+      generateGlobalJSImplicitInfo(implicitConv,implicitParam)
+    } else { 
+      logger.error("No implicit information provided in project summary.") 
+    }
+    
     
     
         
@@ -777,9 +786,9 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
   /**
    * Saves type information to disk in js file.
    * 
-   * Functions:
-   *  - getTypeIds()  returns a list of all typeIds found
-   *  - typeInformation(typeId) returns TypeInformation or null
+   * Included:
+   *  - typeIds         Array of all type ids found
+   *  - typeInformation Map of TypeInspectInfo or null
    * 
    * @param typeInfos Type information by type id.
    */
@@ -810,6 +819,10 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
   
   /**
    * Saves where used information to disk in js file.
+   * 
+   * Included:
+   *  - whereUsedInformation Map from type id to source postions with sample.
+   * 
    * @param whereUsed Source positions by type id.
    */
   private def generateGlobalJSWhereUsedInfo(
@@ -862,6 +875,11 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
   
   /**
    * Saves where used information to disk in js file.
+   * 
+   * Included:
+   *  - packageNames        Array of package names
+   *  - packageInformation  Map package name to package information
+   * 
    * @param whereUsed Source positions by type id.
    */
   private def generateGlobalJSPackageInfo(
@@ -917,7 +935,37 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
     
   }
   
-  
+  /**
+   * Saves implicit information to disk in js file.
+   * 
+   * Included:
+   *  - implicitConverions
+   *  - implicitParameters
+   * 
+   * @param 
+   */
+  private def generateGlobalJSImplicitInfo(
+      implicitConversions: Map[Int,SymbolInfo],
+      implicitParameters: Map[Int,SymbolInfo]) : Unit = {
+    
+    val relFileName = c.summaryFilesRelPath.get("js.global.implicitinfo")
+    
+    if(relFileName.isDefined){
+      
+      val outputFilename= new File(c.outputMainPath.getAbsolutePath + relFileName.get)
+      logger.info("\t" + "implicit information: \t\t" + relFileName.get)      
+
+      val implicitConv = "implicitConversions = " + implicitConversions.map(e=>(e._1.toString,e._2)).toJson.compactPrint
+      val implicitPara = "implicitParameters = " + implicitParameters.map(e=>(e._1.toString,e._2)).toJson.compactPrint
+   
+      val content = List(implicitConv,implicitPara).mkString("\n\n")
+      FileUtil.writeToFile(outputFilename,content)      
+
+    } else {
+      logger.error("Unable to generate js file with type information. No file name provided!")
+    }
+    
+  }
   
   /**
    * Sets up the output folders and copies resources.
@@ -1002,6 +1050,8 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
     val htmlEntries = scala.collection.mutable.ArrayBuffer[String]()
 
     // TODO: check again
+    // 1 Token file? Check if loop works for this environment!!!
+    // 
     while(idx_toProcess_End<(tokens.length-1)){
       
       // Find section to process next

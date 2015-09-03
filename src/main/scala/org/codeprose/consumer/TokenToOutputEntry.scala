@@ -314,7 +314,6 @@ class TokenToOutputEntryHtml(htmlOutputContext: HtmlOutputContext)
     import ScalaLang._
     
     // Fill title information
-	  //val tInfo = token.toString().replace(";", ";\n") + ",\n'offset: " + token.offset + ",\n'length: " + token.length
     val rawTitleElements = List(token(fullName).getOrElse(""),
                                 "TokenType: " + token(tokenType).getOrElse(""),
                                 "Offset: " + token.offset).mkString("\n")
@@ -353,7 +352,7 @@ class TokenToOutputEntryHtml(htmlOutputContext: HtmlOutputContext)
 	  val dataAttributes = getHtmlDataAttributes(token).map(e=> e._1 + "=" + e._2).mkString(" "," "," ")
 
 			  // Set output 
-			  val spanElementBeg = s"""<span""" + spanClass + domElementId + s""" $title + $dataAttributes>"""
+			  val spanElementBeg = s"""<span""" + spanClass + domElementId + s"""$dataAttributes $title>"""
 			  val spanElementEnd = "</span>"
 
 			  if(linkToDeclaredAt_beg.length()!=0){

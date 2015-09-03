@@ -99,26 +99,14 @@ class HtmlSrcFileContext(
         isImplicitConversion = $$(elem).data("cp-implicitconversion");
         if(isImplicitConversion){
     
-          implicitConversionFullname = $$(elem).data("cp-implicitconversionfullname");
-          implicitConversionDeclaredAt = $$(elem).data("cp-implicitconversiondeclaredat");   
-          if(implicitConversionDeclaredAt != null){
-            linkToImplicitConversion = "<a href='" + implicitConversionDeclaredAt + "'>Impl. conv: " + implicitConversionFullname + "</a>" + "<br/>";
-          } else {
-          linkToImplicitConversion = "Impl. conv: " + implicitConversionFullname + "<br/>";
-          }
+          
         }
 
         // Implicit Parameter
         linkToImplicitParameter = ""
         isImplicitParameter = $$(elem).data("cp-implicitparameter");
         if(isImplicitParameter){
-          implicitParameterFullname = $$(elem).data("cp-implicitparameterfullname");
-          implicitParameterDeclaredAt = $$(elem).data("cp-implicitparameterdeclaredat");   
-          if(implicitParameterDeclaredAt != null){
-            linkToImplicitParameter = "<a href='" + implicitParameterDeclaredAt + "'>Impl. para: " + implicitParameterFullname + "</a>" + "<br/>";
-          } else {
-            linkToImplicitParameter = "Impl. conv: " + implicitConversionFullname + "<br/>";
-          } 
+        
         }
       
         // Output structure 
@@ -172,7 +160,9 @@ class HtmlSrcFileContext(
 <script src="../js/codeprose.whereusedinformation.js"></script>   
 <script src="../js/codeprose.packageinformation.js"></script>
 <script src="../js/codeprose.helper.js"></script>
+<script src="../js/codeprose.implicitinformation.js"></script>          
             
+                
 <script type="text/javascript">
 
 $$(document).ready(function(){ """ +

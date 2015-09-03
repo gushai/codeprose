@@ -78,6 +78,16 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   // All tokens in the project are numbered starting with 0.
   var tokenId = 0
  
+  /* Temporary containers for implicit conversion and parameter information 
+   * gathered by enrichTokensWithImplicitInformation() which saves ids of the implicit 
+   * conversion and parameters.
+   * 
+   * If not null implicitConverionInfo and implicitParamInfo are added to the project summary
+   * in getProjectSummary()
+   *  
+   */
+  private var implicitConversionInfo = Map[Int,SymbolInfo]()
+  private var implicitParamInfo = Map[Int,SymbolInfo]()
  
   
 	/**
@@ -140,6 +150,12 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
      new ProjectInfo(enrichedTokenPerFile,summary)
    }
   
+   /**
+    * Enriches existing project information.
+    * Use when connecting several Providers.
+    * @param projectInfo  ProjectInfo 
+    * @return             ProjectInfo
+    */
    def enrichProjectInformation(projectInfo: ProjectInfo) : ProjectInfo =  {
     ???
     }
@@ -193,6 +209,16 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       // Where used in project source positions
       logger.info("\t" + "source code samples for where used information")
       summary.set(ScalaLang.whereUsedByTypeIdWithCodeSample)(getSourceSamplesForWhereUsed(tokens,c.whereUsedSourceCodeSamplesNumberOfLinesBefore,c.whereUsedSourceCodeSamplesNumberOfLinesAfter))
+      
+      // Implicit conversion information
+      logger.info("\t" + "implicit conversion information")
+      summary.set(ScalaLang.implicitConversion_information)(implicitConversionInfo)
+      
+      // Implicit parameter information
+      logger.info("\t" + "implicit parameter information")
+      summary.set(ScalaLang.implicitParameter_information)(implicitParamInfo)
+
+      
     }
     summary
   } 
@@ -224,12 +250,11 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       })
       
       logger.info("\t" + "adding implicit information ...")
-      val tokenWithSemanticImplicit = tokenWithSemantic.map( e => {
-        (e._1,enrichTokensWithImplicitInformation(e._1, e._2))
-      })
+      val tokenWithSemanticImplicit = enrichTokensWithImplicitInformation(tokenWithSemantic)
+//      val tokenWithSemanticImplicit = tokenWithSemantic.map( e => {
+//        (e._1,enrichTokensWithImplicitInformation(e._1, e._2))
+//      })
       
-      
-     // println(tokens.last._2.map(t=>t.toPrettyString()).mkString("\n"))
       tokens
     } else {
       logger.error("Not initialized correctly. Raw Tokens returned.")
@@ -536,13 +561,84 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
    * @param tokens Tokens to enrich.
    * @return Tokens augmented with implicit information. 
    */
-  private def enrichTokensWithImplicitInformation(
-      file: File, 
-      tokens: ArrayBuffer[Token]) : ArrayBuffer[Token] = {
+  private def enrichTokensWithImplicitInformation( 
+      tokens: ArrayBuffer[(File,ArrayBuffer[Token])]) : ArrayBuffer[(File,ArrayBuffer[Token])] = {
     
-    val end = tokens.last.offset + tokens.last.length
-    val implicitInfoOpt = performImplicitInfoReq(file, 0, end)
+    // Get implicit information for all files
+       
+    val implicitInfoPerFile = tokens.map(e=>{
+          val file = e._1
+          val t = e._2
+          val end = t.last.offset+t.last.length
+          val implicitInfoOpt = performImplicitInfoReq(file, 0, end)
+          (file,implicitInfoOpt)
+        }).toMap
     
+        
+    // Save implicit information with id
+    val implicitConversions = implicitInfoPerFile.map(e=>e._2).
+                              flatten.flatMap(e=>e.infos).
+                              filter(e=>e.isInstanceOf[org.ensime.api.ImplicitConversionInfo]).
+                              map(e=>e.asInstanceOf[org.ensime.api.ImplicitConversionInfo].fun).
+                              toSet.zipWithIndex.toMap
+                              
+    val implicitParams = implicitInfoPerFile.map(e=>e._2).
+                              flatten.flatMap(e=>e.infos).
+                              filter(e=>e.isInstanceOf[org.ensime.api.ImplicitParamInfo]).
+                              map(e=>e.asInstanceOf[org.ensime.api.ImplicitParamInfo].fun).
+                              toSet.zipWithIndex.toMap
+    
+    // Translate to codeprose api and save
+    val apiConverter = new EnsimeApiToCodeproseApi(tokens,ProviderUtil.getTokenIdToOffsetSourcePosition)
+                              
+    implicitConversions.foreach(e=>{
+      val symInfo =  apiConverter.convertToSymbolInfo(e._1)
+      val id = e._2
+      implicitConversionInfo += (id -> symInfo)
+    })     
+    
+    implicitParams.foreach(e=>{
+      val symInfo =  apiConverter.convertToSymbolInfo(e._1)
+      val id = e._2
+      implicitParamInfo += (id -> symInfo)
+    })     
+                              
+    // Enrich tokens
+    tokens.map(e=>{
+      val file = e._1
+      val t = e._2
+      val implicitInfoOpt=implicitInfoPerFile.filter(e=>e._1==file).map(e=>e._2).toList
+      
+      if(implicitInfoOpt.size>0){
+        implicitInfoOpt(0) match {
+        case Some(implicitInfos) => {
+
+         implicitInfos.infos.foreach(  implicitInfo => {
+      
+           implicitInfo match {
+            case implConvInfo : org.ensime.api.ImplicitConversionInfo => {
+              val implicitConversionId = implicitConversions.get(implConvInfo.fun).getOrElse(-1)
+              enrichTokensWithImplictConversionInformation(t,implConvInfo,implicitConversionId)
+            }
+            case implParaInfo : org.ensime.api.ImplicitParamInfo => {
+              val implicitParamId = implicitParams.get(implParaInfo.fun).getOrElse(-1)
+              enrichTokenWithImplicitParameterInformation(t,implParaInfo,implicitParamId)
+            }
+            case _ => { logger.error("[ImplicitInformation]\t Unknown ImplicitInformation. Ignored!")}
+          }
+        })  
+        t  
+        }
+        case None => { t }
+        }
+      } else {t}
+      (file,t)
+    })
+                              
+/*    implicitInfoPerFile.foreach(e=>{
+      val file = e._1
+      val implicitInfoOpt = e._2
+      
     implicitInfoOpt match {
       case Some(implicitInfos) => {
 
@@ -562,6 +658,9 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       }
       case None => { tokens }
     }
+    }) */
+        
+        
     tokens  
   }
   
@@ -573,7 +672,8 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
    */
 	private def enrichTokensWithImplictConversionInformation(
       tokens: ArrayBuffer[Token], 
-      implicitInfo: org.ensime.api.ImplicitConversionInfo) : ArrayBuffer[Token] = {
+      implicitInfo: org.ensime.api.ImplicitConversionInfo,
+      implicitConversionId: Int) : ArrayBuffer[Token] = {
 
       val idxAffectedTokens = ProviderUtil.findIndicesOfTokensInRange(
           tokens,implicitInfo.start,implicitInfo.end)
@@ -584,34 +684,19 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
              // Mark token that implicit information is applied
              tokens(idx).set(ScalaLang.implicitConversion_indicator)(true)
            
-             // println("[TEST] conversion")
-             
-              // Save information
-              //            println("[--------------------------------")
-              //            println(info.fun.`type`.fullName)
-              //            println(info.fun.`type`.name)
-              //            println(info.fun.`type`.args)
-              //            println(info.fun.`type`.typeArgs)
-              //            println(info.fun.`type`.declaredAs)
-              //            println(info.fun.`type`.declAs)
-              //            println(info.fun.`type`.typeId)
-              //            println("[--------------------------------")
-              // TODO: Upgrade to ImplicitConversion to include more information, like:
-              //   - Type id
-              //   - Argument names ...
-            
-            // TODO: HANDLE MULTIPLE IMPLICIT CONVERSIONS for the same token!!
-            
-              //   - ...
-              //            tokens(idx).set(implicitConversion_indicator)(true)
-              //            tokens(idx).set(implicitConversion_fullName)(info.fun.name)
-              //           
-              //            if(info.fun.declPos.isDefined && info.fun.declPos.get.isInstanceOf[org.ensime.api.OffsetSourcePosition]){
-              //             tokens(idx).set(implicitConversion_sourcePosition)( new org.codeprose.api.TokenProperties.SourcePosition(
-              //                 info.fun.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].file.getAbsolutePath,
-              //                 info.fun.declPos.get.asInstanceOf[org.ensime.api.OffsetSourcePosition].offset)
-              //             )
-              //             }
+             // Save ids of implicit conversions
+             if(implicitConversionId != -1){
+             val ids = tokens(idx)(ScalaLang.implicitConversion_ids) match {
+               case Some(ids) => {
+                   ids :+ implicitConversionId
+               } 
+               case None => {
+                 List(implicitConversionId)               
+               }
+             }
+             tokens(idx).set(ScalaLang.implicitConversion_ids)(ids)
+           }
+                      
          }
       }    
       
@@ -626,7 +711,8 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
    */
 	private def enrichTokenWithImplicitParameterInformation(
 			tokens: ArrayBuffer[Token], 
-			implicitInfo: org.ensime.api.ImplicitParamInfo) : ArrayBuffer[Token] = {
+			implicitInfo: org.ensime.api.ImplicitParamInfo,
+      implicitParamId: Int) : ArrayBuffer[Token] = {
 			
      val idxAffectedTokens = ProviderUtil.findIndicesOfTokensInRange(
           tokens,implicitInfo.start,implicitInfo.end)
@@ -637,26 +723,18 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
            // Mark token that implicit information is applied
            tokens(idx).set(ScalaLang.implicitParameter_indicator)(true)
            
-           // println("[TEST] parameter")
-           
-                 //          println("[--------------------------------------------]")
-                //          println(info + "\n")
-                //          println("start:\t\t" + info.start)
-                //          println("end:\t\t" + info.end)
-                //          println("fun:\t\t" + info.fun)
-                //          println("params:\t\t " + info.params)
-                //          println("funIsImplicit:\t\t" + info.funIsImplicit)
-                //          println("[--------------------------------------------]\n")
-                          
-
-              // TODO: Allow for multiple implicit parameter per TOKEN!!!
-              //              if(tokens(idx)(tokenType).isDefined && tokens(idx)(tokenType).get.isId){
-              //                tokens(idx).set(implicitParameter_indicator)(true)
-              //                tokens(idx).set(implicitParameter_fullName)("TO BE ADDED")
-              //                tokens(idx).set(implicitParameter_sourcePosition)(new org.codeprose.api.TokenProperties.SourcePosition("filename",42))
-              //                // TODO: Add more and CORRECT information!   
-              //              }
-           
+           // Save ids of implicit parameters
+           if(implicitParamId != -1){
+             val ids = tokens(idx)(ScalaLang.implicitParameter_ids) match {
+               case Some(ids) => {
+                   ids :+ implicitParamId
+               } 
+               case None => {
+                 List(implicitParamId)               
+               }
+             }
+             tokens(idx).set(ScalaLang.implicitParameter_ids)(ids)
+           }
          }
       }
      tokens
@@ -965,8 +1043,6 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   private def getWhereUsedByTypeIdInformation() : Map[Int,List[ERangePositionWithTokenId]] = {
        
     getWhereUsedAllTypes().map(e => {
-      // TODO: Provide ordering for ERangePositionWithTokenId!
-      // TODO: Sorting results in Issue with ToJson formater!
       val sortedSrcPos = e._2.toArray
       // Sorting.quickSort(sortedSrcPos)(Ordering[ERangePositionWithTokenId])
       

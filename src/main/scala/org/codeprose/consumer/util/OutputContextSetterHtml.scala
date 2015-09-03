@@ -19,10 +19,6 @@ class OutputContextSetter(val outputMain : File) extends LazyLogging {
   }
   def loadResource(relPathToFile: String) : List[String] = {
      val content = scala.io.Source.fromURL(getClass.getResource(relPathToFile),"utf-8").getLines().toList
-
-//     val in = getClass().getResourceAsStream(relPathToFile);
-//     val content = scala.io.Source.fromInputStream(in,"UTF-8").getLines().toList
-//     in.close()     
      content
   }
   

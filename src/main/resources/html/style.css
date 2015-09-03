@@ -49,13 +49,15 @@ body{
 .header {
 	width:850px;
 	height:30px; 
-	border-bottom:1px solid;	
+	border-bottom:1px solid #CFCFCF;	
 	margin:0px auto;
+	margin-top: 2em;
+	margin-bottom: 2em;
 }
 
 .footer {
 	width:850px;
-	border-top:1px solid;
+	border-top:1px solid #CFCFCF;
 	text-align:right;
 	margin-top:30px;
 	margin-bottom:30px;
@@ -69,6 +71,8 @@ a:link {
 
 .textframe{
 	width:800px;
+	margin-top:3em;
+	text-align:left;
 }
 
 .textboxinfo{
@@ -225,7 +229,7 @@ code {
 /* Code table */
 
 .table-code{
-	margin-top:1em;	
+	margin-top:0em;	
 }
 
 .table-code-comment{
@@ -277,6 +281,8 @@ code {
 /* Text table */
 
 .table-text{
+	margin-top:1em;
+	margin-bottom:1em;
 }
 
 .table-text-comment{

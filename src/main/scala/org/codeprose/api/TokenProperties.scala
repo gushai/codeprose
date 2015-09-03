@@ -1,40 +1,22 @@
-package org.codeprose.api.TokenProperties
+package org.codeprose.api
 
-class SourcePosition(val filename: String, val offset: Int){
-  override def toString() : String = {
-    s"""($filename,$offset)"""
-  }
+
+trait SourcePosition {}
+
+case class OffsetSourcePosition(val filename: String, val offset: Int) extends SourcePosition {
+   override def toString() : String = { s"""($filename,$offset)""" }
 }
 
-class SourcePositionWithTokenId(val filename: String, val tokenId: Int){
-override def toString() : String = {
-    s"""($filename,$tokenId)"""
-  }
+case class OffsetSourcePositionWithTokenId(
+    val filename: String, val offset: Int, val tokenId: Int) extends SourcePosition {
+  override def toString() : String = { s"""($filename,$offset,$tokenId)""" }
 }
 
-class ERangePosition(val filename: String, val offset: Int, val start: Int, val end: Int){
-  override def toString() : String = {
-    s"""($filename,$offset,$start,$end)"""
-  }
+case class SourcePositionLinkWithCodeSample(
+    srcFilename: String,
+    link: String,
+    tokenId: Int,
+    sourceSample: List[String]){
+  override def toString() : String = { val sample = sourceSample.mkString("") 
+    s"""($srcFilename,$link,$tokenId,$sample)""" }
 }
-
-
-class ArgumentList(){
-  ???
-}
-
-
-class ImplicitConversion(
-    val fullname: String,
-    val typeId: Int,
-    val args: String,
-    val typeArgs: String,
-    val whereUsedWithinFile_OffsetBased: SourcePosition,
-    var whereUsedWithinFile_TokenBase: SourcePositionWithTokenId
-    ) {
-  
-}
-
-
-
-  

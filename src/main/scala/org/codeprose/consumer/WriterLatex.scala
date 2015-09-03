@@ -1,7 +1,12 @@
 package org.codeprose.consumer
-//
-//class WriterLatex extends Consumer {
-//  def generateOutput(): Unit = {
-//    ???
-//  }
-//}
+
+import org.codeprose.api.ProjectInfo
+
+class WriterLatex extends Consumer {
+  
+  def initialize() : Unit = {}
+  def close() : Unit = {}
+  def generateOutput(projectInfo: ProjectInfo) : Unit = {
+    ???
+  }
+}

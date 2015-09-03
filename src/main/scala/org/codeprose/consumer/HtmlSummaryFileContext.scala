@@ -27,6 +27,7 @@ class HtmlSummaryFileContext(){
 <script src="./js/codeprose.typeinformation.js"></script>
 <script src="./js/codeprose.whereusedinformation.js"></script> 
 <script src="./js/codeprose.packageinformation.js"></script>
+<script src="./js/codeprose.helper.js"></script>
 <script type="text/javascript">
 
 $script      

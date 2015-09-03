@@ -14,7 +14,6 @@ import org.codeprose.util.StringUtil
 import org.codeprose.util.CodeproseJsonFormat._
 
 
-
 class ResourceRelPaths(val base: String, val target: String)
 
 
@@ -202,8 +201,6 @@ $$(document).ready(function(){
   function getTypeInformationSummary(){
     var domElemToAppend = "#ContentTypeInformationSummary";
 
-    var typeIds = getTypeIds();
-    
     if(typeIds == null || typeIds.length==0){
       $$(domElemToAppend).append("<b>No type information found.</b>");
     } else {
@@ -213,8 +210,8 @@ $$(document).ready(function(){
           for(var i = 0;i<typeIds.length;i++){
         
           var currentTypeId = typeIds[i];
-          var typeInfo = typeInformation(currentTypeId);
-        
+          var typeInfo = typeInformation[currentTypeId];
+
     var typeName = "";
     var isArrow = false;
     var declaredAs = "";  
@@ -245,7 +242,7 @@ $$(document).ready(function(){
   }
   
   $$(domElemToAppend).append("<table>");
-  $$(domElemToAppend).append("<tr>" + "<th style='width:6em;text-align:center;padding-bottom:0.4em;border-bottom:1px solid #CFCFCF;'>" + "<b>Type</b>" + "</th>" + "<th style='width:40em;text-align:center;border-bottom:1px solid #CFCFCF;'>" + "<b>Name</b>" + "</th>"+"</tr>")
+//  $$(domElemToAppend).append("<tr>" + "<th style='width:6em;text-align:center;padding-bottom:0.4em;border-bottom:1px solid #CFCFCF;'>" + "<b>Type</b>" + "</th>" + "<th style='width:40em;text-align:center;border-bottom:1px solid #CFCFCF;'>" + "<b>Name</b>" + "</th>"+"</tr>")
   for (var key in typeInfoCollection){
 
     var keyHeadline = "<tr>" + "<td style='text-align:center;padding-left:1.3em;padding-top:0.8em;'><b>" + key.toString() + "</b></td>" + "<td style='padding-left:3em;'>"+ "</td>"+"</tr>";
@@ -271,15 +268,13 @@ $$(document).ready(function(){
 
 function getTypeInformationDetails(){ 
   var domElemToAppend = "#ContentTypeInformationDetails";
-    var typeIds = getTypeIds();
-      console.log(typeIds);
   
   if(typeIds == null || typeIds.length==0){
       $$(domElemToAppend).append("<b>No type information found.</b>");
     } else {
   for(i=0;i<typeIds.length;i++){
     var currentId = typeIds[i];
-    var typeInspectInfo = typeInformation(currentId);
+    var typeInspectInfo = typeInformation[currentId];
     //console.log(typeInspectInfo);
     var typeInfoEntry = getEntryForTypeInspectInfo(currentId,typeInspectInfo);
     
@@ -354,7 +349,7 @@ function getInterfaceEntry(intrface){
   }
 
   retString += "</table>";
-/**/
+
   retString += "</div>"
   return retString;
 };
@@ -365,7 +360,6 @@ function getInterfaceEntry(intrface){
   
   
 }); 
-      
       
 """
       val noscriptTag = s"""<noscript><div style="margin-left:2em;">Activate JavaScript for this feature.</div></noscript>"""
@@ -408,8 +402,6 @@ function getInterfaceEntry(intrface){
   function getWhereUsedOverview() {
     var domElemToAppend = "#ContentWhereUsedWithSourceSamplesSummary";
 
-       var typeIds = getTypeIds();
-    
     if(typeIds == null || typeIds.length==0){
       $$(domElemToAppend).append("<b>No type information found.</b>");
     } else {
@@ -419,7 +411,7 @@ function getInterfaceEntry(intrface){
           for(var i = 0;i<typeIds.length;i++){
         
           var currentTypeId = typeIds[i];
-          var typeInfo = typeInformation(currentTypeId);
+          var typeInfo = typeInformation[currentTypeId];
         
     var typeName = "";
     var isArrow = false;
@@ -451,7 +443,7 @@ function getInterfaceEntry(intrface){
   }
   
       $$(domElemToAppend).append("<table>");
-$$(domElemToAppend).append("<tr>" + "<th style='width:6em;text-align:center;padding-bottom:0.4em;border-bottom:1px solid #CFCFCF;'>" + "<b>Type</b>" + "</th>" + "<th style='width:40em;text-align:center;border-bottom:1px solid #CFCFCF;'>" + "<b>Name</b>" + "</th>"+"</tr>")
+//$$(domElemToAppend).append("<tr>" + "<th style='width:6em;text-align:center;padding-bottom:0.4em;border-bottom:1px solid #CFCFCF;'>" + "<b>Type</b>" + "</th>" + "<th style='width:40em;text-align:center;border-bottom:1px solid #CFCFCF;'>" + "<b>Name</b>" + "</th>"+"</tr>")
   for (var key in typeInfoCollection){
 
     var keyHeadline = "<tr>" + "<td style='text-align:center;padding-left:1.3em;padding-top:0.8em;'><b>" + key.toString() + "</b></td>" + "<td style='padding-left:3em;'>"+ "</td>"+"</tr>";
@@ -477,8 +469,6 @@ $$(domElemToAppend).append("<tr>" + "<th style='width:6em;text-align:center;padd
     
     var domElemToAppend = "#ContentWhereUsedWithSourceSampleDetails";
 
-    var typeIds = getTypeIds();
-    console.log(typeIds);   
     if(typeIds == null || typeIds.length==0){
       $$(domElemToAppend).append("<b>No type information found.</b>");
     } else {
@@ -487,8 +477,8 @@ $$(domElemToAppend).append("<tr>" + "<th style='width:6em;text-align:center;padd
       for(var i = 0;i<typeIds.length;i++){
         
         var currentTypeId = typeIds[i];
-        var whereUsedInfo = whereUsedInformation(currentTypeId);
-        var typeInfo = typeInformation(currentTypeId);
+        var whereUsedInfo = whereUsedInformation[currentTypeId];
+        var typeInfo = typeInformation[currentTypeId];
 
     var typeName = "";
     if(typeInfo.tpe._infoType === "BasicTypeInfo"){
@@ -578,22 +568,23 @@ $$(domElemToAppend).append("<tr>" + "<th style='width:6em;text-align:center;padd
       val title = "Package Information"   
       
       val script =s"""
+
 $$(document).ready(function(){ 
   
 
   function getPackageInformationSummary(){
     var domElemToAppend = "#ContentPackgeInformationSummary";
-    var availPackages = getPackageNames();
-
   
-  if(availPackages.length>0){
-    
-    $$(domElemToAppend).append("<ul>");
-    for(var i=0;i<availPackages.length;i++){
-      var packName = availPackages[i];
-      $$(domElemToAppend).append("<li style='margin-top:0.4em;'><a href='#PACK" + packName + "'>" + packName + "</a></li>");
+  if(packageNames.length>0){
+    var toAppend = "<div style='padding-left:1.3em;'>" + "<ul>";
+
+    for(var i=0;i<packageNames.length;i++){
+      var packName = packageNames[i];
+      toAppend += "<li style='margin-top:0.4em;'><a href='#PACK" + packName + "'>" + packName + "</a></li>";
+      
     }
-    $$(domElemToAppend).append("</ul>");
+    toAppend += "</ul>" + "</div>";
+    $$(domElemToAppend).append(toAppend);
   } else {
     $$(domElemToAppend).append("No package information found.");
   }
@@ -604,19 +595,19 @@ $$(document).ready(function(){
   function getPackageInformationDetails(){
     var domElemToAppend = "#ContentPackageInformationDetails";
 
-  var availPackages = getPackageNames();
-  console.log(availPackages); 
-  
-  for(var i=0;i<availPackages.length;i++){
+  for(var i=0;i<packageNames.length;i++){
 
-    var packName = availPackages[i] 
-    var packInfo = getPackageInformation(availPackages[i]);
+    var packName = packageNames[i] 
+    var packInfo = packageInformation[packName];
+    var toAppend = "<div style='padding-left:1.3em;'>";
 
-    console.log(packInfo);
-    $$(domElemToAppend).append("<b id='PACK" + packInfo.fullName +"'>" + packInfo.fullName + "</b><br><br>");
+    toAppend +="<div style='margin-top:2em; margin-bottom:0.8em;' id='PACK" + packInfo.fullName +"'><span style='font-weight:bold; font-size:1.2em;'>" + packInfo.fullName + "</span></div>";
     var memberInformation = getPackageInfoMemberDetails(packInfo.members);
 
-    $$(domElemToAppend).append(memberInformation);
+toAppend += memberInformation
+toAppend += "</div>";
+
+    $$(domElemToAppend).append(toAppend);
 
   }
 
@@ -626,45 +617,106 @@ function getPackageInfoMemberDetails(members){
   var retString = "";
 
   if(members.length>0){
-    console.log(members.length);
-    retString += "Members:";
-    retString += "<ul>";
-    for(var mem=0;mem<members.length;mem++){
+
+// Group information
+
+var groupedMemberInfo = {};
+   
+for(var mem=0;mem<members.length;mem++){
       var member = members[mem];
       
+      var typeId = "";
+      var declaredAs = "-";
+      var nam = "";
+      var linkToSrcPos = null;
       
       if(member._infoType==="BasicTypeInfo"){
-        var typeId = member.typeId;
-        var declaredAs = member.declAs;
-        var memInfo = "<li style='margin-top:0.25em;'><a href='typeInformationSummary.html#TYPEID" + typeId + "'  title='Declared as: " + declaredAs + "' >" + member.fullName +"</a></li>";
-
-        retString += memInfo;
+        typeId = member.typeId;
+        declaredAs = member.declAs;
+  nam = member.fullName;
+  if(member.pos!=null && member.pos.tokenId!=-1){
+     linkToSrcPos = "." + srcFileToRelLink[member.pos.filename] + "#T"+ member.pos.tokenId; 
+  }
       } else if(member._infoType==="ArrowTypeInfo"){
-        var memInfo = "<li style='margin-top:0.25em;'>" +  member.fullName +"</li>";
-        retString += memInfo;
+  typeId = member.typeId.toString;
+        declaredAs = "arrow";
+  nam = member.name;
       } else if(member._infoType==="PackageInfo"){
-        var memInfo = "<li style='margin-top:0.25em;'>" +  member.fullName +"</li>";
-        retString += memInfo;
+        declaredAs = "package";
+  nam = member.fullName;
+      } else {}
+
+      var memInfo = {}
+  memInfo.id = typeId;
+  memInfo.declaredAs = declaredAs;      
+  memInfo.name = nam;
+  memInfo.linkToSrcPos = linkToSrcPos;
+
+     if(groupedMemberInfo[declaredAs]!=null){ 
+  var tmp = groupedMemberInfo[declaredAs];
+  tmp.push(memInfo);     
+  groupedMemberInfo[declaredAs] = tmp;
+     } else {
+  groupedMemberInfo[declaredAs] = [memInfo];
+
+     }
+    }
+  
+// Generate output
+retString +=  "<table>";
+
+for(key in groupedMemberInfo){
+  var members = groupedMemberInfo[key];
+  
+var headline = "<tr>" + "<td style='text-align:center;padding-left:1.3em;padding-top:0.8em;'><b>" + key.toString() + "</b></td>" + "<td style='padding-left:3em;'>"+ "</td>"+"</tr>";
+
+//var headline = "<div style='padding-left:2em;margin-top:1.5em;'>" + "<b>" + key.toString() + "</b>"
+  retString += headline;
+  //retString += "<ul style='padding-left:7em;margin-top:1em;'>";
+  for( var i=0;i<members.length;i++){
+    var mem = members[i];
+    entry = "";
+    tableEntry = "";
+    if(mem.declaredAs === "arrow"){
+tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-top:0.6em;margin-top:0.4em;'>" + "</td>" + "<td style='padding-left:3em;padding-top:0.6em;'>" + mem.name + "</a>"+ "</td>"+"</tr>";
+    } else if (mem.declaredAs === "package"){
+        var relLink = "#PACK" + mem.name;
+
+tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-top:0.6em;margin-top:0.4em;'>" + "</td>" + "<td style='padding-left:3em;padding-top:0.6em;'>" + "<a href='" + relLink + "' title='" + mem.name + " - " + mem.declaredAs + "'>" + mem.name + "</a>"+ "</td>"+"</tr>";
+    } else {
+      if(mem.linkToSrcPos!=null){
+      //entry += "<li style='margin-top:0.5em;'>" + "<a href='" + mem.linkToSrcPos + "' title='" + mem.name + " - " + mem.declaredAs + "'>" + mem.name + "</a>" + "</li>";
+tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-top:0.6em;margin-top:0.4em;'>" + "</td>" + "<td style='padding-left:3em;padding-top:0.6em;'>" + "<a href='" + mem.linkToSrcPos + "' title='" + mem.name + " - " + mem.declaredAs + "'>" + mem.name + "</a>"+ "</td>"+"</tr>";
       } else {
-    
-        var memInfo = "<li style='margin-top:0.25em;'>" +  member.fullName +"</li>";
-        retString += memInfo;
-      } 
+tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-top:0.6em;margin-top:0.4em;'>" + "</td>" + "<td style='padding-left:3em;padding-top:0.6em;'>" + mem.name + "</a>"+ "</td>"+"</tr>";
+}
     }
 
-    retString += "</ul>";/**/
-  } else {
-      retString += "<ul><li>" +"Has no members" + "</li></ul>";
+    
+    retString += tableEntry;
+
   }
+//retString +="</div></ul>";
+}
+  retString +="</table>";
+  
+  } else {
+  retString += "<div style='margin-top:2em;padding-left:2em;'>No members.</div>";
+  }
+
+
+
 
   return retString;
 };
+
 
 
   getPackageInformationSummary();
   getPackageInformationDetails();
   
 });         
+        
         
  """
       val noscriptTag = s"""<noscript><div style="margin-left:2em;">Activate JavaScript for this feature.</div></noscript>"""
@@ -692,6 +744,7 @@ function getPackageInfoMemberDetails(members){
     
     logger.info("Generating js information files ...")
     
+    generateGlobalJSHelper(htmlOutputContext) 
     
     projectSummary(ScalaLang.typeInspectInformation) match {
       case Some(tpeInspectInfos) => {
@@ -717,7 +770,7 @@ function getPackageInfoMemberDetails(members){
     }
 
     
-    generateGlobalJSHelper() 
+    
         
   }
   
@@ -739,47 +792,11 @@ function getPackageInfoMemberDetails(members){
       val outputFilename= new File(c.outputMainPath.getAbsolutePath + relFileName.get)
       logger.info("\t" + "type information: \t\t" + relFileName.get)      
 
-      // Type ids
-      val begTypeId = s"""
-// Type Ids
-function getTypeIds(){\n"""
-      val entriesTypeId = s"""\treturn """ + typeInfos.map(e => e._1).toList.sorted.toJson.compactPrint +";"
-      val endTypeId = "\n};"
-      
-      val contentTypeId = begTypeId + entriesTypeId + endTypeId
-      
-      // Type inspect info
-      
-      val begTypeInfo = s"""
-// type information
-function typeInformation(typeId){ 
-  tInfo = null;
-  switch(typeId){
-"""
-        
-      val endTypeInfo = s"""
-  default: \n\t\t tInfo=null;
-  }
-  return tInfo;
-};"""
-      
-      val entriesTypeInfo = typeInfos.map(e => {
-        val typeId = e._1
-        e._2 match {
-          case Some(tI) => {            
-            val jsonStr = tI.toJson.compactPrint
-            s"""\tcase $typeId:\n\t\ttInfo=""" + jsonStr + s"""; break;"""
-          } 
-          case None => {""}
-        }
-        
-      }).mkString("\n")
-      
-      val contentTypeInfo = begTypeInfo + entriesTypeInfo + endTypeInfo
-      
-      // Generate output      
-      val content = List(contentTypeId,contentTypeInfo)
-      FileUtil.writeToFile(outputFilename,content.mkString("\n\n"))      
+      val typeIds = "typeIds = " + typeInfos.map(e=>e._1.toString).toJson.compactPrint
+      val typeInformation = "typeInformation = " + typeInfos.map(e=>(e._1.toString,e._2)).toJson.compactPrint
+   
+      val content = List(typeIds,typeInformation).mkString("\n\n")
+      FileUtil.writeToFile(outputFilename,content)      
 
     } else {
       logger.error("Unable to generate js file with type information. No file name provided!")
@@ -806,53 +823,9 @@ function typeInformation(typeId){
       val outputFilename= new File(c.outputMainPath.getAbsolutePath + relFileName.get)
       logger.info("\t" + "where used information: \t" + relFileName.get)
 
-//      // Where used information
-//      val whereUsedBeg = s"""
-//        // codeprose
-//        //
-//        // where used information
-//        function whereUsedInformation(typeId){ 
-//          whereUsed = null;
-//          switch(typeId){
-//          
-//          """
-//        
-//      val whereUsedEnd = s"""
-//        default: \n\t\t whereUsed=null;
-//        }
-//        return whereUsed;
-//      };"""
-//      
-//      val whereUsedEntries = whereUsed.map(e => {
-//        val typeId = e._1
-//        val jsonStr = e._2.toJson.compactPrint
-//        s"""\t case $typeId:\n\t\twhereUsed=""" + jsonStr + s"""; break;"""
-//        
-//      }).mkString("\n")
-//
-//      
-//      
-//      val whereUsedContent = whereUsedBeg + whereUsedEntries + whereUsedEnd
-      val whereUsedContent = ""
       
-      // Where used with sample code
-      
-      val whereUsedWithSampleCodeBeg = s"""
-// codeprose
-//
-// where used information
-function whereUsedInformation(typeId){ 
-  whereUsed = null;
-  switch(typeId){ \n \n"""
-      
-      val whereUsedWithSampleCodeEnd = s"""
-    default: \n\t\t whereUsed=null;
-    }
-  return whereUsed;
-};\n\n"""
-      
-      val whereUsedWithSampleCodeEntries = whereUsedWithSampleCode.map(e=>{
-        val typeId = e._1
+       val whereUsedWithSampleCodeTranslatedSrcPositions = whereUsedWithSampleCode.map(e=>{
+        val typeId = e._1.toString
         val output = e._2.map(e => {
           val srcPos = e._1
           val sample = e._2
@@ -871,16 +844,13 @@ function whereUsedInformation(typeId){
           } else {
             new SourcePositionLinkWithCodeSample(srcFilename,"",srcPos.tokenId,sample)
           }
-          
         })
-        val jsonStr = output.toJson.compactPrint 
-        s"""\t case $typeId:\n\t\twhereUsed=""" + jsonStr + s"""; break;"""
-      }).mkString("\n")
+        (typeId,output) 
+      })
       
+      val whereUsedWithSampleCodeJson = "whereUsedInformation = " + whereUsedWithSampleCodeTranslatedSrcPositions.toJson.compactPrint
       
-      val whereUsedWithSampleCodeContent = whereUsedWithSampleCodeBeg + whereUsedWithSampleCodeEntries + whereUsedWithSampleCodeEnd
-      
-      val content = List(whereUsedContent,whereUsedWithSampleCodeContent).mkString("\n")
+      val content = List(whereUsedWithSampleCodeJson).mkString("\n\n")
       
       FileUtil.writeToFile(outputFilename,content)      
 
@@ -905,48 +875,10 @@ function whereUsedInformation(typeId){
       val outputFilename= new File(c.outputMainPath.getAbsolutePath + relFileName.get)
       logger.info("\t" + "packages information: \t" + relFileName.get)
 
-      // Packge names
-      val packageNamesBeg = s"""
-// Package Names
-function getPackageNames(){\n"""
-      val packageNamesEntries = s"""\treturn """ + packageInfo.map(e => e._1).toList.sorted.toJson.compactPrint +";"
-      val packageNamesEnd = "\n};"
-            
-      val packageNamesContent = packageNamesBeg+packageNamesEntries+packageNamesEnd
+      val packageNames = "packageNames = " + packageInfo.map(e => e._1).toList.sorted.toJson.compactPrint
+      val packageInformation = "packageInformation = " + packageInfo.toJson.compactPrint
       
-      // PackageInformation 
-      val packageBeg = s"""
-// PackageInformation
-function getPackageInformation(pack){
-  var packInfo = null;
-  if(false){}\n"""
-
-      val packageEntires =  packageInfo.map(e => {
-        val name = e._1
-        e._2 match {
-          case Some(pInfo) => {            
-            val jsonStr = pInfo.toJson.compactPrint
-            s"""\telse if(pack === "$name"){\n\t\tpackInfo=""" + jsonStr + s"""; \n\t}"""
-          } 
-          case None => {""}
-        }
-        
-      }).mkString("\n")
-      
-        
-      val packageEnd = s"""
-  else {
-    packInfo=null;
-  }
-  return packInfo;
-};"""
-        
-    
-        
-      
-      val packageContent = packageBeg + packageEntires + packageEnd
-      
-      val content = List(packageNamesContent,packageContent).mkString("\n")
+      val content = List(packageNames,packageInformation).mkString("\n\n")
       
       FileUtil.writeToFile(outputFilename,content)      
 
@@ -957,15 +889,14 @@ function getPackageInformation(pack){
   
   
   /**
-   * Saves type information to disk in js file.
+   * Saves helper information to disk in js file.
    * 
-   * Functions:
-   *  - getTypeIds()  returns a list of all typeIds found
-   *  - typeInformation(typeId) returns TypeInformation or null
+   * Included
+   *  - srcFileToRelLink: Map from source file to relative output link.
    * 
-   * @param typeInfos Type information by type id.
+   * @param htmlOutputContext HtmlOutputContext.
    */
-  private def generateGlobalJSHelper() : Unit = {
+  private def generateGlobalJSHelper(htmlOutputContext: HtmlOutputContext) : Unit = {
     
     val relFileName = c.summaryFilesRelPath.get("js.global.helper")
     
@@ -973,17 +904,12 @@ function getPackageInformation(pack){
       
       val outputFilename= new File(c.outputMainPath.getAbsolutePath + relFileName.get)
       logger.info("\t" + "helper functions: \t\t" + relFileName.get)      
-
       
-      val contentSrcFileToRelLink = "// Helper"
-      
-      
-      
-      
+      val contentSrcFileToRelLink = "srcFileToRelLink" + "=" + htmlOutputContext.filenamesOriginalToRelOutput.map(e=>(e._1.getAbsolutePath,e._2)).toJson.compactPrint
       
       // Generate output      
-      val content = List(contentSrcFileToRelLink)
-      FileUtil.writeToFile(outputFilename,content.mkString("\n\n"))      
+      val content = List(contentSrcFileToRelLink).mkString("\n\n")
+      FileUtil.writeToFile(outputFilename,content)      
 
     } else {
       logger.error("Unable to generate js file with helper functions. No file name provided!")

@@ -33,6 +33,9 @@ object Codeprose extends LazyLogging {
   
     configParser.parse(args, CodeproseScalaConfig()) match {
       case Some(config) =>
+        
+        println("\n" + config + "\n")
+        
         val ensimeFile = config.ensimeFile    
         val outputPath = config.outputFolder
         val mainSrcFolders = if(config.includeTests){
@@ -70,18 +73,22 @@ object Codeprose extends LazyLogging {
    * @return OptionParser[CodeproseScalaConfig] input options for codeprose scala.
    */
   def getConfigParser() : OptionParser[CodeproseScalaConfig] = {
-    val parser = new scopt.OptionParser[CodeproseScalaConfig]("codeprose") {
+  
+    // Simple sbt project parser
+     val parser = new scopt.OptionParser[CodeproseScalaConfig]("codeprose") {
       head("codeprose", "0.1")
     
-      opt[File]('e', "ensimeFile") required() valueName("<file>") action { (x, c) =>
-        c.copy(ensimeFile = x) } text("ensimeFile: Path to the ensime file of the project.")
+      opt[File]('p', "sbtProject") required() valueName("<file>") action { (x, c) =>
+        c.copy(ensimeFile = new File(x.getAbsolutePath,".ensime")).copy(inputFolder = x)
+        } text("sbtProject: Path to the sbt project." + 
+            "\n\tAssumptions: \n" +
+            "\t   - ensime file sbtProject/.ensime\n" +
+            "\t   - source code in sbtProject/src/main/scala/\n" + 
+            "\t   - tests in sbtProject/src/test/scala/")
       
       opt[File]('o', "outputFolder") required() valueName("<file>") action { (x, c) =>
         c.copy(outputFolder = x) } text("outputFolder: Path to the output folder.")
         
-      opt[File]('i', "inputFolder") required() valueName("<file>") action { (x, c) =>
-        c.copy(inputFolder = x) } text("inputFolder: Path to the main folder of the project. \n\tAssumes sbt project structure with ./src/main/scala/ and ./src/test/scala/.\n\tDefault all scala files in ./src/main/scala/ and its sub directories are processed.")
-  
       opt[String]("ensimeHost") valueName("<ip address>") action { (x, c) =>
         c.copy(ensimeHost = x) } text("ensimeHost: IP Address of the ensime host (default: 127.0.0.1).")
       
@@ -92,11 +99,44 @@ object Codeprose extends LazyLogging {
         c.copy(verbose = true) } text("verbose is a flag")  
         
       note("\nExample:\n")  
-      note(s"""\t codeprose -e "/pathTo/.ensime" -o "pathTo/output/" -i "pathTo/input/ --includeTests""")
+      note(s"""\t codeprose -p "/pathToSbtProject/" -o "pathTo/output/" --includeTests""")
       
       note("\nNotes:\n")
-      note(s"""\t- codeprose processes only .scala files. All others are ignored.""")
+      note(s"""\t- Only .scala files are processed. All others are ignored.""")
+      note(s"""\t- Make sure your project compiles and has no errors! Erros make it hard to rely on ensime.""")
       help("help") text("prints this usage text")
+       
+    
+    // Complex parser with
+    // inputFolder, ensimeFile separated. 
+//    val parser = new scopt.OptionParser[CodeproseScalaConfig]("codeprose") {
+//      head("codeprose", "0.1")
+//    
+//      opt[File]('e', "ensimeFile") required() valueName("<file>") action { (x, c) =>
+//        c.copy(ensimeFile = x) } text("ensimeFile: Path to the ensime file of the project.")
+//      
+//      opt[File]('o', "outputFolder") required() valueName("<file>") action { (x, c) =>
+//        c.copy(outputFolder = x) } text("outputFolder: Path to the output folder.")
+//        
+//      opt[File]('i', "inputFolder") required() valueName("<file>") action { (x, c) =>
+//        c.copy(inputFolder = x) } text("inputFolder: Path to the main folder of the project. \n\tAssumes sbt project structure with ./src/main/scala/ and ./src/test/scala/.\n\tDefault all scala files in ./src/main/scala/ and its sub directories are processed.")
+//  
+//      opt[String]("ensimeHost") valueName("<ip address>") action { (x, c) =>
+//        c.copy(ensimeHost = x) } text("ensimeHost: IP Address of the ensime host (default: 127.0.0.1).")
+//      
+//      opt[Unit]("includeTests") action { (_, c) =>
+//        c.copy(includeTests = true) } text("includeTests is a flag to include the files in inputFolder/src/test/scala/")  
+//  
+//      opt[Unit]("verbose") action { (_, c) =>
+//        c.copy(verbose = true) } text("verbose is a flag")  
+//        
+//      note("\nExample:\n")  
+//      note(s"""\t codeprose -e "/pathTo/.ensime" -o "pathTo/output/" -i "pathTo/input/ --includeTests""")
+//      
+//      note("\nNotes:\n")
+//      note(s"""\t- codeprose processes only .scala files. All others are ignored.""")
+//      note(s"""\t- Make sure your project compiles and has no errors! Erros make it hard to rely on ensime.""")
+//      help("help") text("prints this usage text")
        
     }
     parser

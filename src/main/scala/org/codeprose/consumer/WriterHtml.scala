@@ -1235,7 +1235,21 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
           
         // Tokens w/o '\n'  
         } else {
-          str = str + (beg + t.text + end)
+         
+          // Escape xml/html in xml and literals
+          val escapedText = if(t(ScalaLang.tokenType).isDefined){
+            val tType = t(ScalaLang.tokenType).get
+            // Handles also Integer_Literal,Float_Literal,true,false,null, but with no effect.
+            if(tType.isXml || tType.isLiteral){
+              import org.codeprose.consumer.util.XmlEscape
+              XmlEscape.escape(t.text)
+            } else {
+              t.text
+            }
+            
+          } else { t.text }
+          
+          str = str + (beg + escapedText + end)
         }
         
       }

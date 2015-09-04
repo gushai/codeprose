@@ -12,7 +12,8 @@ libraryDependencies ++= Seq(
 	"com.typesafe.scala-logging" %% "scala-logging" % "3.1.0",
 	"org.ensime" %% "client" % "0.9.10-SNAPSHOT",
 	"com.github.scopt" %% "scopt" % "3.3.0",
-	"io.spray" %%  "spray-json" % "1.3.2"
+	"io.spray" %%  "spray-json" % "1.3.2",
+	"org.scala-lang.modules" %% "scala-xml" % "1.0.3"
 )
 
 lazy val root = (project in file(".")).

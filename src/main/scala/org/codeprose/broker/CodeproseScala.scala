@@ -33,9 +33,6 @@ object Codeprose extends LazyLogging {
   
     configParser.parse(args, CodeproseScalaConfig()) match {
       case Some(config) =>
-        
-        println("\n" + config + "\n")
-        
         val ensimeFile = config.ensimeFile    
         val outputPath = config.outputFolder
         val mainSrcFolders = if(config.includeTests){

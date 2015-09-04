@@ -3,6 +3,7 @@ package org.codeprose.util
 import spray.json._
 import org.codeprose.api._
 import org.codeprose.api.scalalang._
+import org.codeprose.consumer.util.XmlEscape
 import com.typesafe.scalalogging.LazyLogging
 
 object CodeproseJsonFormat extends DefaultJsonProtocol with LazyLogging {
@@ -53,7 +54,8 @@ object CodeproseJsonFormat extends DefaultJsonProtocol with LazyLogging {
           logger.error("Unknown EntityInfo type!")
           val v = entity.members.map(e=>CodeproseJsonFormat.EntityInfoFormat.write(e)).toList
           val members =JsArray(v)
-          JsObject("name" -> entity.name.toJson,
+          val name = XmlEscape.escape(entity.name).toJson
+          JsObject("name" -> name,
           "members" -> members)
         }   
       }
@@ -74,9 +76,12 @@ object CodeproseJsonFormat extends DefaultJsonProtocol with LazyLogging {
         JsArray(v)
       }
       
+      val name = XmlEscape.escape(pi.name).toJson
+      val fullName = XmlEscape.escape(pi.fullName).toJson
+      
       JsObject("_infoType" -> pi._infoType.toJson, 
-               "name" -> pi.name.toJson,
-               "fullName" -> pi.fullName.toJson,
+               "name" -> name,
+               "fullName" -> fullName,
                "members" -> members)
       
     }
@@ -86,14 +91,16 @@ object CodeproseJsonFormat extends DefaultJsonProtocol with LazyLogging {
    implicit object NamedTypeMemberInfoFormat extends RootJsonFormat[NamedTypeMemberInfo] {
     def write(namedTypeMemInfo:  NamedTypeMemberInfo) = {
      
+      val name = XmlEscape.escape(namedTypeMemInfo.name).toJson
       val typeInfo = CodeproseJsonFormat.TypeInfoFormat.write(namedTypeMemInfo.tpe)
       val pos = namedTypeMemInfo.pos.toJson
+      val signatureString = XmlEscape.escape(namedTypeMemInfo.signatureString.getOrElse("")).toJson
       val declAs = CodeproseJsonFormat.DeclaredAsFormat.write(namedTypeMemInfo.declAs)
       JsObject("_infoType" -> namedTypeMemInfo._infoType.toJson, 
-               "name" -> namedTypeMemInfo.name.toJson,
+               "name" -> name,
                "tpe" -> typeInfo,
                "pos" -> pos,
-               "signatureString" -> namedTypeMemInfo.signatureString.toJson,
+               "signatureString" -> signatureString,       
                "declAs" -> declAs
                )
       
@@ -148,13 +155,16 @@ object CodeproseJsonFormat extends DefaultJsonProtocol with LazyLogging {
            val v = basic.members.map( e => CodeproseJsonFormat.EntityInfoFormat.write(e)).toList
            JsArray(v)
          }
+         
+         val name = XmlEscape.escape(basic.name).toJson
          val declAs = CodeproseJsonFormat.DeclaredAsFormat.write(basic.declAs)
+         val fullName = XmlEscape.escape(basic.fullName).toJson         
          val pos = basic.pos.toJson 
          JsObject("_infoType" -> basic._infoType.toJson, 
-                  "name" ->   basic.name.toJson,
+                  "name" -> name,
                   "typeId" -> basic.typeId.toJson,
                   "declAs" -> declAs,
-                  "fullName" -> basic.fullName.toJson,
+                  "fullName" -> fullName,
                   "typeArgs" -> typeArgs,
                   "members" -> members,
                   "pos" -> pos,
@@ -175,8 +185,10 @@ object CodeproseJsonFormat extends DefaultJsonProtocol with LazyLogging {
          
          val resultType = CodeproseJsonFormat.TypeInfoFormat.write(arrow.resultType)
          
+         val name = XmlEscape.escape(arrow.name).toJson
+         
          JsObject("_infoType" -> arrow._infoType.toJson, 
-                  "name" ->  arrow.name.toJson,
+                  "name" ->  name,
                   "typeId" -> arrow.typeId.toJson,
                   "resultType" -> resultType,
                   "paramSections" -> paramSections
@@ -209,158 +221,5 @@ object CodeproseJsonFormat extends DefaultJsonProtocol with LazyLogging {
     def read(value: JsValue) =  ??? 
   }
   
-  // OLD  
-  // continue with https://github.com/spray/spray-json#jsonformats-for-recursive-types
-  // Example: http://stackoverflow.com/questions/16431545/how-can-provide-jsonformats-for-case-class-that-references-itself
-  //implicit val TypeInfoFormat : JsonFormat[TypeInfo] = lazyFormat(jsonFormat(TypeInfo, "name","typeId","declAs","fullName","typeArgs","members","pos","outerTypeId"))
-  //  implicit val BasicTypeInfoFormat : JsonFormat[BasicTypeInfo] = lazyFormat(jsonFormat(BasicTypeInfo, "name","typeId","declAs","fullName","typeArgs","members","pos","outerTypeId"))
-//    implicit val ArrowTypeInfoFormat : JsonFormat[ArrowTypeInfo] = lazyFormat(jsonFormat(ArrowTypeInfo, "name","typeId","resultType","paramSections"))
-//  implicit val TypeInspectInfoFormat : JsonFormat[TypeInspectInfo] = lazyFormat(jsonFormat(TypeInspectInfo,"tpe","companionId","interfaces"))
-//  implicit val InterfaceInfoFormat : JsonFormat[InterfaceInfo] = lazyFormat(jsonFormat(InterfaceInfo,"tpe","viaView"))
- //   implicit val ParamSectionInfoFormat : JsonFormat[ParamSectionInfo] = lazyFormat(jsonFormat(ParamSectionInfo,"params","isImplicit"))
-//  
-//  implicit val NamedTypeMemberInfoFormat : JsonFormat[NamedTypeMemberInfo] = lazyFormat(jsonFormat(NamedTypeMemberInfo,"name","tpe","pos","signatureString","declAs"))
-//  implicit val EntityInfoFormat : JsonFormat[EntityInfo] = lazyFormat(jsonFormat(EntityInfo,"name","members"))
-//  
-  
-  
-  //  implicit val ArrowTypeInfoFormat = jsonFormat4(ArrowTypeInfo)
-//  implicit val TypeInspectInfoFormat = jsonFormat3(TypeInspectInfo)
- 
-  // Recursive json Example
-  //case class Foo(i: Int, foo: Foo)
-  //implicit val fooFormat: JsonFormat[Foo] = lazyFormat(jsonFormat(Foo, "i", "foo"))
-
-//  implicit object DeclareAsJsonFormat extends RootJsonFormat[DeclaredAs] {
-//    def write(dAs: DeclaredAs) : JsValue = {
-//      dAs match {
-//      case DeclaredAs.Method => JsString('method)
-//      case DeclaredAs.Trait => JsString('trait)
-//      case DeclaredAs.Interface => JsString('interface)
-//      case DeclaredAs.Object => JsString('object)
-//      case DeclaredAs.Class => JsString('class)
-//      case DeclaredAs.Field => JsString('field)
-//      case DeclaredAs.Nil => JsString('nil)
-//      } 
-//    }
-//    
-//    def read(value: JsValue) = ???
-//  }
-  
-//  implicit object TypeInfoJsonFormat extends RootJsonFormat[TypeInfo] {
-//    def write(ti: TypeInfo) = {
-//     val jsObj = ti match {
-//       case basic : BasicTypeInfo => {
-//         JsObject("name" ->   JsString(basic.name))
-//       }
-//       case arrow : ArrowTypeInfo => {
-//         JsObject("name" ->   JsString(arrow.name))
-//       }
-//      }
-//      jsObj
-//  }
-//    def read(value: JsValue) =  ??? 
-//  }
-
-//  implicit object TypeInfoFormat extends JsonFormat[TypeInfo] {
-//    def read(j: JsObject) : TypeInfo = ???
-//
-//    def write(ti: TypeInfo): JsObject = {
-//      ti match {
-//      case basic: BasicTypeInfo => {
-//        JsObject(
-//            "name" -> JsString(basic.name)
-//            )
-//      }
-//      case arrow: ArrowTypeInfo => {
-//        JsObject(
-//            "name" -> JsString(arrow.name)
-//            )
-//      }
-//     }
-//    } 
-//  }
-  
- 
-  
 }
 
-
-
-// Working test 
-/*
-
- trait JsTest {
-    def name: String
-    def connected: List[JsTest]
-  }
-  
-  case class BasicJsTest(name: String, connected: List[JsTest], id: Int) extends JsTest
-  case class ArrowJsTest(name: String, connected: List[JsTest], text: String) extends JsTest
-
- object TestJsonFormat extends DefaultJsonProtocol { 
-  
-   // implicit val JsTestFormat : JsonFormat[JsTest] = lazyFormat(jsonFormat(JsTest, "name","connected"))
-      
-  implicit object JsTestFormat extends RootJsonFormat[JsTest] {
-    def write(ti: JsTest) = {
-     val jsObj = ti match {
-       case basic : BasicJsTest => {
-         
-         val connected = if(basic.connected == List.empty){
-           JsArray()
-         } else {
-           val v = basic.connected.map( e => TestJsonFormat.JsTestFormat.write(e))
-           JsArray(v)
-         }
-         
-         JsObject("name" ->   JsString(basic.name),
-                  "connected" -> connected,
-                  "id" -> JsNumber(basic.id))
-       }
-       case arrow : ArrowJsTest => {
-         
-          val connected = if(arrow.connected == List.empty){
-           JsArray()
-         } else {
-           val v = arrow.connected.map( e => TestJsonFormat.JsTestFormat.write(e))
-           JsArray(v)
-         }
-         
-         JsObject("name" ->   JsString(arrow.name),
-                  "connected" -> connected,
-                  "text" -> JsString(arrow.text))
-       }
-      }
-      jsObj
-  }
-    def read(value: JsValue) =  ??? 
-  }
-    
-    
-    implicit val BasicJsTestFormat : JsonFormat[BasicJsTest] = lazyFormat(jsonFormat(BasicJsTest, "name","connected","id"))
-    implicit val ArrowJsTestFormat : JsonFormat[ArrowJsTest] = lazyFormat(jsonFormat(ArrowJsTest, "name","connected","text"))
-  }
-  
-  
-  
-  object TEST {
-    def main(args: Array[String]): Unit = {
-      val basic = BasicJsTest("basic",List(),1)
-      val basic2 = BasicJsTest("basic",List(),2)
-      val arrow = ArrowJsTest("arrow",List(),"one")
-      val arrow2 = ArrowJsTest("arrow",List(),"two")
-      
-      val basicStacked = BasicJsTest("basicStacked",List(basic,arrow,arrow2,basic2),1)
-      
-      import org.codeprose.util.TestJsonFormat._
-      
-      println("Basic: " + basic.toJson.compactPrint )
-      println("Arrow: " + arrow.toJson.compactPrint )
-      println("Stacked: " + basicStacked.toJson.compactPrint )
-      
-      
-    }
-  }
-  
-  */

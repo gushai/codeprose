@@ -28,7 +28,7 @@ class HtmlSrcFileContext(
             
         val perFileScripts = List(
         s"""
-           /*
+        /*
          * Highlights other uses of the token under the mouse within the file.
          */
         $$("[id^='T']").hover( 
@@ -76,114 +76,28 @@ class HtmlSrcFileContext(
         var typeId = $$(elem).data("cp-typeid")
   
         // Declaration
-        var rawLinkToDeclaration = $$(elem).data("cp-declaration");
-        var linkToDeclaration = ""
-        if(rawLinkToDeclaration){
-          console.log( rawLinkToDeclaration);
-          linkToDeclaration = "<a href='" + rawLinkToDeclaration + "'>Declaration</a>" + "<br/>";
-        }
+       linkToDeclaration = tooltipSrcFile_getLinkToDeclaration(elem);
 
-  // Definition
+  // Where used in project
+    var linkToWhereUsedInProject = tooltipSrcFile_getLinkToWhereTypeUsedInProject(typeId)
+
+    // Type summary
         var typeInfo = typeInformation[typeId];
-        var linkToDefintion = "";
-        if(typeInfo !=  null && typeInfo.tpe._infoType === "BasicTypeInfo"){
-    if(typeInfo.tpe.pos != null){
-      var srcFileLink = srcFileToRelLink[typeInfo.tpe.pos.filename];
-      var tokenId = typeInfo.tpe.pos.tokenId;
-      if(srcFileLink != null && tokenId != -1){
-                linkToDefintion = "<a href='.." + srcFileLink + "#" + tokenId + "'>Type definition</a>" + "<br/>";
-      } 
-    } else {
-      linkToDefintion = "Type definition outside of project.</br>"
-    }    
-        }       
+  var typeSummary = tooltipSrcFile_getTypeInformation(typeInfo);
 
-  // Function information
-  linkToFunctionArgs = ""
-  linkToFunctionRetType = ""
-  if(typeInfo !=  null && typeInfo.tpe._infoType === "ArrowTypeInfo"){
-
-    // Parameters
-    if(typeInfo.tpe.paramSections != null){
-      var argsToAppend = ""     
-      var paramSections = typeInfo.tpe.paramSections;
-      for( var i=0;i<paramSections.length;i++){
-        var params = paramSections[i];
-       
-        var implicitInd = "";
-        if(params.isImplicit == true){ 
-          implicitInd = " (impl)";
-        }
-
-        for(var k=0;k<params.params.length;k++){
-          var n = params.params[k][0];
-          var nType = params.params[k][1];
+   // Type overview    
+  var typeOverview = tooltipSrcFile_getLinkToTypeOverview(typeId);
          
-          var nTypeName = "";
-          if(nType._infoType === "BasicTypeInfo"){
-            nTypeName = nType.fullName;
-          } else {
-            nTypeName = nType.name;
-          }
-          argsToAppend += "<li>" + n + ": " + nTypeName + implicitInd +"</li>";
-        }
-      
-      } 
-    
-    
-    
-      linkToFunctionArgs = "Args:" + "<ul>" + argsToAppend + "</ul>";
-  
-    
-    }
-    // Return type
-    if(typeInfo.tpe.resultType != null ){
-      var retTypeInfo = typeInfo.tpe.resultType;
-    
-      // basic
-      if(retTypeInfo._infoType === "BasicTypeInfo"){
-
-        linkToFunctionRetType = "Return type:<ul><li>" + retTypeInfo.fullName + "</li></ul><br/>";
-
-      } else {
-      // Arrow
-      
-        linkToFunctionRetType = "Return type:</br>" + "Function" + "<br/>";
-      }
-    }
-  }
-
-        // Where used in project
-  var linkToWhereUsedInProject = "";
-        if(typeId != null){
-          rawLinkToWhereUsedProject = "../whereUsedSummary.html"+ "#TYPEID" + typeId
-          linkToWhereUsedInProject = "<a href='" + rawLinkToWhereUsedProject + "'>Where used in project</a>" + "<br/>";
-        }      
-    
-        // Implicit conversion 
-        var linkToImplicitConversion =  "";
-        var isImplicitConversion = $$(elem).data("cp-implicitconversion");
-        if(isImplicitConversion){
-    
-          
-        }
-
-        // Implicit Parameter
-        var linkToImplicitParameter = ""
-  var isImplicitParameter = $$(elem).data("cp-implicitparameter");
-        if(isImplicitParameter){
-        
-        }
+        // Implicit summary
+  var implicitSummary = tooltipSrcFile_getImplicitInformation(elem);
       
         // Output structure 
         html = "<div class='cp-tooltip'>" + fullname + "<br/><br/>" +
         linkToDeclaration +
-        linkToDefintion +
-  linkToFunctionArgs + 
-  linkToFunctionRetType + 
+        typeSummary +
+        typeOverview + 
+        implicitSummary + 
         linkToWhereUsedInProject +
-        linkToImplicitConversion +
-        linkToImplicitParameter + 
         "</div>";
       
         return html;
@@ -209,6 +123,7 @@ class HtmlSrcFileContext(
             function () { $$(this).fadeOut("100", function () { $$(this).remove(); }) });
         }
       });
+      
       
 
 

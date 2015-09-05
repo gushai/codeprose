@@ -786,7 +786,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     
     val symbolInfo = ensimeClient.symbolAtPoint(file, point)
     
-    val requestDetails = s""""Request details: File: """ + file.getAbsolutePath + s""" - Point:  $point"""
+    val requestDetails = s""""Request details: File: """ + file.getAbsolutePath.takeRight(100) + s""" - Point:  $point"""
     
     val ret = try {
       val result = Await.result(symbolInfo,  Duration(c.timeout_SymbolInfoReq, MILLISECONDS))
@@ -822,7 +822,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     
     val usesOfSymbol = ensimeClient.usesOfSymAtPoint(file, point)
     
-    val requestDetails = s""""Request details: File: """ + file.getAbsolutePath + s""" - Point:  $point"""
+    val requestDetails = s""""Request details: File: """ + file.getAbsolutePath.takeRight(100) + s""" - Point:  $point"""
   
     
     try {
@@ -853,7 +853,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     
     val symbolDesignations = ensimeClient.symbolDesignations(file, start, end, org.ensime.api.SourceSymbol.allSymbols) 
     
-    val requestDetails = s""""Request details: File: """ + file.getAbsolutePath + s""" - Range:  $start - $end"""
+    val requestDetails = s""""Request details: File: """ + file.getAbsolutePath.takeRight(100) + s""" - Range:  $start - $end"""
     
     try {
       val result= Await.result(symbolDesignations,  Duration(c.timeout_SymbolDesignationsReq, MILLISECONDS))
@@ -884,7 +884,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
      
     val implicitInfo = ensimeClient.implicitInfoReq(file,org.ensime.api.OffsetRange(start,end))
     
-    val requestDetails = s""""Request details: File: """ + file.getAbsolutePath + s""" - Range:  $start - $end"""
+    val requestDetails = s""""Request details: File: """ + file.getAbsolutePath.takeRight(100) + s""" - Range:  $start - $end"""
     
     val ret = try {
       val result = Await.result(implicitInfo,  Duration(c.timeout_ImplicitInfoReq, MILLISECONDS))
@@ -982,12 +982,11 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   private def getDetailedTypeInformation(enrichedTokens: ArrayBuffer[(File,ArrayBuffer[Token])]) : 
   Map[Int,Option[TypeInspectInfo]] = {
     
-    // Some filtering?
     // TODO Remove after debugging
-//    println("Raw typeIds found w/ name:")
-//    getOccuringTypesWithName().foreach(e => {
-//      println(e._1 + "\t" + e._2)
-//    })
+    println("Raw typeIds found w/ name:")
+    getOccuringTypesWithName().foreach(e => {
+      println(e._1 + "\t" + e._2)
+    })
     
     // Debug
     //val detailedTypeInfo = getOccuringTypesWithName().map(e => {(e._1,None)}).toMap

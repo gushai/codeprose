@@ -68,7 +68,17 @@ class HtmlDataAttributeGen(htmlOutputContext: HtmlOutputContext) {
     token(internalTokenId) match {
       case Some(id) => { dataAttributes += ((htmlDataAttributePrefix + "internaltokenid",s""""""" + id.toString + s""""""")) }
       case None => {}
-    }  
+    }
+    
+    token(ownerTypeId) match {
+      case Some(id) => { dataAttributes += ((htmlDataAttributePrefix + "ownertypeid",s""""""" + id.toString + s""""""")) }
+      case None => {}
+    }
+    
+    token(isCallable) match {
+      case Some(isCallable) => { dataAttributes += ((htmlDataAttributePrefix + "iscallable",s""""""" + isCallable.toString + s""""""")) }
+      case None => {}
+    }
     
     // Implicit indicators
     token(implicitConversion_indicator) match {

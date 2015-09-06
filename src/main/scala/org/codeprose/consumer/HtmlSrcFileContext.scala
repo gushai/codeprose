@@ -81,21 +81,25 @@ class HtmlSrcFileContext(
   // Where used in project
     var linkToWhereUsedInProject = tooltipSrcFile_getLinkToWhereTypeUsedInProject(typeId)
 
-    // Type summary
+        // Type summary
         var typeInfo = typeInformation[typeId];
-  var typeSummary = tooltipSrcFile_getTypeInformation(typeInfo);
+        var typeSummary = tooltipSrcFile_getTypeInformation(typeInfo);
 
-   // Type overview    
-  var typeOverview = tooltipSrcFile_getLinkToTypeOverview(typeId);
-         
+        // Type overview    
+        var typeOverview = tooltipSrcFile_getLinkToTypeOverview(typeId);
+  
+        // Type owner
+        var typeOwner = tooltipSrcFile_getOwnerTypeInformation(elem);
+  
         // Implicit summary
-  var implicitSummary = tooltipSrcFile_getImplicitInformation(elem);
+        var implicitSummary = tooltipSrcFile_getImplicitInformation(elem);
       
         // Output structure 
         html = "<div class='cp-tooltip'>" + fullname + "<br/><br/>" +
         linkToDeclaration +
         typeSummary +
         typeOverview + 
+        typeOwner + 
         implicitSummary + 
         linkToWhereUsedInProject +
         "</div>";

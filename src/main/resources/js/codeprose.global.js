@@ -38,10 +38,6 @@ function tooltipSrcFile_getLinkToWhereTypeUsedInProject(typeId){
 }
 
 
-function tooltipSrcFile_getImplicitInformation(elem) {
-	return "";//"<ul style='margin-left:1em;'><li>Implicit TODO</li></ul>";
-}
-
 
 /*
  * Return a type Inspect summary unordered list.
@@ -284,6 +280,116 @@ function tooltipSrcFile_getListOfInterfaces(interfaceInfos){
 
 }
 
+/*
+ * Returns information on implicit conversions and parameters. 
+ */
+function tooltipSrcFile_getImplicitInformation(elem){
+	var hasImplicitConversions = $(elem).data("cp-implicitconversion");
+ 	var hasImplicitParameters = $(elem).data("cp-implicitparameter");
+	var retString = "";
+
+	if(hasImplicitConversions){
+		var implicitConversionids = $(elem).data("cp-implicitconversionids");
+
+		if(implicitConversionids != null){
+			
+			var implicitConversionList = tooltipSrcFile_implicitConversion(implicitConversionids);
+
+			if(implicitConversionids!=null){
+				retString += "<div style='margin-top:0.5em;'>" + "Impl. Conversion(s):" + implicitConversionList + "</div>";
+			}
+		}
+	}
+
+
+	if(hasImplicitParameters){
+		var implicitParameterids = $(elem).data("cp-implicitparameterids");
+
+		if(implicitParameterids != null){
+			var implicitParamList = tooltipSrcFile_implicitParameter(implicitParameterids);
+			if(implicitParamList!=null){
+				retString += "<div style='margin-top:0.5em;'>" + "Impl. Parameter(s):" + implicitParamList + "</div>";
+			}
+		}
+	}
+
+	return retString;
+}
+
+
+function tooltipSrcFile_implicitConversion(implicitConversionIds){
+
+	var retString = "<ul style='margin-top:0.3em;margin-left:0em;padding-left:2em;'>";
+	console.log(implicitConversionIds);
+	for(var i=0;i<implicitConversionIds.length;i++){
+		
+		var implConvInfo = implicitConversions[implicitConversionIds[i]];
+		console.log(implConvInfo);		
+		var n  = implConvInfo.name
+		var rawLink = "";
+		if(implConvInfo.declPos != null){
+			rawLink = getRawLinkToDeclaration(implConvInfo.declPos);
+		}
+		if(rawLink!=""){
+			retString += "<li style='margin-top:0.3em;'>" + "<a href='.." + rawLink + "'>" + n + "</a>" + "</li>";	
+		} else {
+			retString += "<li style='margin-top:0.3em;'>" + n + "</li>";	
+		}
+		
+	}
+
+
+	retString += "</ul>";
+	return retString;
+}
+
+function tooltipSrcFile_implicitParameter(implicitParameterIds){
+
+	console.log(implicitParameterIds);
+	
+	var retString = "<ul style='margin-top:0.3em;margin-left:0em;padding-left:2em;'>";
+
+	for(var i=0;i<implicitParameterIds.length;i++){
+		
+		var implParaInfo = implicitParameters[implicitParameterIds[i]];
+		console.log(implParaInfo);
+		
+	}
+	retString += "</ul>";
+	return retString;
+} 
+
+
+function tooltipSrcFile_getOwnerTypeInformation(elem){
+	var ownerTypeId = $(elem).data("cp-ownertypeid");
+	var retString = "";
+	if(ownerTypeId!=null){
+		var typeInspectInfo = typeInformation[ownerTypeId];
+		if(typeInspectInfo.tpe != null){
+ 
+			retString += "<div style='margin-top:0.5em;'>" + "Owner type:";
+			var typeInfo = typeInspectInfo.tpe;
+			var fullname = getTypeInfoName(typeInfo);
+			var rawLinkToDef = "";
+
+			if(typeInfo._infoType === "BasicTypeInfo"){
+				rawLinkToDef = getRawLinkToTypeDefinition(typeInfo);			
+			}
+				
+			if(rawLinkToDef != ""){
+				retString += "<div style='margin-top:0.5em;padding-left:2em;'><a href='.." + rawLinkToDef + "'>" + fullname + "</a>" + "</div>";
+			} else {
+				retString += "<div style='margin-top:0.5em;padding-left:2em;'>" + fullname + "</div>";
+			}
+			
+			retString += "</div>";			 		
+		
+
+		}
+	} 
+
+	return retString;
+}
 
 /*
 * Returns 
@@ -307,6 +413,22 @@ function getRawLinkToTypeDefinition(basicTypeInfo){
 	return rawLink;
 }
 
+/*
+* Returns link based on OffsetSourcePosition with Token id.
+* Assumes declPos != null
+*/
+function getRawLinkToDeclaration(declPos){
+	var retString = "";
+	var filename = declPos.filename;
+	var tokenId = declPos.tokenId;
+	if(filename != null && tokenId != -1){
+		var rawLink = srcFileToRelLink[filename];
+		if(rawLink!=null){
+			retString = rawLink + "#T" + tokenId;
+		}
+	}
+	return retString;
+}
 
 function getTypeInfoName(typeInfo){
 	var n = "";

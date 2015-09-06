@@ -252,7 +252,9 @@ object SourceSymbol {
         
         val whereUsedWithInFile = new Key('whereUsedWithinFile){ type Value = List[ERangePositionWithTokenId] }
         
-      
+        val isCallable = new Key('isCallable){ type Value = Boolean }
+        
+        val ownerTypeId = new Key('ownerTypeId){ type Value = Int }
         
         
         // Currently not in use.

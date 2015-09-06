@@ -202,7 +202,30 @@ object CodeproseJsonFormat extends DefaultJsonProtocol with LazyLogging {
   implicit val InterfaceInfoFormat = jsonFormat2(InterfaceInfo)
   
   implicit val TypeInspectInfoFormat = jsonFormat3(TypeInspectInfo)
-  implicit val SymbolInfoFormat = jsonFormat6(SymbolInfo)
+  //implicit val SymbolInfoFormat = jsonFormat6(SymbolInfo)
+  
+  implicit object SymbolInfoFormat extends RootJsonFormat[SymbolInfo] { 
+    def write(symbolInfo: SymbolInfo) = {
+      
+      val name = XmlEscape.escape(symbolInfo.name).toJson
+      val localName = XmlEscape.escape(symbolInfo.localName).toJson
+      val declPos = symbolInfo.declPos.toJson
+      val tpe = symbolInfo.tpe.toJson
+      
+    	JsObject(
+    			"name" ->  name,
+    			"lobalName" -> localName,
+          "declPos" -> declPos,
+          "tpe" -> tpe,
+          "isCallable" -> symbolInfo.isCallable.toJson,
+          "ownerTypeId" -> symbolInfo.ownerTypeId.toJson
+    			)
+
+      
+    }
+
+    def read(value: JsValue) =  ??? 
+  }
   
   
   implicit object ImplicitInfoFormat extends RootJsonFormat[ImplicitInfo] {

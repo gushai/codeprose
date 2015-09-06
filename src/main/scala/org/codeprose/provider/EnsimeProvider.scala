@@ -86,8 +86,8 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
    * in getProjectSummary()
    *  
    */
-  private var implicitConversionInfo = Map[Int,SymbolInfo]()
-  private var implicitParamInfo = Map[Int,SymbolInfo]()
+  private var implicitConversionInfo = Map[Int,ImplicitConversionInfoSummary]()
+  private var implicitParamInfo = Map[Int,ImplicitParamInfoSummary]()
  
   
 	/**
@@ -543,22 +543,38 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     
         
     // Save implicit information with id
-    val implicitConversions = implicitInfoPerFile.map(e=>e._2).
+    /*val implicitConversions = implicitInfoPerFile.map(e=>e._2).
                               flatten.flatMap(e=>e.infos).
                               filter(e=>e.isInstanceOf[org.ensime.api.ImplicitConversionInfo]).
                               map(e=>e.asInstanceOf[org.ensime.api.ImplicitConversionInfo].fun).
-                              toSet.zipWithIndex.toMap
-                              
+                              toSet.zipWithIndex.toMap */ 
+    /*                          
     val implicitParams = implicitInfoPerFile.map(e=>e._2).
                               flatten.flatMap(e=>e.infos).
                               filter(e=>e.isInstanceOf[org.ensime.api.ImplicitParamInfo]).
                               map(e=>e.asInstanceOf[org.ensime.api.ImplicitParamInfo].fun).
-                              toSet.zipWithIndex.toMap
+                              toSet.zipWithIndex.toMap */
     
     // Translate to codeprose api and save
     val apiConverter = new EnsimeApiToCodeproseApi(tokens,ProviderUtil.getTokenIdToOffsetSourcePosition)
-                              
-    implicitConversions.foreach(e=>{
+       
+        
+    val implicitConversions = implicitInfoPerFile.map(e=>e._2).
+                              flatten.flatMap(e=>e.infos).
+                              filter(e=>e.isInstanceOf[org.ensime.api.ImplicitConversionInfo]).
+                              map(e=>apiConverter.convertToImplicitConversionInfoSummary(e.asInstanceOf[org.ensime.api.ImplicitConversionInfo])).
+                              toSet.zipWithIndex.toMap
+    implicitConversionInfo = implicitConversions.map(_.swap)           
+   
+    val implicitParams = implicitInfoPerFile.map(e=>e._2).
+                              flatten.flatMap(e=>e.infos).
+                              filter(e=>e.isInstanceOf[org.ensime.api.ImplicitParamInfo]).
+                              map(e=>apiConverter.convertToImplicitParamInfoSummary(e.asInstanceOf[org.ensime.api.ImplicitParamInfo])).
+                              toSet.zipWithIndex.toMap
+
+    implicitParamInfo = implicitParams.map(_.swap)                              
+                             
+   /* implicitConversions.foreach(e=>{
       val symInfo =  apiConverter.convertToSymbolInfo(e._1)
       val id = e._2
       implicitConversionInfo += (id -> symInfo)
@@ -568,7 +584,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       val symInfo =  apiConverter.convertToSymbolInfo(e._1)
       val id = e._2
       implicitParamInfo += (id -> symInfo)
-    })     
+    }) */     
                               
     // Enrich tokens
     tokens.map(e=>{
@@ -584,11 +600,13 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       
            implicitInfo match {
             case implConvInfo : org.ensime.api.ImplicitConversionInfo => {
-              val implicitConversionId = implicitConversions.get(implConvInfo.fun).getOrElse(-1)
+              val implConverSummary = apiConverter.convertToImplicitConversionInfoSummary(implConvInfo)
+              val implicitConversionId = implicitConversions.get(implConverSummary).getOrElse(-1)
               enrichTokensWithImplictConversionInformation(t,implConvInfo,implicitConversionId)
             }
             case implParaInfo : org.ensime.api.ImplicitParamInfo => {
-              val implicitParamId = implicitParams.get(implParaInfo.fun).getOrElse(-1)
+              val implParamSummary = apiConverter.convertToImplicitParamInfoSummary(implParaInfo)
+              val implicitParamId = implicitParams.get(implParamSummary).getOrElse(-1)
               enrichTokenWithImplicitParameterInformation(t,implParaInfo,implicitParamId)
             }
             case _ => { logger.error("[ImplicitInformation]\t Unknown ImplicitInformation. Ignored!")}
@@ -601,32 +619,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       } else {t}
       (file,t)
     })
-                              
-/*    implicitInfoPerFile.foreach(e=>{
-      val file = e._1
-      val implicitInfoOpt = e._2
-      
-    implicitInfoOpt match {
-      case Some(implicitInfos) => {
-
-         implicitInfos.infos.foreach(  implicitInfo => {
-      
-           implicitInfo match {
-            case implConvInfo : org.ensime.api.ImplicitConversionInfo => {
-              enrichTokensWithImplictConversionInformation(tokens,implConvInfo)
-            }
-            case implParaInfo : org.ensime.api.ImplicitParamInfo => {
-              enrichTokenWithImplicitParameterInformation(tokens,implParaInfo)
-            }
-            case _ => { logger.error("[ImplicitInformation]\t Unknown ImplicitInformation. Ignored!")}
-          }
-        })  
-        tokens  
-      }
-      case None => { tokens }
-    }
-    }) */
-        
+                                    
         
     tokens  
   }

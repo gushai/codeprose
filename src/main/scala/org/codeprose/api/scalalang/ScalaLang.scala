@@ -293,8 +293,8 @@ object SourceSymbol {
       
       val typeInspectInformation = new Key('typeInspectInformation){ type Value = Map[Int,Option[TypeInspectInfo]] }
       
-      val implicitConversion_information = new Key('implicitConversion_information){ type Value = Map[Int,SymbolInfo] }
-      val implicitParameter_information = new Key('implicitParameter_information){ type Value = Map[Int,SymbolInfo] }
+      val implicitConversion_information = new Key('implicitConversion_information){ type Value = Map[Int,ImplicitConversionInfoSummary] }
+      val implicitParameter_information = new Key('implicitParameter_information){ type Value = Map[Int,ImplicitParamInfoSummary] }
 }
 
 

@@ -237,12 +237,48 @@ object CodeproseJsonFormat extends DefaultJsonProtocol with LazyLogging {
         case implParam : ImplicitParamInfo => {
           JsObject("_infoType"->implParam._infoType.toJson)  
         }
+        case implConv : ImplicitConversionInfoSummary => {
+          implConv.toJson
+        }
+        case implParam : ImplicitParamInfoSummary => {
+          implParam.toJson
+        }
         case _ => JsObject()
       }
            
     }
     def read(value: JsValue) =  ??? 
   }
+ 
+   implicit object ImplicitConversionInfoSummaryFormat extends RootJsonFormat[ImplicitConversionInfoSummary] {
+    def write(implInfo: ImplicitConversionInfoSummary) = { 
+        JsObject(
+          "_infoType"->implInfo._infoType.toJson,
+          "fun" -> implInfo.fun.toJson     
+          )
+    
+    }
+    def read(value: JsValue) =  ???
+  } 
   
+  implicit object ImplicitParamInfoSummaryFormat extends RootJsonFormat[ImplicitParamInfoSummary] {
+    def write(implInfo: ImplicitParamInfoSummary) = { 
+      val params = if(implInfo.params==List.empty){
+        JsArray()
+      } else {
+         val v = implInfo.params.map( e => CodeproseJsonFormat.SymbolInfoFormat.write(e)).toList
+         JsArray(v)
+      }
+      
+        JsObject(
+          "_infoType"->implInfo._infoType.toJson,
+          "fun" -> implInfo.fun.toJson,
+          "params" -> params,
+          "funIsImplicit" -> implInfo.funIsImplicit.toJson 
+          )
+    
+    }
+    def read(value: JsValue) =  ???
+  } 
 }
 

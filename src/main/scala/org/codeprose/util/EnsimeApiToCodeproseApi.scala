@@ -165,6 +165,21 @@ class EnsimeApiToCodeproseApi(
     }
     implicitInfo
   }
+ 
+  def convertToImplicitConversionInfoSummary( implConvInfo: org.ensime.api.ImplicitConversionInfo) : ImplicitConversionInfoSummary = {
+    val fun = convertToSymbolInfo(implConvInfo.fun)
+    ImplicitConversionInfoSummary(fun)
+  }
+  
+  def convertToImplicitParamInfoSummary( implParamInfo: org.ensime.api.ImplicitParamInfo) : ImplicitParamInfoSummary = {
+    val fun = convertToSymbolInfo(implParamInfo.fun)
+    val params = if(implParamInfo.params == List.empty){
+      List.empty
+    } else {
+      implParamInfo.params.map(e=>convertToSymbolInfo(e))
+    }
+    ImplicitParamInfoSummary(fun,params,implParamInfo.funIsImplicit)
+  }
   
 }
 
@@ -199,7 +214,7 @@ trait CodeproseApiCreator {
   }
   
   
-  def PackageInfo( name: String, fullName: String, members: Seq[EntityInfo]) : PackageInfo = {
+  def PackageInfo(name: String, fullName: String, members: Seq[EntityInfo]) : PackageInfo = {
     new PackageInfo(name,fullName, members)
   }
   
@@ -207,12 +222,20 @@ trait CodeproseApiCreator {
       new NamedTypeMemberInfo(name, tpe, pos, signatureString, declAs)
   }
   
-  def ImplicitConversionInfo( start: Int, end: Int, fun: SymbolInfo) : ImplicitConversionInfo = {
+  def ImplicitConversionInfo(start: Int, end: Int, fun: SymbolInfo) : ImplicitConversionInfo = {
     new ImplicitConversionInfo(start,end,fun)
   }
   
-  def ImplicitParamInfo(start: Int,end: Int,fun: SymbolInfo,params: List[SymbolInfo],funIsImplicit: Boolean) : ImplicitParamInfo = {
+  def ImplicitConversionInfoSummary(fun: SymbolInfo) : ImplicitConversionInfoSummary = {
+    new ImplicitConversionInfoSummary(fun)
+  }
+  
+  def ImplicitParamInfo(start: Int, end: Int, fun: SymbolInfo,params: List[SymbolInfo],funIsImplicit: Boolean) : ImplicitParamInfo = {
     new ImplicitParamInfo(start,end,fun,params,funIsImplicit)
+  }
+  
+  def ImplicitParamInfoSummary(fun: SymbolInfo,params: List[SymbolInfo],funIsImplicit: Boolean) : ImplicitParamInfoSummary = {
+    new ImplicitParamInfoSummary(fun,params,funIsImplicit)
   }
 }
 

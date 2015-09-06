@@ -945,8 +945,8 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
    * @param 
    */
   private def generateGlobalJSImplicitInfo(
-      implicitConversions: Map[Int,SymbolInfo],
-      implicitParameters: Map[Int,SymbolInfo]) : Unit = {
+      implicitConversions: Map[Int,ImplicitConversionInfoSummary],
+      implicitParameters: Map[Int,ImplicitParamInfoSummary]) : Unit = {
     
     val relFileName = c.summaryFilesRelPath.get("js.global.implicitinfo")
     

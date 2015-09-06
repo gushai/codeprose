@@ -102,6 +102,13 @@ case class ImplicitConversionInfo(
   def _infoType = "ImplicitConversionInfo"
 }
 
+case class ImplicitConversionInfoSummary(
+  fun: SymbolInfo
+) extends ImplicitInfo {
+  def _infoType = "ImplicitConversionInfoSummary"
+}
+
+
 case class ImplicitParamInfo(
   start: Int,
   end: Int,
@@ -111,3 +118,12 @@ case class ImplicitParamInfo(
 ) extends ImplicitInfo {
   def _infoType = "ImplicitParamInfo"
 }
+
+case class ImplicitParamInfoSummary(
+  fun: SymbolInfo,
+  params: List[SymbolInfo],
+  funIsImplicit: Boolean
+) extends ImplicitInfo {
+  def _infoType = "ImplicitParamInfoSummary"
+}
+

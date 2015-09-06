@@ -389,10 +389,10 @@ function tooltipSrcFile_implicitConversion(implicitConversionIds){
 		
 		var implConvInfo = implicitConversions[implicitConversionIds[i]];
 		console.log(implConvInfo);		
-		var n  = implConvInfo.name
+		var n  = implConvInfo.fun.name
 		var rawLink = "";
-		if(implConvInfo.declPos != null){
-			rawLink = getRawLinkToDeclaration(implConvInfo.declPos);
+		if(implConvInfo.fun.declPos != null){
+			rawLink = getRawLinkToDeclaration(implConvInfo.fun.declPos);
 		}
 		if(rawLink!=""){
 			retString += "<li style='margin-top:0.3em;'>" + "<a href='.." + rawLink + "'>" + n + "</a>" + "</li>";	
@@ -417,7 +417,7 @@ function tooltipSrcFile_implicitParameter(implicitParameterIds){
 		
 		var implParaInfo = implicitParameters[implicitParameterIds[i]];
 		console.log(implParaInfo);
-		
+		retString += "<li> Implemenation Needed</li>";
 	}
 	retString += "</ul>";
 	return retString;

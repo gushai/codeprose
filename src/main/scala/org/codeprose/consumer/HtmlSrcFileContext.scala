@@ -63,52 +63,6 @@ class HtmlSrcFileContext(
         if(e.keyCode == 105){ highlightImplicitConversionsAndParameters() }     
       });
 
-
-      /*
-       * Create the tooltip entry html content for a token.
-       */
-      function createTooltipHtmlFromDataAttr(elem) { 
-    
-        // Fullname
-        var fullname = "<b>" + $$(elem).data("cp-fullname") + "</b>";
-
-        // TypeId
-        var typeId = $$(elem).data("cp-typeid")
-  
-        // Declaration
-       linkToDeclaration = tooltipSrcFile_getLinkToDeclaration(elem);
-
-  // Where used in project
-    var linkToWhereUsedInProject = tooltipSrcFile_getLinkToWhereTypeUsedInProject(typeId)
-
-        // Type summary
-        var typeInfo = typeInformation[typeId];
-        var typeSummary = tooltipSrcFile_getTypeInformation(typeInfo);
-
-        // Type overview    
-        var typeOverview = tooltipSrcFile_getLinkToTypeOverview(typeId);
-  
-        // Type owner
-        var typeOwner = tooltipSrcFile_getOwnerTypeInformation(elem);
-  
-        // Implicit summary
-        var implicitSummary = tooltipSrcFile_getImplicitInformation(elem);
-      
-        // Output structure 
-        html = "<div class='cp-tooltip'>" + fullname + "<br/><br/>" +
-        linkToDeclaration +
-        typeSummary +
-        typeOverview + 
-        typeOwner + 
-        implicitSummary + 
-        linkToWhereUsedInProject +
-        "</div>";
-      
-        return html;
-      }
-      
-
-
       /*
        * Assigns the tooltip information to tokens.
        */

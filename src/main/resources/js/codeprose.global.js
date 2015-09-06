@@ -1,18 +1,66 @@
 // Codeprose
+var tooltip_Debug = true;
+	/*
+       * Create the tooltip entry html content for a token.
+       */
+      function createTooltipHtmlFromDataAttr(elem) { 
+    
+        // Fullname
+        var fullname = "<b>" + $(elem).data("cp-fullname") + "</b>";
+
+        // TypeId
+        var typeId = $(elem).data("cp-typeid")
+  
+        // Declaration
+       linkToDeclaration = tooltipSrcFile_getLinkToDeclaration(elem);
+
+  	// Where used in project
+    	var linkToWhereUsedInProject = tooltipSrcFile_getLinkToWhereTypeUsedInProject(typeId)
+
+        // Type summary
+        var typeInfo = typeInformation[typeId];
+        var typeSummary = tooltipSrcFile_getTypeInformation(typeInfo);
+
+        // Type overview    
+        var typeOverview = tooltipSrcFile_getLinkToTypeOverview(typeId);
+  
+        // Type owner
+        var typeOwner = tooltipSrcFile_getOwnerTypeInformation(elem);
+  
+        // Implicit summary
+        var implicitSummary = tooltipSrcFile_getImplicitInformation(elem);
+      
+        // Output structure 
+        html = "<div class='cp-tooltip'>" + fullname + "" +
+        linkToDeclaration +
+        typeSummary +
+        typeOverview + 
+        typeOwner + 
+        implicitSummary + 
+        linkToWhereUsedInProject +
+        "</div>";
+      
+        return html;
+      }
 
 // Tooltip helpers
 
+
+
 function tooltipSrcFile_getLinkToDeclaration(elem){
+	if(tooltip_Debug){ console.log("tooltipSrcFile_getLinkToDeclaration"); }
+
 	var rawLinkToDeclaration = $(elem).data("cp-declaration");
         var linkToDeclaration = ""
         if(rawLinkToDeclaration){
           console.log( rawLinkToDeclaration);
-          linkToDeclaration = "<a href='" + rawLinkToDeclaration + "'>Declaration</a>" + "<br/>";
+          linkToDeclaration = "<div style='margin-top:0.5em;'><a href='" + rawLinkToDeclaration + "'>Declaration</a>" + "<br/></div>";
         }
 	return linkToDeclaration;
 }
 
 function tooltipSrcFile_getLinkToTypeOverview(typeId){
+	if(tooltip_Debug){ console.log("tooltipSrcFile_getLinkToTypeOverview"); }
 	var retString = "";
 	var typeInspectInfo = typeInformation[typeId];
 
@@ -27,7 +75,7 @@ function tooltipSrcFile_getLinkToTypeOverview(typeId){
 }
 
 function tooltipSrcFile_getLinkToWhereTypeUsedInProject(typeId){
-
+	if(tooltip_Debug){ console.log("tooltipSrcFile_getLinkToWhereTypeUsedInProject"); }
   	var linkToWhereUsedInProject = "";
         if(typeId != null){
           rawLinkToWhereUsedProject = "../whereUsedSummary.html"+ "#TYPEID" + typeId
@@ -44,6 +92,8 @@ function tooltipSrcFile_getLinkToWhereTypeUsedInProject(typeId){
  *
  */
 function tooltipSrcFile_getTypeInformation(typeInspectInfo){
+	if(tooltip_Debug){ console.log("tooltipSrcFile_getTypeInformation"); }
+
 	var retString = "";
 	if(typeInspectInfo ==  null){
 		return retString;
@@ -60,6 +110,7 @@ function tooltipSrcFile_getTypeInformation(typeInspectInfo){
 }
 
 function tooltipSrcFile_getTypeInformation_ArrowTypeInfo(typeInspectInfo){
+	if(tooltip_Debug){ console.log("tooltipSrcFile_getTypeInformation_ArrowTypeInfo"); }
 
 	var retString ="";
 	
@@ -91,6 +142,7 @@ function tooltipSrcFile_getTypeInformation_ArrowTypeInfo(typeInspectInfo){
 }
 
 function tooltipSrcFile_getResultType(typeInfo){
+	if(tooltip_Debug){ console.log("tooltipSrcFile_getResultType"); }
 	var retString = "";
 	var retTypeName = getTypeInfoName(typeInfo);
 	var retTypeId = typeInfo.typeId;
@@ -115,6 +167,7 @@ return retString;
 }
 
 function tooltipSrcFile_getListOfParameters(paramSections){
+	if(tooltip_Debug){ console.log("tooltipSrcFile_getListOfParameters"); }
 	var retString = "<ul style='margin-top:0.5em;padding-left:1em;'>";
 	if(paramSections.length==0){
 		retString += "<li style='margin-top:0.2em;'>" + "-" + "</li>";
@@ -161,8 +214,10 @@ function tooltipSrcFile_getListOfParameters(paramSections){
 
 
 function tooltipSrcFile_getTypeInformation_BasicTypeInfo(typeInspectInfo){
-var retString = "";
-retString += "Type information:" + "<ul style='margin-left:0em;padding-left:2em;'>";
+	if(tooltip_Debug){ console.log("tooltipSrcFile_getTypeInformation_BasicTypeInfo"); }		
+
+		var retString = "";
+		retString += "Type information:" + "<ul style='margin-left:0em;padding-left:2em;'>";
 
 		var declaredAs = typeInspectInfo.tpe.declAs;
 		if(declaredAs != null){
@@ -212,7 +267,9 @@ retString += "Type information:" + "<ul style='margin-left:0em;padding-left:2em;
 
 
 function tooltipSrcFile_getCompanionObjectInformation(typeInspectInfo){
- 	var retString = "";
+	if(tooltip_Debug){ console.log("tooltipSrcFile_getCompanionObjectInformation"); } 	
+
+	var retString = "";
 	if(typeInspectInfo.companionId != null){
 			
 		var companionInspectInfo = typeInformation[typeInspectInfo.companionId];
@@ -237,7 +294,7 @@ function tooltipSrcFile_getCompanionObjectInformation(typeInspectInfo){
 
 
 function tooltipSrcFile_getOuterTypeInformation(basicTypeInfo){
-	console.log(basicTypeInfo);
+	if(tooltip_Debug){ console.log("tooltipSrcFile_getOuterTypeInformation"); } 
 	var retString = "";
 	var outerTypeName = getTypeInfoName(basicTypeInfo);
 	var outerTypeRawLink = getRawLinkToTypeDefinition(basicTypeInfo);
@@ -256,6 +313,8 @@ function tooltipSrcFile_getOuterTypeInformation(basicTypeInfo){
 * Input Array of InterfaceInfo
 */
 function tooltipSrcFile_getListOfInterfaces(interfaceInfos){
+	if(tooltip_Debug){ console.log("tooltipSrcFile_getListOfInterfaces"); }
+
 	var retString = "";
 	if(interfaceInfos!=null && interfaceInfos.length>0){
 		retString += "<ul style='margin-left:0em;padding-left:1em;'>";
@@ -284,6 +343,9 @@ function tooltipSrcFile_getListOfInterfaces(interfaceInfos){
  * Returns information on implicit conversions and parameters. 
  */
 function tooltipSrcFile_getImplicitInformation(elem){
+
+	if(tooltip_Debug){ console.log("tooltipSrcFile_getImplicitInformation"); }
+
 	var hasImplicitConversions = $(elem).data("cp-implicitconversion");
  	var hasImplicitParameters = $(elem).data("cp-implicitparameter");
 	var retString = "";
@@ -319,6 +381,8 @@ function tooltipSrcFile_getImplicitInformation(elem){
 
 function tooltipSrcFile_implicitConversion(implicitConversionIds){
 
+	if(tooltip_Debug){ console.log("tooltipSrcFile_implicitConversion"); }
+
 	var retString = "<ul style='margin-top:0.3em;margin-left:0em;padding-left:2em;'>";
 	console.log(implicitConversionIds);
 	for(var i=0;i<implicitConversionIds.length;i++){
@@ -344,7 +408,7 @@ function tooltipSrcFile_implicitConversion(implicitConversionIds){
 }
 
 function tooltipSrcFile_implicitParameter(implicitParameterIds){
-
+	if(tooltip_Debug){ console.log("tooltipSrcFile_implicitParameter"); }
 	console.log(implicitParameterIds);
 	
 	var retString = "<ul style='margin-top:0.3em;margin-left:0em;padding-left:2em;'>";
@@ -361,11 +425,14 @@ function tooltipSrcFile_implicitParameter(implicitParameterIds){
 
 
 function tooltipSrcFile_getOwnerTypeInformation(elem){
+
+	if(tooltip_Debug){ console.log("tooltipSrcFile_getOwnerTypeInformation"); }
+
 	var ownerTypeId = $(elem).data("cp-ownertypeid");
 	var retString = "";
 	if(ownerTypeId!=null){
 		var typeInspectInfo = typeInformation[ownerTypeId];
-		if(typeInspectInfo.tpe != null){
+		if(typeInspectInfo != null){
  
 			retString += "<div style='margin-top:0.5em;'>" + "Owner type:";
 			var typeInfo = typeInspectInfo.tpe;

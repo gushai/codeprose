@@ -416,8 +416,55 @@ function tooltipSrcFile_implicitParameter(implicitParameterIds){
 	for(var i=0;i<implicitParameterIds.length;i++){
 		
 		var implParaInfo = implicitParameters[implicitParameterIds[i]];
+
 		console.log(implParaInfo);
-		retString += "<li> Implemenation Needed</li>";
+		var params = implParaInfo.params;
+		for(var k=0;k<params.length;k++) {
+			var n = params[k].name;
+			var rawLinkToParamDecl = "";
+			if(params[k].declPos!=null){
+				rawLinkToParamDecl = getRawLinkToDeclaration(params[k].declPos);					
+			}
+			
+			var typeInfo = params[k].tpe;
+			var typeName = "";
+			var typeDeclAs = "";
+			var rawLinkToTypeDef = "";
+
+			if(typeInfo!=null){
+				typeName = getTypeInfoName(typeInfo);
+				if(typeInfo._infoType === "BasicTypeInfo"){
+					typeDeclAs = typeInfo.declAs;
+					if(typeInfo.pos!=null){
+						rawLinkToTypeDef = getRawLinkToDeclaration(typeInfo.pos);
+					}
+				} else {
+					
+				}
+			}
+			
+
+			var entry = ""; 
+			
+			if(rawLinkToParamDecl!=""){
+				entry += "<a href='.." + rawLinkToParamDecl + "'>" + n + "</a>";
+			} else {
+				entry += n;
+			}
+
+			if(rawLinkToTypeDef!=""){
+				entry += " - <a href='.." + rawLinkToTypeDef + "'>" + typeName + "</a>";
+			} else {
+				entry += " - " + typeName;
+			}
+
+			if(typeDeclAs!=""){
+				entry += " - " + typeDeclAs;
+			}
+
+			retString += "<li>" + entry + "</li>";
+		}
+
 	}
 	retString += "</ul>";
 	return retString;

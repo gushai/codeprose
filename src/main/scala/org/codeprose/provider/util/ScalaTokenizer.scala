@@ -1,10 +1,12 @@
-package org.codeprose.provider
+package org.codeprose.provider.util
+
 
 import scala.collection.mutable.ArrayBuffer
 import org.codeprose.api.Token
 import org.codeprose.api.scalalang._
-import java.io.File
 import com.typesafe.scalalogging.LazyLogging
+import org.codeprose.api.scalalang.ScalaLang.ScalaTokenType
+import scalariform.lexer.{ScalaLexer => Lexer}
 
 
 /**

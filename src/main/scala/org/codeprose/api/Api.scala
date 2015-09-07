@@ -2,7 +2,7 @@ package org.codeprose.api
 
 import java.io.File
 import scala.collection.mutable.ArrayBuffer
-import org.codeprose.util.DynamicPropertyMap
+import org.codeprose.util.DynamicPropertyMap._
 
 /**
  * Class to be exchanged between Provider <-> Broker <-> Consumer
@@ -10,11 +10,9 @@ import org.codeprose.util.DynamicPropertyMap
  * Use language specific key-value-pairs to enrich the tokens and save 
  * project summary information. 
  */
-class ProjectInfo (  
-  val enrichedTokens : ArrayBuffer[(java.io.File, ArrayBuffer[Token])],
-  val summary : ProjectSummary
-  ) {
-}
+case class ProjectInfo (  
+  enrichedTokens : ArrayBuffer[(java.io.File, ArrayBuffer[Token])],
+  summary : ProjectSummary)
 
 
 /**
@@ -31,10 +29,19 @@ class ProjectInfo (
  *  See ScalaLang as an example.
  */
 trait DefaultLang {
-	import DynamicPropertyMap._
+	
+  /*
+   * Token type to be implemented in the deriving language specifications. 
+   */
 	trait TokenType {}
   
   // Keys
+  
+  /*
+   * Key for the token type of the specified language. Token types need to be implemented 
+   * inheriting from the above TokenType trait.
+   * 
+   */
   val tokenType = new Key('tokenType){ type Value <: TokenType }    
 	
 }

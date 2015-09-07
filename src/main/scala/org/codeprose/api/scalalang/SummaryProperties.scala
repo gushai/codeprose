@@ -2,6 +2,21 @@ package org.codeprose.api.scalalang
 
 import org.codeprose.api.SourcePosition
 
+
+/*
+ * Contains Scala specific classes to enrich a Scala project.
+ */
+
+/*
+ * The elements are copied with minor adjustments from org.ensime.api.outgoing.scala. 
+ * See 
+ * https://github.com/ensime/ensime-server/blob/master/api/src/main/scala/org/ensime/api/outgoing.scala
+ *  
+ */
+
+/**
+ * Source sample to 
+ */
 case class SourceSample(
     srcPos: ERangePositionWithTokenId,
     srcCodeLines: List[String]){}

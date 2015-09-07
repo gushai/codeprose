@@ -18,7 +18,7 @@ import org.codeprose.util.EnsimeApiToCodeproseApi
 import org.codeprose.api._
 import org.codeprose.api.scalalang._
 
-
+import org.codeprose.provider.util._
 
 /**
  * Contains information for the EnsimeProvider and 
@@ -45,7 +45,7 @@ class EnsimeProviderContext(
   
   // All below in ms
   val timeout_ConnectionInfoReq = 500
-  val timeout_SymbolInfoReq = 500
+  val timeout_SymbolInfoReq = 750
   val timeout_SymbolDesignationsReq = 700
   val timeout_ImplicitInfoReq = 700
   val timeout_UsesOfSymbolAtPointReq = 700
@@ -212,11 +212,11 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       
       // Implicit conversion information
       logger.info("\t" + "implicit conversion information")
-      summary.set(ScalaLang.implicitConversion_information)(implicitConversionInfo)
+      summary.set(ScalaLang.implicitConversionInformation)(implicitConversionInfo)
       
       // Implicit parameter information
       logger.info("\t" + "implicit parameter information")
-      summary.set(ScalaLang.implicitParameter_information)(implicitParamInfo)
+      summary.set(ScalaLang.implicitParameterInformation)(implicitParamInfo)
 
       
     }
@@ -261,43 +261,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   }
     
     
-//    if(isInitialized){			
-//      
-//      
-////     for(file <- files){
-////        
-////        logger.info("Getting tokens: ")
-////        if(c.verbose)
-////				  logger.info("\n\nProcessing: \t" + file + "\n======================================================")
-////     
-////        import org.codeprose.api.ScalaLang._
-////        val rawTokens = getTokens(file).map(t=>  {t.set(internalTokenId)(tokenId)
-////          tokenId += 1
-////          t
-////        }) 
-////        
-////      
-////        val rawTokensWithSymbolDesignations = getSymbolDesignations(file,rawTokens)
-////        val rawTokensWithImplicitInformation = getImplicitInformation(file,rawTokensWithSymbolDesignations)
-////        
-////        val tokens = rawTokensWithImplicitInformation.map{t => enrichToken(file,t)}
-////      
-//// 
-////        out += ((file,tokens))
-////      }
-////     
-////     
-////     // Translation of sourcePostions file offset to file Token id
-////     logger.info("Updating declared at source positions ... ")
-////     includeTokenBasedSourcePostion_declaredAt(out)
-////     includeTokenBasedSourcePostion_whereUsedWithinFile(out)
-////     
-////     
-////    } else {
-////      logger.error("Not initialized correctly.")
-////    }
-////    out
-//	}
+
 
   /**
    * Generates the raw tokens.
@@ -311,13 +275,12 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     
     logger.info("Generating raw tokens.")
     val tokensPerFile = ArrayBuffer[(File,ArrayBuffer[Token])]()
-        
     
     for(file <- files){
-      // TODO: Add try catch
+      
       val srcContent =  FileUtil.loadSrcFileContent(file)         
       
-      val tokens = org.codeprose.provider.ScalaTokenizer.tokenize(srcContent)
+      val tokens = ScalaTokenizer.tokenize(srcContent)
       val tokensWithInternalId = tokens.map(t => {
         tokenId+=1
         t.set(ScalaLang.internalTokenId)(tokenId)
@@ -642,11 +605,11 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
          for(idx <- idxAffectedTokens){
            
              // Mark token that implicit information is applied
-             tokens(idx).set(ScalaLang.implicitConversion_indicator)(true)
+             tokens(idx).set(ScalaLang.implicitConversionIndicator)(true)
            
              // Save ids of implicit conversions
              if(implicitConversionId != -1){
-             val ids = tokens(idx)(ScalaLang.implicitConversion_ids) match {
+             val ids = tokens(idx)(ScalaLang.implicitConversionIds) match {
                case Some(ids) => {
                    ids :+ implicitConversionId
                } 
@@ -654,7 +617,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
                  List(implicitConversionId)               
                }
              }
-             tokens(idx).set(ScalaLang.implicitConversion_ids)(ids)
+             tokens(idx).set(ScalaLang.implicitConversionIds)(ids)
            }
                       
          }
@@ -681,11 +644,11 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
          for(idx <- idxAffectedTokens){
            
            // Mark token that implicit information is applied
-           tokens(idx).set(ScalaLang.implicitParameter_indicator)(true)
+           tokens(idx).set(ScalaLang.implicitParameterIndicator)(true)
            
            // Save ids of implicit parameters
            if(implicitParamId != -1){
-             val ids = tokens(idx)(ScalaLang.implicitParameter_ids) match {
+             val ids = tokens(idx)(ScalaLang.implicitParameterIds) match {
                case Some(ids) => {
                    ids :+ implicitParamId
                } 
@@ -693,7 +656,7 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
                  List(implicitParamId)               
                }
              }
-             tokens(idx).set(ScalaLang.implicitParameter_ids)(ids)
+             tokens(idx).set(ScalaLang.implicitParameterIds)(ids)
            }
          }
       }

@@ -9,7 +9,6 @@ import ExecutionContext.Implicits.global
 import org.codeprose.api.Token
 import org.codeprose.consumer.WriterHtml
 import org.codeprose.consumer.Consumer
-import org.codeprose.provider.Tokenizer
 import org.codeprose.provider.EnsimeProvider
 import org.codeprose.util.FileUtil
 import com.typesafe.scalalogging.LazyLogging
@@ -31,6 +30,7 @@ object Codeprose extends LazyLogging {
   
     val configParser = getConfigParser()
   
+    // Process input and translate to internal format
     configParser.parse(args, CodeproseScalaConfig()) match {
       case Some(config) =>
         val ensimeFile = config.ensimeFile    

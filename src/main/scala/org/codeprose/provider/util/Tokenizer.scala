@@ -1,4 +1,4 @@
-package org.codeprose.provider
+package org.codeprose.provider.util
 
 
 import scala.collection.mutable.ArrayBuffer
@@ -12,3 +12,4 @@ import org.codeprose.api.Token
 trait Tokenizer {
   def tokenize(src: String) : ArrayBuffer[Token]
 }
+

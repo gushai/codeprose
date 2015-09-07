@@ -737,7 +737,7 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
  
   
   /**
-   * Create the java script files that act as db.
+   * Creates the javascript files that act as db.
    */
   private def generateGlobalJSInformationFiles(
       projectSummary: ProjectSummary, 
@@ -770,8 +770,8 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
       case None => { logger.error("No package information provided in project summary.") }
     }
 
-    val implicitConv = projectSummary(ScalaLang.implicitConversion_information).getOrElse(null)
-    val implicitParam = projectSummary(ScalaLang.implicitParameter_information).getOrElse(null)
+    val implicitConv = projectSummary(ScalaLang.implicitConversionInformation).getOrElse(null)
+    val implicitParam = projectSummary(ScalaLang.implicitParameterInformation).getOrElse(null)
     if(implicitConv != null && implicitParam!=null){
       generateGlobalJSImplicitInfo(implicitConv,implicitParam)
     } else { 

@@ -1,6 +1,6 @@
 package org.codeprose.api.scalalang
 
-import org.codeprose.util.DynamicPropertyMap
+import org.codeprose.util.DynamicPropertyMap._
 import java.io.File
 import org.codeprose.api._
 
@@ -230,71 +230,123 @@ object SourceSymbol {
   // ScalaLang Keys
   // ============================================================================
   
-    // Key for Tokens
-    // ==========================================================================
-        
-        import DynamicPropertyMap._
+  // Key for Tokens
+  // ==========================================================================
 
-        override val tokenType = new Key('tokenType) { type Value = ScalaTokenType }
-        val typeId = new Key('typeId) { type Value = Int }
-        val internalTokenId = new Key('internalTokenId){ type Value = Int }
-        
-        val declaredAt = new Key('declaredAt) { type Value = OffsetSourcePositionWithTokenId }
-        
-        val fullName = new Key('fullName) { type Value = String }
-        val symbolDesignation = new Key('symbolDesignation){ type Value = ScalaLang.SourceSymbol.SourceSymbol }
-        
-        val implicitConversion_indicator = new Key('implicitConversion_indicator){ type Value = Boolean }
-        val implicitParameter_indicator = new Key('implicitParameter_indicator){ type Value = Boolean }
-
-        val implicitConversion_ids = new Key('implicitConversion_ids){ type Value = List[Int] }
-        val implicitParameter_ids = new Key('implicitParameter_ids){ type Value = List[Int] }
-        
-        val whereUsedWithInFile = new Key('whereUsedWithinFile){ type Value = List[ERangePositionWithTokenId] }
-        
-        val isCallable = new Key('isCallable){ type Value = Boolean }
-        
-        val ownerTypeId = new Key('ownerTypeId){ type Value = Int }
-        
-        
-        // Currently not in use.
-//        
-//        val declaredAs = new Key('declaredAs) { type Value = DeclaredAs }
-//        
-//        val isArrowType = new Key('isArrowType) { type Value = Boolean }
-//        
-//        val outerTypeId = new Key('outerTypeId) { type Value = Int }
-//        
-//        val args = new Key('args){ type Value = String }
-//        val typeArgs = new Key('typeArgs){ type Value = String }
-//        val members = new Key('members){ type Value = String }
-        
-     
-    
-      
+  /* 
+   * Scala token type.       
+   */
+  override val tokenType = new Key('tokenType) { type Value = ScalaTokenType }
+  /*
+   * Scala types are references using a type id. 
+   * Type ids can be used to reference information in the project's summary 
+   * saved with key typeInspectInformation.
+   */
+  val typeId = new Key('typeId) { type Value = Int }
+  
+  /*
+   * Each token is assigned a token id to allow easy reference in the output.
+   */
+  val internalTokenId = new Key('internalTokenId){ type Value = Int }
+  
+  /*
+   * Used to save the point of declaration of a token.
+   */
+  val declaredAt = new Key('declaredAt) { type Value = OffsetSourcePositionWithTokenId }
+  
+  /*
+   * Full type name.
+   */
+  val fullName = new Key('fullName) { type Value = String }
+  
+  /*
+   * Used for semantic highlighting.
+   */
+  val symbolDesignation = new Key('symbolDesignation){ type Value = ScalaLang.SourceSymbol.SourceSymbol }
+  
+  /*
+   * Indicator for implicit conversion at token.
+   */
+  val implicitConversionIndicator = new Key('implicitConversionIndicator){ type Value = Boolean }
+  
+  /*
+   * Ids of implicit conversions at token.
+   * Ids reference implicit conversion information saved in the projects summary 
+   * with key ImplicitConversionInfoSummary.
+   */
+  val implicitConversionIds = new Key('implicitConversionIds){ type Value = List[Int] }
+  
+  /*
+   * Indicator for implicit parameter at token.
+   */
+  val implicitParameterIndicator = new Key('implicitParameterIndicator){ type Value = Boolean }
+  
+  /*
+   * Ids of implicit parameters at token.
+   * Ids reference implicit parameter information saved in the projects summary
+   * with key ImplicitParameterInfoSummary.
+   */
+  val implicitParameterIds = new Key('implicitParameterIds){ type Value = List[Int] }
+  
+  /*
+   * List of source positions of the symbols occurrences in the same file. 
+   */
+  val whereUsedWithInFile = new Key('whereUsedWithinFile){ type Value = List[ERangePositionWithTokenId] }
+  
+  /*
+   * Indicator for is callable of a token.
+   */
+  val isCallable = new Key('isCallable){ type Value = Boolean }
+  
+  /*
+   * Owner type id of the token.
+   * Same ids as typeId. 
+   */
+  val ownerTypeId = new Key('ownerTypeId){ type Value = Int }
   
   
-        
-   
- 
-   
-        
-      // Keys Summary
-      // ============================================================================
-    
-      val fileList = new Key('files){ type Value = List[File] }
-      // obsolete val typeInformation = new Key('typeInformation){ type Value = Map[Int,Option[TypeInformation]] }
-      val whereUsedByTypeId = new Key('whereUsedByTypeId){ type Value = Map[Int,List[ERangePositionWithTokenId]] }
-      val whereUsedByTypeIdWithCodeSample = new Key('whereUsedByTypeIdWithCodeSample){ type Value = Map[Int,List[(ERangePositionWithTokenId, List[String])]] }
-      
-      val packageNamePerFile = new Key('packageOfFiles){ type Value = Map[File,String] }
+  // Keys Summary
+  // ============================================================================
   
-      val packageInformation = new Key('packageInformation){ type Value = Map[String,Option[PackageInfo]] }
-      
-      val typeInspectInformation = new Key('typeInspectInformation){ type Value = Map[Int,Option[TypeInspectInfo]] }
-      
-      val implicitConversion_information = new Key('implicitConversion_information){ type Value = Map[Int,ImplicitConversionInfoSummary] }
-      val implicitParameter_information = new Key('implicitParameter_information){ type Value = Map[Int,ImplicitParamInfoSummary] }
+  /*
+   * List of files in the project
+   */
+  val fileList = new Key('files){ type Value = List[File] }
+  
+  /*
+   * Map of type ids to source positions with occurrences of the type.
+   */
+  val whereUsedByTypeId = new Key('whereUsedByTypeId){ type Value = Map[Int,List[ERangePositionWithTokenId]] }
+  
+  /*
+   * Map of type ids to source positions with occurrences of the type and code samples.
+   */
+  val whereUsedByTypeIdWithCodeSample = new Key('whereUsedByTypeIdWithCodeSample){ type Value = Map[Int,List[(ERangePositionWithTokenId, List[String])]] }
+  
+  /*
+   * List of package names per file.
+   */
+  val packageNamePerFile = new Key('packageOfFiles){ type Value = Map[File,String] }
+  
+  /*
+   * Map package information per package name.
+   */
+  val packageInformation = new Key('packageInformation){ type Value = Map[String,Option[PackageInfo]] }
+  
+  /*
+   * Map type id to type inspect information.
+   */
+  val typeInspectInformation = new Key('typeInspectInformation){ type Value = Map[Int,Option[TypeInspectInfo]] }
+  
+  /*
+   * Map from implicitConversionId to ImplicitConversionInfoSummary.
+   */
+  val implicitConversionInformation = new Key('implicitConversionInformation){ type Value = Map[Int,ImplicitConversionInfoSummary] }
+  
+  /*
+   * Map from implicitParameterId to ImplicitParameterInfoSummary.
+   */
+  val implicitParameterInformation = new Key('implicitParameterInformation){ type Value = Map[Int,ImplicitParamInfoSummary] }
 }
 
 

@@ -81,24 +81,24 @@ class HtmlDataAttributeGen(htmlOutputContext: HtmlOutputContext) {
     }
     
     // Implicit indicators
-    token(implicitConversion_indicator) match {
+    token(implicitConversionIndicator) match {
       case Some(bool) => { dataAttributes += ((htmlDataAttributePrefix + "implicitconversion",s""""""" + true + s""""""")) }
       case None => {} 
     }
     
-    token(implicitConversion_ids) match {
+    token(implicitConversionIds) match {
       case Some(ids) => { val idsJson = ids.toJson.compactPrint 
         dataAttributes += ((htmlDataAttributePrefix + "implicitconversionids",s""""""" + idsJson + s""""""")) 
       } 
       case None => {}
     }
     
-    token(implicitParameter_indicator) match {
+    token(implicitParameterIndicator) match {
       case Some(bool) => { dataAttributes += ((htmlDataAttributePrefix + "implicitparameter",s""""""" + true + s""""""")) }
       case None => {} 
     }
     
-    token(implicitParameter_ids) match {
+    token(implicitParameterIds) match {
       case Some(ids) => { val idsJson = ids.toJson.compactPrint 
         dataAttributes += ((htmlDataAttributePrefix + "implicitparameterids",s""""""" + idsJson + s""""""")) 
       } 
@@ -209,24 +209,24 @@ class HtmlDataAttributeGen(htmlOutputContext: HtmlOutputContext) {
 
     // Implicit indicators
 
-    token(implicitConversion_indicator) match {
+    token(implicitConversionIndicator) match {
       case Some(bool) => { dataAttributes += ((htmlDataAttributePrefix + "implicitconversion",s""""""" + true + s""""""")) }
       case None => { } 
     }
     
-    token(implicitConversion_ids) match {
+    token(implicitConversionIds) match {
       case Some(ids) => { val idsJson = ids.toJson.compactPrint 
         dataAttributes += ((htmlDataAttributePrefix + "implicitconversionids",s""""""" + idsJson + s""""""")) 
       } 
       case None => {}
     }
     
-    token(implicitParameter_indicator) match {
+    token(implicitParameterIndicator) match {
       case Some(bool) => { dataAttributes += ((htmlDataAttributePrefix + "implicitparameter",s""""""" + true + s""""""")) }
       case None => { } 
     }
     
-    token(implicitParameter_ids) match {
+    token(implicitParameterIds) match {
       case Some(ids) => { val idsJson = ids.toJson.compactPrint 
         dataAttributes += ((htmlDataAttributePrefix + "implicitparameterids",s""""""" + idsJson + s""""""")) 
       } 

@@ -39,7 +39,7 @@ To run codeprose the ensime environment needs to be set up in the project. Check
 ```scala
 addSbtPlugin("org.ensime" % "ensime-sbt" % "0.1.7")
 ```
-either to  `project/plugins.sbt` or `~/.sbt/0.13/plugins/plugins.sbt` if you want to use ensime with every project.
+    either to  `project/plugins.sbt` or `~/.sbt/0.13/plugins/plugins.sbt` if you want to use ensime with every project.
 
 2.   Create the folder `yourProject/.ensime_cache/` to allow ensime to store its information.
 3.   Start sbt in your project and run  `gen-ensime` to generate the `.ensime` file.

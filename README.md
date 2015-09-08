@@ -28,7 +28,7 @@ Codeprose is still a beta! The current version is build against a fork of the [e
 
 #### 2. Get codeprose
 
-Clone [codeprose](https://github.com/gushai/codeprose.git) at [gushai/codeproser](https://github.com/gushai/codeprose) to a local folder.
+Clone [codeprose](https://github.com/gushai/codeprose.git) at [gushai/codeprose](https://github.com/gushai/codeprose) to a local folder.
 
 #### 3. Setup a project to run codeprose on
 
@@ -40,7 +40,8 @@ To run codeprose the ensime environment needs to be set up in the project. Check
 addSbtPlugin("org.ensime" % "ensime-sbt" % "0.1.7")
 ```
 either to  `project/plugins.sbt` or `~/.sbt/0.13/plugins/plugins.sbt` if you want to use ensime with every project.
-2.   Create the folder `yourProject/.ensime_cache` to allow ensime to store its information.
+
+2.   Create the folder `yourProject/.ensime_cache/` to allow ensime to store its information.
 3.   Start sbt in your project and run  `gen-ensime` to generate the `.ensime` file.
 
 

@@ -12,11 +12,24 @@ import org.codeprose.api.ProjectInfo
  *  3.  close()
  */
 trait Consumer {
-  def initialize() : Unit 
+  /**
+   * Initializes the Consumer. Use to acquire needed resources.
+   */
+  def initialize() : Unit
+  /**
+   * Consumer the provided information.
+   * @param projectInfo Project information gathered by Providers.
+   */
   def generateOutput(projectInfo: ProjectInfo) : Unit
+  /**
+   * Closes Consumer. Use to free resources. 
+   */
   def close() : Unit 
 }
 
-
-class ConsumerContext(
-    verbose: Boolean){}
+/**
+ * Provides information to a Consumer.
+ */
+trait ConsumerContext{
+  def verbose: Boolean 
+}

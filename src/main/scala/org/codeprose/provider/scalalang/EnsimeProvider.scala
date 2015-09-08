@@ -1,24 +1,21 @@
-package org.codeprose.provider
+package org.codeprose.provider.scalalang
 
 import org.ensime.client.Client
 import java.io.File
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
-import scala.util.{Success, Failure}
 import com.typesafe.scalalogging.LazyLogging
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.util.Try
 import java.util.concurrent.TimeoutException
 import org.ensime.client.ClientContext
 import scala.collection.mutable.ArrayBuffer
 import org.codeprose.api.Token
-import scala.util.Sorting
 import org.codeprose.util.EnsimeApiToCodeproseApi
 import org.codeprose.api._
 import org.codeprose.api.scalalang._
-
 import org.codeprose.provider.util._
+import org.codeprose.provider.Provider
+import org.codeprose.provider.ProviderContext
+import org.codeprose.util.FileUtil
 
 /**
  * Contains information for the EnsimeProvider and 

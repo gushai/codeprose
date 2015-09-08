@@ -49,6 +49,8 @@ object ERangePositionWithTokenId {
 
 /**
  * Declared as.
+ * Used via object DeclaredAs.
+ * @param symbol Describing the how the Symbol is defined.
  */
 sealed abstract class DeclaredAs(val symbol: scala.Symbol)
 

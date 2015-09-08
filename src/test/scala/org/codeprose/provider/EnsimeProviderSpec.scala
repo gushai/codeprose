@@ -1,6 +1,8 @@
 package org.codeprose.provider
 
 import org.scalatest.FunSpec
+import org.codeprose.provider.scalalang.EnsimeProviderContext
+import org.codeprose.provider.scalalang.EnsimeProvider
 
 class EnsimeProviderSpec extends FunSpec {
 

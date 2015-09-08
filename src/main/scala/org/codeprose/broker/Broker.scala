@@ -44,8 +44,27 @@ import org.codeprose.api.ProjectInfo
  *  
  */
 trait Broker {
+  /**
+   * Initializes the Broker. Use to acquire needed resources.
+   */
   def initialize() : Unit
-  def analyzeSourceCode() : ProjectInfo  
+  /**
+   * Contains the calls to the Providers used in the application.
+   */
+  def analyzeSourceCode() : ProjectInfo
+  /**
+   * Contains the calls to the Consumers used in the application.
+   */
   def generateOutput(projectInfo: ProjectInfo) : Unit    
+  /**
+   * Closes Broker. Use to free resources. 
+   */
   def close() : Unit
+}
+
+/**
+ * BrokerContext provide information to Brokers.
+ */
+trait BrokerContext{
+    def verbose: Boolean
 }

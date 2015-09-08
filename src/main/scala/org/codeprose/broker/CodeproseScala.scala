@@ -9,12 +9,12 @@ import ExecutionContext.Implicits.global
 import org.codeprose.api.Token
 import org.codeprose.consumer.WriterHtml
 import org.codeprose.consumer.Consumer
-import org.codeprose.provider.EnsimeProvider
+import org.codeprose.provider.scalalang.EnsimeProvider
 import org.codeprose.util.FileUtil
 import com.typesafe.scalalogging.LazyLogging
 import org.codeprose.provider.ProviderContext
-import org.codeprose.provider.EnsimeProvider
-import org.codeprose.provider.EnsimeProviderContext
+import org.codeprose.provider.scalalang.EnsimeProvider
+import org.codeprose.provider.scalalang.EnsimeProviderContext
 import org.codeprose.consumer.WriterContextHtml
 import org.codeprose.api.ProjectInfo
 import scopt.OptionParser
@@ -33,7 +33,12 @@ object Codeprose extends LazyLogging {
     // Process input and translate to internal format
     configParser.parse(args, CodeproseScalaConfig()) match {
       case Some(config) =>
-        val ensimeFile = config.ensimeFile    
+        val ensimeFile = config.ensimeFile
+        if(!ensimeFile.exists()){
+          logger.error("Provided ensime file does not exist. Check your input. Shutting down.")
+          return
+        }
+        
         val outputPath = config.outputFolder
         val mainSrcFolders = if(config.includeTests){
           List(new File(config.inputFolder.getPath + "/src/main/scala/"),

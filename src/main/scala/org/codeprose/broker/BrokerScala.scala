@@ -3,18 +3,28 @@ package org.codeprose.broker
 import java.io.File
 import org.codeprose.consumer.WriterHtml
 import org.codeprose.consumer.Consumer
-import org.codeprose.provider.EnsimeProvider
+import org.codeprose.provider.scalalang.EnsimeProvider
 import org.codeprose.util.FileUtil
 import com.typesafe.scalalogging.LazyLogging
 import org.codeprose.provider.ProviderContext
-import org.codeprose.provider.EnsimeProvider
-import org.codeprose.provider.EnsimeProviderContext
+import org.codeprose.provider.scalalang.EnsimeProvider
+import org.codeprose.provider.scalalang.EnsimeProviderContext
 import org.codeprose.consumer.WriterContextHtml
 import org.codeprose.api.ProjectInfo
 
 /**
  * Provides information to the broker.
  * Assumes ensime-server started externally.  
+ * 
+ * @param host            Ensime-server host.
+ * @param port            Ensime-server port.
+ * @param ensimeFile      Path to the project's .enimse file.
+ * @param srcMainFolders  List of folder paths to process.
+ *                        Default src/main/scala or src/test/scala
+ * @param filesToProcess  List of files to process.
+ * @param outputPath      Output path.
+ * @param outputType      Output type. ("html")
+ * @param verbose         Print verbose output.
  */
 class BrokerContextScala(
     val host: String,
@@ -25,14 +35,13 @@ class BrokerContextScala(
     val outputPath: File,
     val outputType: String,
     val verbose: Boolean
-    ){}
-
+    ) extends BrokerContext
 
 /**
  * Broker for Scala.
  * 
  * Central point in codeprose scala. 
- *  - Analyzes source code with the help of an EnsimeScalaProvider
+ *  - Analyzes source code with the help of an EnsimeProvider
  *  - Produces output with a WriterHtml.
  * 
  * @param bc BrokerContextScala 

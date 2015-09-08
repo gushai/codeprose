@@ -21,7 +21,7 @@ class ResourceRelPaths(val base: String, val target: String)
 class WriterContextHtml(
     val outputMainPath: File,
     val verbose: Boolean
-    ) extends ConsumerContext(verbose) {  
+    ) extends ConsumerContext {  
   
   val outputRelFolders = List("content","js","style")
 
@@ -217,10 +217,10 @@ $$(document).ready(function(){
     var isArrow = false;
     var declaredAs = "";  
     
-    if(typeInfo.tpe._infoType === "BasicTypeInfo"){
+    if(typeInfo.tpe.typeName === "BasicTypeInfo"){
         typeName+= typeInfo.tpe.fullName;
         declaredAs = typeInfo.tpe.declAs;
-    } else if(typeInfo.tpe._infoType === "ArrowTypeInfo"){
+    } else if(typeInfo.tpe.typeName === "ArrowTypeInfo"){
         typeName+= typeInfo.tpe.name;
         isArrow=true;
         declaredAs="arrow";
@@ -290,10 +290,10 @@ function getEntryForTypeInspectInfo(currentId,typeInfo){
   
   var typeName = "";
   var declaredAs = ""
-    if(typeInfo.tpe._infoType === "BasicTypeInfo"){
+    if(typeInfo.tpe.typeName === "BasicTypeInfo"){
       typeName+= typeInfo.tpe.fullName;
       declaredAs = typeInfo.tpe.declAs; 
-    } else if(typeInfo.tpe._infoType === "ArrowTypeInfo"){
+    } else if(typeInfo.tpe.typeName === "ArrowTypeInfo"){
       typeName+= typeInfo.tpe.name;
     } else { 
       typeName+="-- Unknown -- ";
@@ -324,10 +324,10 @@ function getInterfaceEntry(intrface){
 
   var typeName="";
   var declAs = "";
-  if(typeInfo._infoType === "BasicTypeInfo"){
+  if(typeInfo.typeName === "BasicTypeInfo"){
       typeName+= typeInfo.fullName;
       declAs = typeInfo.declAs;
-    } else if(typeInfo._infoType === "ArrowTypeInfo"){
+    } else if(typeInfo.typeName === "ArrowTypeInfo"){
       typeName+= typeInfo.name;
       declAs = "arrow";
     } else { 
@@ -418,10 +418,10 @@ function getInterfaceEntry(intrface){
     var isArrow = false;
     var declaredAs = "";  
     
-    if(typeInfo.tpe._infoType === "BasicTypeInfo"){
+    if(typeInfo.tpe.typeName === "BasicTypeInfo"){
         typeName+= typeInfo.tpe.fullName;
         declaredAs = typeInfo.tpe.declAs;
-    } else if(typeInfo.tpe._infoType === "ArrowTypeInfo"){
+    } else if(typeInfo.tpe.typeName === "ArrowTypeInfo"){
         typeName+= typeInfo.tpe.name;
         isArrow=true;
         declaredAs="arrow";
@@ -482,9 +482,9 @@ function getInterfaceEntry(intrface){
         var typeInfo = typeInformation[currentTypeId];
 
     var typeName = "";
-    if(typeInfo.tpe._infoType === "BasicTypeInfo"){
+    if(typeInfo.tpe.typeName === "BasicTypeInfo"){
       typeName+= typeInfo.tpe.fullName;
-    } else if(typeInfo.tpe._infoType === "ArrowTypeInfo"){
+    } else if(typeInfo.tpe.typeName === "ArrowTypeInfo"){
       typeName+= typeInfo.tpe.name;
     } else { 
       typeName+="-- Unknown -- ";
@@ -631,18 +631,18 @@ for(var mem=0;mem<members.length;mem++){
       var nam = "";
       var linkToSrcPos = null;
       
-      if(member._infoType==="BasicTypeInfo"){
+      if(member.typeName==="BasicTypeInfo"){
         typeId = member.typeId;
         declaredAs = member.declAs;
   nam = member.fullName;
   if(member.pos!=null && member.pos.tokenId!=-1){
      linkToSrcPos = "." + srcFileToRelLink[member.pos.filename] + "#T"+ member.pos.tokenId; 
   }
-      } else if(member._infoType==="ArrowTypeInfo"){
+      } else if(member.typeName==="ArrowTypeInfo"){
   typeId = member.typeId.toString;
         declaredAs = "arrow";
   nam = member.name;
-      } else if(member._infoType==="PackageInfo"){
+      } else if(member.typeName==="PackageInfo"){
         declaredAs = "package";
   nam = member.fullName;
       } else {}

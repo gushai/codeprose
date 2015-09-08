@@ -35,14 +35,15 @@ Clone [codeprose](https://github.com/gushai/codeprose.git) at [gushai/codeprose]
 To run codeprose the ensime environment needs to be set up in the project. Check out the test projects at  [gushai/codeprosetestprojects](https://github.com/gushai/codeprosetestprojects) as an example.
 
 
-1.   Add  [ensime-sbt](https://github.com/ensime/ensime-sbt)  to your projects plugins by adding 
-```scala
-addSbtPlugin("org.ensime" % "ensime-sbt" % "0.1.7")
-```
+ 1.   Add  [ensime-sbt](https://github.com/ensime/ensime-sbt)  to your projects plugins by adding 
+
+    ```scala
+    addSbtPlugin("org.ensime" % "ensime-sbt" % "0.1.7")
+    ```
     either to  `project/plugins.sbt` or `~/.sbt/0.13/plugins/plugins.sbt` if you want to use ensime with every project.
 
-2.   Create the folder `yourProject/.ensime_cache/` to allow ensime to store its information.
-3.   Start sbt in your project and run  `gen-ensime` to generate the `.ensime` file.
+ 2.   Create the folder `yourProject/.ensime_cache/` to allow ensime to store its information.
+ 3.   Start sbt in your project and run  `gen-ensime` to generate the `.ensime` file.
 
 
 ## Run codeprose

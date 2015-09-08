@@ -66,7 +66,7 @@ function tooltipSrcFile_getLinkToTypeOverview(typeId){
 
 	if(typeInspectInfo != null){
 		var typeInfo = typeInspectInfo.tpe;
-		if(typeInfo._infoType === "BasicTypeInfo"){
+		if(typeInfo.typeName === "BasicTypeInfo"){
 			var rawLink = "../" + "typeInformationSummary.html#TYPEID" + typeId;
 			retString = "<div style='margin-top:0.5em;'>" + "<a href='" + rawLink + "'>" + "Type overview" + "</a>" + "</div>";
 		}
@@ -99,7 +99,7 @@ function tooltipSrcFile_getTypeInformation(typeInspectInfo){
 		return retString;
 	}
 	retString += "<div style='margin-top:0.5em;'>";
-	if(typeInspectInfo.tpe._infoType === "BasicTypeInfo"){
+	if(typeInspectInfo.tpe.typeName === "BasicTypeInfo"){
 		retString += tooltipSrcFile_getTypeInformation_BasicTypeInfo(typeInspectInfo);
         } else {
 		retString += tooltipSrcFile_getTypeInformation_ArrowTypeInfo(typeInspectInfo);
@@ -148,7 +148,7 @@ function tooltipSrcFile_getResultType(typeInfo){
 	var retTypeId = typeInfo.typeId;
 	var retTypeInspectInfo = typeInformation[retTypeId];
 	console.log(retTypeInspectInfo);
-	if(retTypeInspectInfo != null && retTypeInspectInfo.tpe._infoType === "BasicTypeInfo"){
+	if(retTypeInspectInfo != null && retTypeInspectInfo.tpe.typeName === "BasicTypeInfo"){
 		
 		var rawLink = getRawLinkToTypeDefinition(retTypeInspectInfo.tpe); 
 		var declAs = typeInfo.declAs;
@@ -191,7 +191,7 @@ function tooltipSrcFile_getListOfParameters(paramSections){
 			  		var paramTypeName = getTypeInfoName(paramTypeInfo);
 	
 					var rawLinkToDef = "";
-					if(paramTypeInfo._infoType === "BasicTypeInfo"){
+					if(paramTypeInfo.typeName === "BasicTypeInfo"){
 						var typeInspectInfo = typeInformation[paramTypeInfo.typeId];
 						if(typeInspectInfo != null){
 							rawLinkToDef = getRawLinkToTypeDefinition(typeInspectInfo.tpe);
@@ -244,7 +244,7 @@ function tooltipSrcFile_getTypeInformation_BasicTypeInfo(typeInspectInfo){
 		if(typeInspectInfo.tpe.outerTypeId!=null){
 			var outerTypeId = typeInspectInfo.tpe.outerTypeId;
 			var outerTypeInspectInfo = typeInformation[outerTypeId];
-			if(outerTypeInspectInfo.tpe != null && outerTypeInspectInfo.tpe._infoType === "BasicTypeInfo"){
+			if(outerTypeInspectInfo.tpe != null && outerTypeInspectInfo.tpe.typeName === "BasicTypeInfo"){
 			
 				var outerTypeList = tooltipSrcFile_getOuterTypeInformation(outerTypeInspectInfo.tpe);
 				retString += "<li style='margin-top:0.5em;'>" + "Outer type: " + outerTypeList + "</li>";
@@ -273,7 +273,7 @@ function tooltipSrcFile_getCompanionObjectInformation(typeInspectInfo){
 	if(typeInspectInfo.companionId != null){
 			
 		var companionInspectInfo = typeInformation[typeInspectInfo.companionId];
-		if(companionInspectInfo != null && companionInspectInfo.tpe._infoType === "BasicTypeInfo") {
+		if(companionInspectInfo != null && companionInspectInfo.tpe.typeName === "BasicTypeInfo") {
 			var typeInfo = companionInspectInfo.tpe;
 			var declAs = typeInfo.declAs;
 			var n = getTypeInfoName(typeInfo);
@@ -433,7 +433,7 @@ function tooltipSrcFile_implicitParameter(implicitParameterIds){
 
 			if(typeInfo!=null){
 				typeName = getTypeInfoName(typeInfo);
-				if(typeInfo._infoType === "BasicTypeInfo"){
+				if(typeInfo.typeName === "BasicTypeInfo"){
 					typeDeclAs = typeInfo.declAs;
 					if(typeInfo.pos!=null){
 						rawLinkToTypeDef = getRawLinkToDeclaration(typeInfo.pos);
@@ -486,7 +486,7 @@ function tooltipSrcFile_getOwnerTypeInformation(elem){
 			var fullname = getTypeInfoName(typeInfo);
 			var rawLinkToDef = "";
 
-			if(typeInfo._infoType === "BasicTypeInfo"){
+			if(typeInfo.typeName === "BasicTypeInfo"){
 				rawLinkToDef = getRawLinkToTypeDefinition(typeInfo);			
 			}
 				
@@ -546,7 +546,7 @@ function getRawLinkToDeclaration(declPos){
 
 function getTypeInfoName(typeInfo){
 	var n = "";
-	if(typeInfo._infoType === "BasicTypeInfo"){
+	if(typeInfo.typeName === "BasicTypeInfo"){
 		n=typeInfo.fullName;	
 	} else {
 		n=typeInfo.name;

@@ -79,7 +79,7 @@ object CodeproseJsonFormat extends DefaultJsonProtocol with LazyLogging {
       val name = XmlEscape.escape(pi.name).toJson
       val fullName = XmlEscape.escape(pi.fullName).toJson
       
-      JsObject("_infoType" -> pi._infoType.toJson, 
+      JsObject("typeName" -> pi.typeName.toJson, 
                "name" -> name,
                "fullName" -> fullName,
                "members" -> members)
@@ -96,7 +96,7 @@ object CodeproseJsonFormat extends DefaultJsonProtocol with LazyLogging {
       val pos = namedTypeMemInfo.pos.toJson
       val signatureString = XmlEscape.escape(namedTypeMemInfo.signatureString.getOrElse("")).toJson
       val declAs = CodeproseJsonFormat.DeclaredAsFormat.write(namedTypeMemInfo.declAs)
-      JsObject("_infoType" -> namedTypeMemInfo._infoType.toJson, 
+      JsObject("typeName" -> namedTypeMemInfo.typeName.toJson, 
                "name" -> name,
                "tpe" -> typeInfo,
                "pos" -> pos,
@@ -160,7 +160,7 @@ object CodeproseJsonFormat extends DefaultJsonProtocol with LazyLogging {
          val declAs = CodeproseJsonFormat.DeclaredAsFormat.write(basic.declAs)
          val fullName = XmlEscape.escape(basic.fullName).toJson         
          val pos = basic.pos.toJson 
-         JsObject("_infoType" -> basic._infoType.toJson, 
+         JsObject("typeName" -> basic.typeName.toJson, 
                   "name" -> name,
                   "typeId" -> basic.typeId.toJson,
                   "declAs" -> declAs,
@@ -187,7 +187,7 @@ object CodeproseJsonFormat extends DefaultJsonProtocol with LazyLogging {
          
          val name = XmlEscape.escape(arrow.name).toJson
          
-         JsObject("_infoType" -> arrow._infoType.toJson, 
+         JsObject("typeName" -> arrow.typeName.toJson, 
                   "name" ->  name,
                   "typeId" -> arrow.typeId.toJson,
                   "resultType" -> resultType,
@@ -232,10 +232,10 @@ object CodeproseJsonFormat extends DefaultJsonProtocol with LazyLogging {
     def write(implInfo: ImplicitInfo) = {
       implInfo match {
         case implConv : ImplicitConversionInfo => {
-          JsObject("_infoType"->implConv._infoType.toJson)  
+          JsObject("typeName"->implConv.typeName.toJson)  
         }
         case implParam : ImplicitParamInfo => {
-          JsObject("_infoType"->implParam._infoType.toJson)  
+          JsObject("typeName"->implParam.typeName.toJson)  
         }
         case implConv : ImplicitConversionInfoSummary => {
           implConv.toJson
@@ -253,7 +253,7 @@ object CodeproseJsonFormat extends DefaultJsonProtocol with LazyLogging {
    implicit object ImplicitConversionInfoSummaryFormat extends RootJsonFormat[ImplicitConversionInfoSummary] {
     def write(implInfo: ImplicitConversionInfoSummary) = { 
         JsObject(
-          "_infoType"->implInfo._infoType.toJson,
+          "typeName"->implInfo.typeName.toJson,
           "fun" -> implInfo.fun.toJson     
           )
     
@@ -271,7 +271,7 @@ object CodeproseJsonFormat extends DefaultJsonProtocol with LazyLogging {
       }
       
         JsObject(
-          "_infoType"->implInfo._infoType.toJson,
+          "typeName"->implInfo.typeName.toJson,
           "fun" -> implInfo.fun.toJson,
           "params" -> params,
           "funIsImplicit" -> implInfo.funIsImplicit.toJson 

@@ -7,7 +7,7 @@ import scala.concurrent._
 import scala.concurrent.duration._
 import ExecutionContext.Implicits.global
 import org.codeprose.api.Token
-import org.codeprose.consumer.WriterHtml
+import org.codeprose.consumer.scalalang.WriterHtml
 import org.codeprose.consumer.Consumer
 import org.codeprose.provider.scalalang.EnsimeProvider
 import org.codeprose.util.FileUtil
@@ -15,7 +15,7 @@ import com.typesafe.scalalogging.LazyLogging
 import org.codeprose.provider.ProviderContext
 import org.codeprose.provider.scalalang.EnsimeProvider
 import org.codeprose.provider.scalalang.EnsimeProviderContext
-import org.codeprose.consumer.WriterContextHtml
+import org.codeprose.consumer.scalalang.WriterContextHtml
 import org.codeprose.api.ProjectInfo
 import scopt.OptionParser
 

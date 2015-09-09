@@ -1,6 +1,4 @@
-package org.codeprose.consumer
-
-import java.io.File
+package org.codeprose.consumer.scalalang
 
 
 

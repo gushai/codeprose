@@ -1,6 +1,7 @@
-package org.codeprose.consumer
+package org.codeprose.consumer.scalalang
 
 import org.codeprose.api.ProjectInfo
+import org.codeprose.consumer.Consumer
 
 class WriterLatex extends Consumer {
   

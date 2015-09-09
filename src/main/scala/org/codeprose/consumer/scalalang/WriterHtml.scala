@@ -1,4 +1,4 @@
-package org.codeprose.consumer
+package org.codeprose.consumer.scalalang
 
 import java.io.File
 import com.typesafe.scalalogging.LazyLogging
@@ -7,29 +7,44 @@ import spray.json._
 import org.codeprose.api._
 import org.codeprose.api.scalalang._
 import org.codeprose.consumer.util.CommentUtil
-import org.codeprose.consumer.util.MarkdownConverter
-import org.codeprose.consumer.util.OutputContextSetter
 import org.codeprose.util.FileUtil
-import org.codeprose.util.StringUtil
 import org.codeprose.util.CodeproseJsonFormat._
+import org.codeprose.consumer.Consumer
+import org.codeprose.consumer.ConsumerContext
+import org.codeprose.consumer.util.OutputContextSetterHtml
+import org.codeprose.consumer.util.XmlEscape
 
+object WriterContextHtml {
+ /**
+  * Helper for WriterContextHtml used for copying resources to output.
+  * @param  base    Resource filename.
+  * @param  target  Relative filename in output.
+  */
+  case class ResourceRelPaths(base: String, target: String)
+}
 
-case class ResourceRelPaths(base: String, target: String)
-
-
-
+/**
+ * Contains information for the WriterHtml.
+ * @þaram   outputMainPath  Output path.
+ * @þaram   verbose         Print verbose.
+ */
 class WriterContextHtml(
     val outputMainPath: File,
     val verbose: Boolean
     ) extends ConsumerContext {  
   
+  import WriterContextHtml.ResourceRelPaths
+  
+  // Folders to be created in outputMainPath
   val outputRelFolders = List("content","js","style")
 
+  // Resources to copy to outputMainPath
   val resourcesToCopy = List[ResourceRelPaths](
       new ResourceRelPaths("/html/style.css","style/style.css"),
       new ResourceRelPaths("/js/codeprose.global.js","js/codeprose.global.js")
       )
 
+  // Map of output file names.
   val summaryFilesRelPath = Map("summary.index" -> "/index.html",
                                 "summary.typeinfo" -> "/typeInformationSummary.html",
                                 "summary.packageinfo" -> "/packageSummary.html",
@@ -43,6 +58,10 @@ class WriterContextHtml(
 
 
 
+/**
+ * Generates a Html output.
+ *@param  c WriterContextHtml
+ */
 class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLogging {
  
   def initialize() : Unit = {}
@@ -850,7 +869,7 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
             }
           }).map(e=>e._2).toList
           
-          val srcFilename = htmlOutputContext.getShoretendFilename(srcPos.filename).getOrElse("")
+          val srcFilename = htmlOutputContext.getShortenedFilename(srcPos.filename).getOrElse("")
           
           if(srcFileNameLink.size>0){
             new SourcePositionLinkWithCodeSample(srcFilename,srcFileNameLink(0),srcPos.tokenId,sample)
@@ -973,7 +992,7 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
    */
   private def setupOutputEnvironment() : Unit = {
     logger.info("Setting up output environment")
-    val setter = new OutputContextSetter(c.outputMainPath)
+    val setter = new OutputContextSetterHtml(c.outputMainPath)
     setter.setFolderStructure(c.outputRelFolders)
     c.resourcesToCopy.foreach({ f => setter.copyResource(f.base, new File(c.outputMainPath,f.target)) }) 
   }

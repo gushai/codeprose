@@ -1,24 +1,39 @@
-package org.codeprose.consumer
+package org.codeprose.consumer.scalalang
 
 import scala.collection.mutable.ArrayBuffer
 import org.codeprose.api.Token
 import org.codeprose.api.scalalang._
 import org.codeprose.api.scalalang.ScalaLang._
+import org.codeprose.api.scalalang.ScalaLang.Tokens
+import org.codeprose.consumer.util.CommentUtil
+import org.codeprose.consumer.util.MarkdownConverter
 
 
 /**
- * Element to map from token to output entry.
- * @param token Token
- * @return      
+ * Maps from token to output entry.
  */
 trait TokenToOutputEntry {
+  // Put java script elements that are triggered by individual tokens here.
   val scriptElements = ArrayBuffer[String]()
+  /**
+   * Returns tuple of the html elements to wrap the token text in.
+   *  Tuple._1 -> html code before token text
+   *  Tuple._2 -> html code after token text
+   *  
+   * For example.
+   * ("<a href='somelink.html'>","</a>")
+   *  
+   * @param token Token
+   * @return      Tuple of strings with html code to be 
+   *              put before and after the token text in the output.
+   */
   def getTokenEntryWrapper(token: Token) : (String,String)
 }
 
 
-
-//class TokenToOutputEntryHtml(val filenamesOriginalToOutputNames: Array[(String,String)]) extends TokenToOutputEntry {
+/**
+ * Generates the 
+ */
 class TokenToOutputEntryHtml(htmlOutputContext: HtmlOutputContext) 
     extends HtmlDataAttributeGen(htmlOutputContext) with TokenToOutputEntry { 
        
@@ -87,7 +102,6 @@ class TokenToOutputEntryHtml(htmlOutputContext: HtmlOutputContext)
        }        
        }
    }
-  
   
    /**
     * Returns wrapper for KEYWORDS.
@@ -313,20 +327,17 @@ class TokenToOutputEntryHtml(htmlOutputContext: HtmlOutputContext)
 	  
     import ScalaLang._
     
-    // Fill title information
     val rawTitleElements = List(token(fullName).getOrElse(""),
                                 "TokenType: " + token(tokenType).getOrElse(""),
                                 "Offset: " + token.offset).mkString("\n")
     
     val title = s""" title="""" + rawTitleElements + s"""" """
     
-    // DOM id 
 		val domElementId = token(internalTokenId) match {
 			  case Some(id) => {s""" id="T$id" """}
 			  case None => s""" """
 	  }
     
-	  // Link elements to declared_At   
 	  val (linkToDeclaredAt_beg,linkToDeclaredAt_end) = if(token(declaredAt).isDefined){
 
 		  val srcPos = token(declaredAt).get
@@ -348,18 +359,16 @@ class TokenToOutputEntryHtml(htmlOutputContext: HtmlOutputContext)
 	    case None => " "
 	  }
 
-	  // Data attributes 
 	  val dataAttributes = getHtmlDataAttributes(token).map(e=> e._1 + "=" + e._2).mkString(" "," "," ")
 
-			  // Set output 
-			  val spanElementBeg = s"""<span""" + spanClass + domElementId + s"""$dataAttributes $title>"""
-			  val spanElementEnd = "</span>"
+    val spanElementBeg = s"""<span""" + spanClass + domElementId + s"""$dataAttributes $title>"""
+		val spanElementEnd = "</span>"
 
-			  if(linkToDeclaredAt_beg.length()!=0){
-				  (linkToDeclaredAt_beg + spanElementBeg, spanElementEnd + linkToDeclaredAt_end)
-			  } else {
-				  (spanElementBeg,spanElementEnd)
-			  }
+		if(linkToDeclaredAt_beg.length()!=0){
+			(linkToDeclaredAt_beg + spanElementBeg, spanElementEnd + linkToDeclaredAt_end)
+		} else {
+			(spanElementBeg,spanElementEnd)
+		}
 
   }
   
@@ -371,7 +380,6 @@ class TokenToOutputEntryHtml(htmlOutputContext: HtmlOutputContext)
   private def handleWS(token: Token) : (String,String) = {
 	  ("","")
   }
-
     
 }
 

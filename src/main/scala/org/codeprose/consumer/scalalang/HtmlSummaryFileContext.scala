@@ -1,5 +1,4 @@
-package org.codeprose.consumer
-
+package org.codeprose.consumer.scalalang
 
 
 class HtmlSummaryFileContext(){
@@ -68,33 +67,10 @@ $script
     frameBeg + content + frameEnd
 
   }
-//  def getContent(
-//		  originalFilenames: List[String],
-//		  labels: List[String], 
-//		  links: List[String]
-//		  ): String = {
-//
-//      // TODO group based on folders
-//      val frameBeg = s"""<div class="textbox">"""
-//      val frameEnd = s"""</div>\n"""
-//      val beg = "<h2>" + "Files" +"</h2>"                 
-//      
-//      
-//      val dataAttributesPrefix = "data-cp-"
-//      
-//      var entries = (originalFilenames zip ( labels zip links)).map{e => (e._1,e._2._1,e._2._2)}
-//
-//      frameBeg+ beg + "<ul>" + entries.map({e => 
-//      s"""<li><a href="""" + 
-//      e._3 + s"""" title="Originial filename:""" +e._1 + s"""">""" +
-//      e._2 + s"""</a></li>"""}).mkString("\n") + "</ul>\n" + frameEnd
-//      
-//      
-//  }
 
 }
 
 
-//class HtmlIndexFileContext 
+
 
 

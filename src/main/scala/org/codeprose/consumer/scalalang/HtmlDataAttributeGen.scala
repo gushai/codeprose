@@ -1,59 +1,60 @@
-package org.codeprose.consumer
+package org.codeprose.consumer.scalalang
 
 import scala.collection.mutable.ArrayBuffer
 import org.codeprose.api._
 import org.codeprose.api.scalalang._
-import org.codeprose.api.scalalang.ScalaLang.ScalaTokenType
-import org.codeprose.api.scalalang.ScalaLang.Tokens
 import spray.json._
 import org.codeprose.util.CodeproseJsonFormat._
+import org.codeprose.api.scalalang.ScalaLang
 
 
+/**
+ * Generates html data attributes for tokens.
+ * @param   htmlOutputContext HtmlOutputContext.
+ */
 class HtmlDataAttributeGen(htmlOutputContext: HtmlOutputContext) {
   
+  // Prefix of all data attributes. 
+  // Use in jQuery: $(selector).data("cp-ATTRIBUTE"
   val htmlDataAttributePrefix  = "data-cp-" 
   
   /**
-   * Creates html data attributes for a token.
+   * Creates html data attributes for tokens.
    * @param token Token to process.
-   * @return      ArrayBuffer of "(key,value)"
+   * @return      ArrayBuffer of "(key,value)" with key = data-cp-ATTRIBUTE and value information to save.
    */
   def getHtmlDataAttributes(token: Token) : ArrayBuffer[(String,String)] = {
-
     token(ScalaLang.tokenType) match {
-    case Some(tt) => {
-
-      if(tt.isId){
-        getHtmlDataAttributesIds(token)
-      } else if (tt.isKeyword) {
-        ArrayBuffer[(String,String)]()
-      } else if (tt.isXml) {
-        ArrayBuffer[(String,String)]()
-      } else if (tt.isComment){
-        ArrayBuffer[(String,String)]()
-      } else if (tt.isLiteral) {
-        getHtmlDataAttributesLiterals(token)
-      } else {
+      case Some(tt) => {
+        if(tt.isId){
+          getHtmlDataAttributesIds(token)
+        } else if (tt.isKeyword) {
+          ArrayBuffer[(String,String)]()
+        } else if (tt.isXml) {
+          ArrayBuffer[(String,String)]()
+        } else if (tt.isComment){
+          ArrayBuffer[(String,String)]()
+        } else if (tt.isLiteral) {
+          getHtmlDataAttributesLiterals(token)
+        } else {
+          ArrayBuffer[(String,String)]()
+        }
+      }
+      case None => {
         ArrayBuffer[(String,String)]()
       }
-
-    }
-    case None => {
-      ArrayBuffer[(String,String)]()
-    }
     }
   } 
    
   /**
    * Generate html data attributes for Ids.
    * @token token Token to process.
-   * @return      (key,value) : (String,String)
+   * @return      (key,value) : (String,String) with key = data-cp-ATTRIBUTE and value information to save.
    */
   private def getHtmlDataAttributesIds(token: Token) : ArrayBuffer[(String,String)] = {
     val dataAttributes = ArrayBuffer[(String,String)]()
     
     import ScalaLang._
-    
     
     token(fullName) match {
         case Some(name) => { dataAttributes +=  ((htmlDataAttributePrefix + "fullname",s""""""" + name.toString + s""""""")) } 
@@ -80,7 +81,6 @@ class HtmlDataAttributeGen(htmlOutputContext: HtmlOutputContext) {
       case None => {}
     }
     
-    // Implicit indicators
     token(implicitConversionIndicator) match {
       case Some(bool) => { dataAttributes += ((htmlDataAttributePrefix + "implicitconversion",s""""""" + true + s""""""")) }
       case None => {} 
@@ -107,98 +107,38 @@ class HtmlDataAttributeGen(htmlOutputContext: HtmlOutputContext) {
     
     token(whereUsedWithInFile) match {
       case Some(srcPos) => { 
-        val tokenIds=srcPos.map(e=> "#T" + e.tokenId ).mkString("",",","") 
-         dataAttributes += ((htmlDataAttributePrefix + "whereusedinfile",s""""""" + tokenIds + s""""""")) }
-          case None => {}
-      } 
-    
-    
+    	  val tokenIds=srcPos.map(e=> "#T" + e.tokenId ).mkString("",",","") 
+    			dataAttributes += ((htmlDataAttributePrefix + "whereusedinfile",s""""""" + tokenIds + s""""""")) }
+      case None => {}
+    } 
     
     token(declaredAt) match {
       case Some(srcPos) => {
-        htmlOutputContext.getRelativeOutputFilename(srcPos.filename) match {
-          case Some(relLinkToOtherSrcOutputFile) => {
-            val tId = srcPos.tokenId
-            val link = ".." + relLinkToOtherSrcOutputFile + "#" + "T" + tId.toString
-            dataAttributes += ((htmlDataAttributePrefix + "declaration",s""""""" + link + s"""""""))
-        } 
-        case None => {}
-        }
+    	  htmlOutputContext.getRelativeOutputFilename(srcPos.filename) match {
+    	    case Some(relLinkToOtherSrcOutputFile) => {
+    		    val tId = srcPos.tokenId
+    				val link = ".." + relLinkToOtherSrcOutputFile + "#" + "T" + tId.toString
+    				dataAttributes += ((htmlDataAttributePrefix + "declaration",s""""""" + link + s"""""""))
+    	    } 
+    	    case None => {}
+    	  }
       } 
       case None => {}
     }
-    
-    
-    //    token(whereUsed_WithinFileTokenIdSrcPos) match {
-    //      case Some(srcPos) => { val tokenIds=srcPos.map(e=> "#T" + e.tokenId ).mkString("",",","") 
-    //        dataAttributes += ((dataAttributesPrefix + "whereusedinfile",s""""""" + tokenIds + s""""""")) }
-    //      case None => {}
-    //    } 
-    //           
-
-    //    
-    //   token(implicitConversion_indicator) match {
-    //      case Some(name) => { 
-    //        dataAttributes += ((dataAttributesPrefix + "implicitconversion",s""""""" + true + s""""""")) 
-    //      }
-    //      case None => { } 
-    //    }
-    //    
-    //    token(implicitConversion_fullName) match {
-    //      case Some(name) => { 
-    //        dataAttributes += ((dataAttributesPrefix + "implicitconversionfullname",s""""""" + name + s""""""")) 
-    //      }
-    //      case None => { } 
-    //    }
-    //
-    //    token(implicitConversion_sourcePosition) match {
-    //      case Some(srcPos) => { 
-    //        // TODO: ADD token ID
-    //        val link = "." + getRelativeOutputFilenameFromOriginalFile(srcPos.filename) + "#" + "T" + ""
-    //        dataAttributes += ((dataAttributesPrefix + "implicitconversiondeclaredat",s""""""" + link + s"""""""))          
-    //         
-    // 
-    //      }
-    //      case None => { } 
-    //    }
-    //    
-    //    token(implicitParameter_indicator) match {
-    //      case Some(name) => { 
-    //        dataAttributes += ((dataAttributesPrefix + "implicitparameter",s""""""" + true + s""""""")) 
-    //      }
-    //      case None => { } 
-    //    }
-    //    
-    //    token(implicitParameter_fullName) match {
-    //      case Some(name) => { 
-    //        dataAttributes += ((dataAttributesPrefix + "implicitparameterfullname",s""""""" + name + s""""""")) 
-    //      }
-    //      case None => { } 
-    //    }
-    //
-    //    token(implicitParameter_sourcePosition) match {
-    //      case Some(srcPos) => { 
-    //        // TODO: ADD token ID
-    //        val link = "." + getRelativeOutputFilenameFromOriginalFile(srcPos.filename) + "#" + "T" + ""
-    //        dataAttributes += ((dataAttributesPrefix + "implicitparameterdeclaredat",s""""""" + link + s"""""""))          
-    //         
-    // 
-    //      }
-    //      case None => { } 
-    //    }
-
 
     dataAttributes += ((htmlDataAttributePrefix + "tooltipdisplay",s""""""" + true + s"""""""))
-
-
-        dataAttributes
+    dataAttributes 
   }
 
+  /**
+   * Generate html data attributes for Literals.
+   * @token token Token to process.
+   * @return      (key,value) : (String,String) with key = data-cp-ATTRIBUTE and value information to save.
+   */
   private def getHtmlDataAttributesLiterals(token: Token) : ArrayBuffer[(String,String)] = {
 
     val dataAttributes = ArrayBuffer[(String,String)]()
-
-        import ScalaLang._
+    import ScalaLang._
 
     token(tokenType) match {
         case Some(name) => { 
@@ -206,8 +146,6 @@ class HtmlDataAttributeGen(htmlOutputContext: HtmlOutputContext) {
         }
         case None => { } 
     }
-
-    // Implicit indicators
 
     token(implicitConversionIndicator) match {
       case Some(bool) => { dataAttributes += ((htmlDataAttributePrefix + "implicitconversion",s""""""" + true + s""""""")) }
@@ -233,11 +171,7 @@ class HtmlDataAttributeGen(htmlOutputContext: HtmlOutputContext) {
       case None => {}
     }
 
-    // Tooltip indicator
     dataAttributes += ((htmlDataAttributePrefix + "tooltipdisplay",s""""""" + true + s"""""""))
-
     dataAttributes
-
   }
-  
 }

@@ -2,7 +2,7 @@ package org.codeprose.consumer
 
 import org.codeprose.api.ProjectInfo
 
-/*
+/**
  * Consumer use the information produced by Providers.
  * 
  * How to call?

@@ -3,7 +3,7 @@ package org.codeprose.provider
 import java.io.File
 import org.codeprose.api.ProjectInfo
 
-/*
+/**
  * Central component in the codeprose structure.
  * 
  * Providers are used to gather information about a project's 

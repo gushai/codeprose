@@ -3,7 +3,7 @@ package org.codeprose.broker
 import org.codeprose.api.ProjectInfo
 
 
-/*
+/**
  * Central point in the application. Requests information on project from
  * Provider and hands them off to the consumers.
  * 

@@ -9,7 +9,7 @@ import java.util.concurrent.TimeoutException
 import org.ensime.client.ClientContext
 import scala.collection.mutable.ArrayBuffer
 import org.codeprose.api.Token
-import org.codeprose.util.EnsimeApiToCodeproseApi
+import org.codeprose.provider.util.EnsimeApiToCodeproseApi
 import org.codeprose.api._
 import org.codeprose.api.scalalang._
 import org.codeprose.provider.util._

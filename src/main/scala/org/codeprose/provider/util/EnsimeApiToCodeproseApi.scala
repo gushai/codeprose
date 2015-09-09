@@ -1,18 +1,29 @@
-package org.codeprose.util
+package org.codeprose.provider.util
 
 import java.io.File
 import scala.collection.mutable.ArrayBuffer
-
 import org.codeprose.api.Token
 import org.codeprose.api._
 import org.codeprose.api.scalalang._
 
 
+/**
+ * Converter of org.ensime.api.outgoing types to the equivalent codeprose types.
+ * @param enrichedTokensPerFile Tokens per file.
+ * @param findTokenId           Function that returns the token id for a source 
+ *                              position given by a filename and a offset position. 
+ *                              The token id is search for in enrichedTokensPerFile.
+ * 
+ */
 class EnsimeApiToCodeproseApi(
     enrichedTokensPerFile: ArrayBuffer[(File,ArrayBuffer[Token])], 
     findTokenId: (String, Int, ArrayBuffer[(File,ArrayBuffer[Token])]) => Int) extends CodeproseApiCreator {
-  
     
+  /**
+   * Converts a org.ensime.api.SymbolInfo to a SymbolInfo.
+   * @param   symInfo org.ensime.api.SymbolInfo
+   * @return          SymbolInfo 
+   */
   def convertToSymbolInfo(symInfo: org.ensime.api.SymbolInfo) : SymbolInfo = {
     val tpe = convertToTypeInfo(symInfo.`type`)
     val declPos = symInfo.declPos match {
@@ -22,10 +33,14 @@ class EnsimeApiToCodeproseApi(
     SymbolInfo(symInfo.name, symInfo.localName, declPos, tpe, symInfo.isCallable, symInfo.ownerTypeId)
   }
   
-  
+  /**
+   * Converts a org.ensime.api.TypeInfo to a TypeInfo.
+   * @param   typeInfo  org.ensime.api.TypeInfo
+   * @return            TypeInfo
+   */
   def convertToTypeInfo(typeInfo: org.ensime.api.TypeInfo) : TypeInfo = {
     
-    val tpeInfo = typeInfo match {
+    typeInfo match {
       case typeInfo: org.ensime.api.BasicTypeInfo => {
         
         val srcPos = typeInfo.pos match {
@@ -38,7 +53,6 @@ class EnsimeApiToCodeproseApi(
         } else {
           typeInfo.typeArgs.map(t => convertToTypeInfo(t))
         }
-          
                                                
         val members =  if(typeInfo.members == List.empty){
           List[EntityInfo]()
@@ -50,21 +64,26 @@ class EnsimeApiToCodeproseApi(
         
         BasicTypeInfo(typeInfo.name,typeInfo.typeId,declaredAt,typeInfo.fullName,typeArgs,members,srcPos,typeInfo.outerTypeId)
       }
-      case tree : org.ensime.api.ArrowTypeInfo => {
+      case typeInfo : org.ensime.api.ArrowTypeInfo => {
         
-        val resultType = convertToTypeInfo(tree.resultType)
-        val paramSections = if(tree.paramSections == List.empty) {
+        val resultType = convertToTypeInfo(typeInfo.resultType)
+        val paramSections = if(typeInfo.paramSections == List.empty) {
           List[ParamSectionInfo]()
         } else {
-          tree.paramSections.map(e=>convertToParamSectionInfo(e))
+          typeInfo.paramSections.map(e=>convertToParamSectionInfo(e))
         }
         
-        ArrowTypeInfo(tree.name,tree.typeId,resultType,paramSections) 
+        ArrowTypeInfo(typeInfo.name,typeInfo.typeId,resultType,paramSections) 
       }
     } 
-    tpeInfo
   }
    
+  /**
+   * Converts a org.ensime.api.SourcePosition to a Option[OffsetSourcePositionWithTokenId.
+   * 
+   * @param   srcPos  org.ensime.api.SourcePosition
+   * @return          Option[OffsetSourcePositionWithTokenId], None if no tokenId can be found.
+   */
   def convertToSourcePosition(srcPos: org.ensime.api.SourcePosition) : Option[OffsetSourcePositionWithTokenId] = {
     srcPos match {
       case pos : org.ensime.api.OffsetSourcePosition => {
@@ -75,6 +94,11 @@ class EnsimeApiToCodeproseApi(
     }
   }
  
+  /**
+   * Converts a org.ensime.api.ParamSectionInfo to a ParamSectionInfo.
+   * @param   paramSection  org.ensime.api.ParamSectionInfo
+   * @return                ParamSectionInfo
+   */
   def convertToParamSectionInfo(paramSection: org.ensime.api.ParamSectionInfo) : ParamSectionInfo = {
     val params = if(paramSection.params == List.empty){
       List[(String,TypeInfo)]()
@@ -82,9 +106,13 @@ class EnsimeApiToCodeproseApi(
       paramSection.params.map(e => (e._1,convertToTypeInfo(e._2)))
       }
     ParamSectionInfo(params, paramSection.isImplicit)
-    
   }
   
+  /**
+   * Converts a org.ensime.api.TypeInspectInfo to a TypeInspectInfo.
+   * @param   typeInspectInfo org.ensime.api.TypeInspectInfo 
+   * @return                  TypeInspectInfo
+   */
   def convertToTypeInspectInfo(typeInspectInfo: org.ensime.api.TypeInspectInfo) : TypeInspectInfo = {
     val tpe = convertToTypeInfo(typeInspectInfo.`type`)
     val interfaces = if(typeInspectInfo.interfaces == List.empty){
@@ -95,11 +123,21 @@ class EnsimeApiToCodeproseApi(
     TypeInspectInfo(tpe, typeInspectInfo.companionId, interfaces)
   }
   
+  /**
+   * Converts a org.ensime.api.InterfaceInfo to a InterfaceInfo.
+   * @param   interfaceInfo org.ensime.api.InterfaceInfo 
+   * @return                InterfaceInfo
+   */
   def convertToInterfaceInfo(interfaceInfo: org.ensime.api.InterfaceInfo) : InterfaceInfo = {
     val tpe = convertToTypeInfo(interfaceInfo.`type`)
     InterfaceInfo(tpe, interfaceInfo.viaView)
   }
   
+  /**
+   * Converts a org.ensime.api.DeclaredAs to a DeclaredAs.
+   * @param   declAs  org.ensime.api.DeclaredAs
+   * @return          DeclaredAs
+   */
   def convertDelaredAs(declAs: org.ensime.api.DeclaredAs) : DeclaredAs = {
     declAs match {
       case org.ensime.api.DeclaredAs.Method => DeclaredAs.Method
@@ -112,6 +150,11 @@ class EnsimeApiToCodeproseApi(
     }
   }
   
+  /**
+   * Converts a org.ensime.api.PackageInfo to a PackageInfo.
+   * @param   packInfo  org.ensime.api.PackageInfo
+   * @return            PackageInfo
+   */
   def convertToPackageInfo(packInfo: org.ensime.api.PackageInfo) : PackageInfo = {
     val members = if(packInfo.members == List.empty){
       List[EntityInfo]()
@@ -120,6 +163,11 @@ class EnsimeApiToCodeproseApi(
     PackageInfo(packInfo.name, packInfo.fullName, members)
   }
   
+  /**
+   * Convert a org.ensime.api.NamedTypeMemberInfo to a NamedTypeMemberInfo.
+   * @param   namedTypeMemInfo  org.ensime.api.NamedTypeMemberInfo
+   * @return                    NamedTypeMemberInfo
+   */
   def convertToNamedTypeMemberInfo(namedTypeMemInfo: org.ensime.api.NamedTypeMemberInfo) : NamedTypeMemberInfo = {
     val tpe = convertToTypeInfo(namedTypeMemInfo.`type`)
     val pos = namedTypeMemInfo.pos match {
@@ -130,9 +178,13 @@ class EnsimeApiToCodeproseApi(
     NamedTypeMemberInfo(namedTypeMemInfo.name,tpe, pos, namedTypeMemInfo.signatureString, declAs)
   }
   
-  
+  /**
+   * Converts a org.ensime.api.EntityInfo to a EntityInfo.
+   * @param   entityInfo  org.ensime.api.EntityInfo
+   * @return              EntityInfo
+   */
   def convertToEntityInfo(entityInfo: org.ensime.api.EntityInfo) : EntityInfo = {
-   val eInfo = entityInfo match {
+    entityInfo match {
       case namedTypeMemInfo : org.ensime.api.NamedTypeMemberInfo => {
         convertToNamedTypeMemberInfo(namedTypeMemInfo)
       }
@@ -142,13 +194,16 @@ class EnsimeApiToCodeproseApi(
       case typeInfo : org.ensime.api.TypeInfo => {
         convertToTypeInfo(typeInfo)
       }
-      
     }
-   eInfo
   }
   
+  /**
+   * Converts a org.ensime.api.ImplicitInfo to a ImplicitInfo.
+   * @param   implInfo  org.ensime.api.ImplicitInfo 
+   * @return            ImplicitInfo
+   */
   def convertToImplicitInfo(implInfo: org.ensime.api.ImplicitInfo) : ImplicitInfo = {
-    val implicitInfo = implInfo match {
+    implInfo match {
       case implInfo : org.ensime.api.ImplicitConversionInfo => {
         val fun = convertToSymbolInfo(implInfo.fun)
         ImplicitConversionInfo(implInfo.start, implInfo.end, fun)
@@ -163,15 +218,24 @@ class EnsimeApiToCodeproseApi(
         ImplicitParamInfo(implInfo.start, implInfo.end, fun, params, implInfo.funIsImplicit)
       }
     }
-    implicitInfo
   }
  
-  def convertToImplicitConversionInfoSummary( implConvInfo: org.ensime.api.ImplicitConversionInfo) : ImplicitConversionInfoSummary = {
+  /**
+   * Converts a org.ensime.api.ImplicitConversionInfo to a ImplicitConversionInfoSummary.
+   * @param   implConvInfo  org.ensime.api.ImplicitConversionInfo
+   * @return                ImplicitConversionInfo
+   */
+  def convertToImplicitConversionInfoSummary(implConvInfo: org.ensime.api.ImplicitConversionInfo) : ImplicitConversionInfoSummary = {
     val fun = convertToSymbolInfo(implConvInfo.fun)
     ImplicitConversionInfoSummary(fun)
   }
   
-  def convertToImplicitParamInfoSummary( implParamInfo: org.ensime.api.ImplicitParamInfo) : ImplicitParamInfoSummary = {
+  /**
+   * Converts a org.ensime.api.ImplicitParamInfo to a ImplicitParamInfoSummary. 
+   * @param   implParamInfo   org.ensime.api.ImplicitParamInfo
+   * @return                  ImplicitParamInfoSummary  
+   */
+  def convertToImplicitParamInfoSummary(implParamInfo: org.ensime.api.ImplicitParamInfo) : ImplicitParamInfoSummary = {
     val fun = convertToSymbolInfo(implParamInfo.fun)
     val params = if(implParamInfo.params == List.empty){
       List.empty
@@ -183,10 +247,9 @@ class EnsimeApiToCodeproseApi(
   
 }
 
-
-
-
-
+/**
+ * Returns codeprose token and summary properties. 
+ */
 trait CodeproseApiCreator {
   
   protected def BasicTypeInfo(name: String,typeId: Int,declAs: DeclaredAs,fullName: String,typeArgs: Iterable[TypeInfo],members: Iterable[EntityInfo],pos: Option[SourcePosition],outerTypeId: Option[Int]) : TypeInfo = {
@@ -212,7 +275,6 @@ trait CodeproseApiCreator {
   def SymbolInfo(name: String,localName: String,declPos: Option[SourcePosition],tpe: TypeInfo,isCallable: Boolean,ownerTypeId: Option[Int]) : SymbolInfo = {
     new SymbolInfo(name,localName,declPos,tpe,isCallable,ownerTypeId)
   }
-  
   
   def PackageInfo(name: String, fullName: String, members: Seq[EntityInfo]) : PackageInfo = {
     new PackageInfo(name,fullName, members)

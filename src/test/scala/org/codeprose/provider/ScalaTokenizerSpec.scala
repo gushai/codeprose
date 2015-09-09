@@ -1,9 +1,11 @@
-package org.codeprose.provider
+package org.codeprose.provider.util
 
 import org.scalatest.FunSpec
 import javax.print.attribute.standard.MediaSize.Other
 
-
+/**
+ * Test class for org.provider.util.ScalaTokenizer
+ */
 class ScalaTokenizerSpec extends FunSpec {
 
   describe("A ScalaTokenizer"){
@@ -40,10 +42,9 @@ class ScalaTokenizerSpec extends FunSpec {
         assert(otherTokens(i).offset == tokens(i).offset)
         assert(otherTokens(i).rawText == tokens(i).text)
         
-        //val tokenTypeName = tokens(i)(tokenType).map(tt => tt.name)
         tokens(i)(tokenType) match {
           case Some(tt) => {
-          println(otherTokens(i).tokenType + " // " + tt.name)
+          //println(otherTokens(i).tokenType + " // " + tt.name)
           assert(tt.name == otherTokens(i).tokenType.name)
           }
           case None => fail()
@@ -79,8 +80,7 @@ class ScalaTokenizerSpec extends FunSpec {
       assert(tokens(4)(tokenType).get == Tokens.WS)
       assert(tokens(5)(tokenType).get == Tokens.EOF)      
     }
-    
+      
+    // TODO: Test all tokens.
   }
-  
-  
 }

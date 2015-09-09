@@ -2,7 +2,9 @@ package org.codeprose.util
 
 import org.scalatest.FunSpec
 
-
+/**
+ * Test for org.codeprose.util.StringUtil 
+ */
 class StringUtilSpec extends FunSpec {
 
   

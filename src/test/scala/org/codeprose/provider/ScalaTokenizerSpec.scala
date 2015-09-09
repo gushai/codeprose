@@ -10,7 +10,7 @@ class ScalaTokenizerSpec extends FunSpec {
     
     it("should return language specific tokens"){
       
-      import org.codeprose.provider.ScalaTokenizer
+      import org.codeprose.provider.util.ScalaTokenizer
       
       val source = s"""
         /*
@@ -68,7 +68,7 @@ class ScalaTokenizerSpec extends FunSpec {
       val otherTokens = scalariform.lexer.ScalaLexer.rawTokenise(source)
             
       // Tokenize (internal format)     
-      import org.codeprose.provider.ScalaTokenizer
+      import org.codeprose.provider.util.ScalaTokenizer
       val tokens = ScalaTokenizer.tokenize(source)      
       tokens.foreach(println)      
       import org.codeprose.api.scalalang.ScalaLang._     

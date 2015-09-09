@@ -1,15 +1,17 @@
 package org.codeprose.consumer.util
 
+/**
+ * Help in the handling of multiline comments.
+ */
 object CommentUtil {
 
   /**
    * Removes leading / * and  trailing * / and removes leading WS * WS in each lines (WS whitespace).
-   * @param source multi line comment. Either /* */ or /** */
-   * @return source string without the comment symbols    
+   * @param  multilineComment   Multiline comment. Either /* TEXT */ or /** TEXT */.
+   * @return                    Text in multiline comment without the comment symbols.    
    */
-  def cleanMultilineComment(source: String): String = {   
-    // Remove 
-    val trimmed = source.trim()
+  def cleanMultilineComment(multilineComment: String): String = {   
+    val trimmed = multilineComment.trim()
     val splitted = if(trimmed.startsWith("/**")){
        "   " + trimmed.substring(3,trimmed.length-2) + "  "
     }      
@@ -33,11 +35,11 @@ object CommentUtil {
   
   /**
    * Returns true if string begins with WS / * *
-   * @param source multi line comment.
-   * @return true if after trimming source begins with ScalaDoc comment begin / * *
+   * @param   multilineComment  Multiline comment.
+   * @return                    True if after trimming source begins with ScalaDoc comment begin / * *
    */
-  def isScalaDocComment(source: String) : Boolean  = {
-    if (source.trim().startsWith("/**"))
+  def isScalaDocComment(multilineComment: String) : Boolean  = {
+    if (multilineComment.trim().startsWith("/**"))
       return true
     else 
       return false

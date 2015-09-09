@@ -18,7 +18,7 @@ object HelloWorld {
     
     // Scalariform ScalaTokens
     val otherTokens = scalariform.lexer.ScalaLexer.rawTokenise(text)
-    val tokens = org.codeprose.provider.ScalaTokenizer.tokenize(text)
+    val tokens = org.codeprose.provider.util.ScalaTokenizer.tokenize(text)
        
     
     it("should print all tokens"){

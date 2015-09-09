@@ -14,7 +14,7 @@ import org.codeprose.util.StringUtil
 import org.codeprose.util.CodeproseJsonFormat._
 
 
-class ResourceRelPaths(val base: String, val target: String)
+case class ResourceRelPaths(base: String, target: String)
 
 
 
@@ -972,6 +972,7 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
    * 
    */
   private def setupOutputEnvironment() : Unit = {
+    logger.info("Setting up output environment")
     val setter = new OutputContextSetter(c.outputMainPath)
     setter.setFolderStructure(c.outputRelFolders)
     c.resourcesToCopy.foreach({ f => setter.copyResource(f.base, new File(c.outputMainPath,f.target)) }) 

@@ -2,8 +2,10 @@ package org.codeprose.util
 
 object StringUtil {
 
-  /*
+  /**
    * Finds the longest common prefix in a list of strings.
+   * @param   s List of strings.
+   * @return    Longest common prefix. If s.length=0 return "".
    */
   def findLongtestCommonPrefix(s: List[String]) : String = {
      if(s.isEmpty)
@@ -33,9 +35,10 @@ object StringUtil {
          return ""
      }
   }
-  
-   /*
+  /**
    * Removes the longest common path of all elements.
+   * @param   s List of String
+   * @return    List of Strings with the common prefix removed.
    */
   def getUniqueShortFileNames(s: List[String]) : List[String] = {      
     if(s.size<=1){return s }
@@ -45,8 +48,13 @@ object StringUtil {
     (sliceFirstIndex zip s).map(e => (e._2.slice(e._1,e._2.length)))
   }
     
-  /*
-   * Groups files by path after removing the most common path
+  /**
+   * Groups files by path after removing the most common path.
+   * 
+   * NOT FINISHED!
+   * 
+   * @param   s List of filenames.
+   * @return    Filenames group by common prefix with position in incoming file list.
    */
   def getUniqueShortFileNamesGroupedByDirectory(s: List[String]) : Map[String,List[(Int,String)]] = {      
     if(s.size==0) { 

@@ -5,28 +5,42 @@ import com.typesafe.scalalogging.LazyLogging
 import org.codeprose.util.FileUtil
 
 /**
- * @author gus
+ * Helper to set the output context. 
+ * 
+ * Includes:
+ *  - Setting folders
+ *  - Copying resources
+ *  - Loading resources 
+ * 
  */
-
-
-
-
-class OutputContextSetter(val outputMain : File) extends LazyLogging {
+class OutputContextSetter(val outputMain : File) {
    
+  /**
+   * Copies resources to output folder.
+   * @param relPathToFile Resource file to be copied.
+   * @param target        Name of the file to copy the resource to. 
+   */
   def copyResource(relPathToFile: String, target: File) : Unit = {
-    val content = loadResource(relPathToFile)
+    val content = loadResourceText(relPathToFile)
     FileUtil.writeToFile(target, content.mkString("\n"))
   }
-  def loadResource(relPathToFile: String) : List[String] = {
-     val content = scala.io.Source.fromURL(getClass.getResource(relPathToFile),"utf-8").getLines().toList
-     content
+  
+  /**
+   * Loads a text resource.
+   * @param relPathToFile Path to resource file.
+   * @return              List lines in the resource file.
+   */
+  def loadResourceText(relPathToFile: String) : List[String] = {
+     scala.io.Source.fromURL(getClass.getResource(relPathToFile),"utf-8").getLines().toList
   }
   
+  /**
+   * Sets out folders in outputMain.
+   * 
+   * @param directories List of filenames relative to outputMain.
+   */
   def setFolderStructure(directories: List[String] ): Unit = {
-    logger.info("Setting ouput folder structure ...")
-    // Get list of existing folders
     val existingDirectories = outputMain.listFiles().filter {f => f.isDirectory() }
-    
     directories.foreach { folderName => {
         val idx = existingDirectories.indexWhere { e => e.getAbsolutePath().endsWith(folderName) }
         if(idx == -1){
@@ -37,6 +51,8 @@ class OutputContextSetter(val outputMain : File) extends LazyLogging {
   } 
 }
 
-class OutputContextSetterHtml(outputMain : File) extends OutputContextSetter(outputMain) {
-   
-}
+/**
+ * Output setter for WriterHtml.
+ * @param outputMain  Main output folder.
+ */
+class OutputContextSetterHtml(outputMain : File) extends OutputContextSetter(outputMain)

@@ -81,6 +81,9 @@ class ScalaTokenizerSpec extends FunSpec {
       assert(tokens(5)(tokenType).get == Tokens.EOF)      
     }
       
-    // TODO: Test all tokens.
+     it("should TEST all tokens") { 
+        // TODO: Test all tokens.
+       fail()
+     }
   }
 }

@@ -215,6 +215,7 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
        val title = "Type information"
        
        val script = s"""
+
 $$(document).ready(function(){ 
   
 
@@ -311,16 +312,17 @@ function getEntryForTypeInspectInfo(currentId,typeInfo){
   var declaredAs = ""
     if(typeInfo.tpe.typeName === "BasicTypeInfo"){
       typeName+= typeInfo.tpe.fullName;
-      declaredAs = typeInfo.tpe.declAs; 
+      declaredAs = " - " + typeInfo.tpe.declAs; 
     } else if(typeInfo.tpe.typeName === "ArrowTypeInfo"){
       typeName+= typeInfo.tpe.name;
+      declaredAs = " - arrow";
     } else { 
       typeName+="-- Unknown -- ";
     }
   
   
 
-  var headline = "<div style='margin-top:3em;'><div id='TYPEID"+ currentId +"'>" +  "<span style='font-weight:bold; font-size:1.2em;'>" + typeName + "</span>&nbsp; - " +  declaredAs+ "</div>";
+  var headline = "<div style='margin-top:3em;'><div id='TYPEID"+ currentId +"'>" +  "<span style='font-weight:bold; font-size:1.2em;'>" + typeName + "</span>&nbsp; " +  declaredAs+ "</div>";
   
   retString += headline ;
 
@@ -345,29 +347,46 @@ function getInterfaceEntry(intrface){
   var declAs = "";
   if(typeInfo.typeName === "BasicTypeInfo"){
       typeName+= typeInfo.fullName;
-      declAs = typeInfo.declAs;
+      declAs = " - " + typeInfo.declAs;
     } else if(typeInfo.typeName === "ArrowTypeInfo"){
       typeName+= typeInfo.name;
-      declAs = "arrow";
+      declAs = " - arrow";
     } else { 
       typeName+="-- Unknown -- ";
    }
   
-  
+
+  var rawLinkToDeclaration = "";
+  if(typeInfo.pos!=null){
+  rawLinkToDeclaration = getRawLinkToDeclaration(typeInfo.pos);
+  }
+
   var members = typeInfo.members;
   
   retString += "<div style='margin-top:2em;margin-left:2em;'>"
-  retString += "<span style='font-weight:bold;'>" + typeName + "</span>&nbsp; - " + declAs + "";
+  retString += "<span style='font-weight:bold;'>" + typeName + "</span>&nbsp; " + declAs + "";
   retString += "<table style='margin-top:1.5em;'>";
+  
   for(var mem=0;mem<members.length;mem++){
-    var memName = "<pre>" + members[mem].name + "</pre>";
+
+    // TODO: Group by  members[mem].declAs
+    // console.log(members[mem].declAs);
+
+    var memName = members[mem].name;
+    if(rawLinkToDeclaration!=""){
+    memName = "<a href='." + rawLinkToDeclaration + "'>" + memName + "</a>";
+    }
+
     var memSigStr = members[mem].signatureString;
+    if(rawLinkToDeclaration!=""){
+    memSigStr = "<a href='." + rawLinkToDeclaration + "'>" + memSigStr + "</a>";
+    }
 
     var entry = "<tr>" + "<td style='width:20em;'>" + memName +"</td> <td>" + memSigStr + "</td>" + "</tr>";
 
     retString += entry;
   }
-
+  
   retString += "</table>";
 
   retString += "</div>"
@@ -380,6 +399,7 @@ function getInterfaceEntry(intrface){
   
   
 }); 
+  
       
 """
       val noscriptTag = s"""<noscript><div style="margin-left:2em;">Activate JavaScript for this feature.</div></noscript>"""

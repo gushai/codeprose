@@ -377,10 +377,21 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
     symbolInfoOption match {
       case Some(symbolInfo) => {
         
-        // Collect occuring type information
+        // Collect occurring type information
         val tpeId = symbolInfo.tpe.typeId
         val fullNameStr = symbolInfo.tpe.fullName
-        addOccuringType(tpeId, fullNameStr)
+        val definitionFilename = symbolInfo.tpe.pos match {
+          case Some(pos) => {
+            if(pos.isInstanceOf[org.ensime.api.OffsetSourcePosition]){
+              Some(pos.asInstanceOf[org.ensime.api.OffsetSourcePosition].file.getAbsolutePath)
+            } else {
+              None
+            }
+          }
+          case None => { None }
+        }
+        addOccurringType(tpeId, fullNameStr,definitionFilename)
+        
         
               
         // Save type information on token
@@ -934,25 +945,51 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   
   
   /**
-   * Collections detailed type information for all types in the project.
-   * @return
+   * Collects detailed type information for all types in the project.
+   * @return  Map from type id to Option[TypeInspectInfo].
    * 
    * Notes:
-   * Uses occuringTypeIds.
+   * Uses occurringTypeIds.
    */
   private def getDetailedTypeInformation(enrichedTokens: ArrayBuffer[(File,ArrayBuffer[Token])]) : 
   Map[Int,Option[TypeInspectInfo]] = {
     
-    // TODO Remove after debugging
-    println("Raw typeIds found w/ name:")
-    getOccuringTypesWithName().foreach(e => {
-      println(e._1 + "\t" + e._2)
+    // The code in this section is included to filter out types
+    // with definitions within /.ensime_cache/ to avoid crashing the ensime-client with
+    // unparseable responses by the ensime-server.
+    //
+    //  To remove the filtering just comment the section below and uncomment 
+    //     //val typesToInspect = getOccurringTypesWithName() below
+    // 
+    // ---------------------------------------------
+// TODO: Remove after debugging
+//    logger.info("Raw types found w/ name filename of definition:")
+//    getOccurringTypesWithName().foreach(e => {
+//      logger.info("\t" + e._1 + "\t" + e._2 + "\t" + e._3)
+//    })
+    
+    logger.info("[IMPORTANT]\t" + "No type inspect information for types defined in .ensime_cache")
+    
+    // Filter types to avoid ensime-client crash    
+    val typesToInspect = getOccurringTypesWithName().filter(e => {
+      val defFilename = e._3.getOrElse("")    
+      if(defFilename.contains(".ensime_cache"))
+        false
+      else 
+        true
     })
-    
-    // Debug
-    //val detailedTypeInfo = getOccuringTypesWithName().map(e => {(e._1,None)}).toMap
-    
-    val ensimeTypeInspectInfoPerTypeId = getOccuringTypesWithName().map(e => {
+
+//    logger.info("Filtered types found w/ name filename of definition:")
+//    typesToInspect.foreach(e => {
+//      logger.info("\t" + e._1 + "\t" + e._2 + "\t" + e._3)
+//    })
+        
+    // ---------------------------------------------
+   
+    // If no filtering is applied.
+    //val typesToInspect = getOccurringTypesWithName()
+   
+    val ensimeTypeInspectInfoPerTypeId = typesToInspect.map(e => {
       
       val typeInspectInfo = performInspectTypeByIdReq(e._1)
       (e._1,typeInspectInfo)
@@ -980,25 +1017,14 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
       
     })
     
-//     val testTInspectInfo = ensimeTypeInfoPerTypeId.map(e=>e._2).flatten.toList
-//     testTInspectInfo.foreach(etII => {
-//       //println("Org: \n" + etII +"\n\n")
-//       val test = EnsimeApiToCodeproseApi.convertToTypeInspectInfo(etII)
-//       println("Converted: \n" + test +" \n")
-//     })
-     
-     
-   // TODO Remove after debugging
-//    println("\n\nInspectTypeInfo:")
-//    detailedTypeInfo.foreach(e => {
-//      println(e._1 +"\t" + e._2)
-//    })
-        
+       
     typeInspectInfo
   }
   
+  
   /**
-   * 
+   * Returns the where used information per type id.
+   * @return  Map from type id to List of source positions.
    */
   private def getWhereUsedByTypeIdInformation() : Map[Int,List[ERangePositionWithTokenId]] = {
        
@@ -1012,7 +1038,8 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   
   
   /**
-   * 
+   * Returns package information per packagename.
+   * @return Map from package name to package information. 
    */
   private def getPackageInformaton(
       packageNames: List[String],tokens: ArrayBuffer[(File,ArrayBuffer[Token])]) 
@@ -1044,10 +1071,6 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   }
   
   
-  
-
-  
-  
   /**
    * Extracts the package information from the tokens of each file.
    * @param enrichedTokens  Tokens per file.
@@ -1056,7 +1079,6 @@ class EnsimeProvider(implicit c: EnsimeProviderContext )
   private def getPackageNamesPerFile(
       enrichedTokens: ArrayBuffer[(File,ArrayBuffer[Token])]) : Map[File,String] = {
    
-    
     enrichedTokens.map(e => {
       val file = e._1
       val tokens = e._2
@@ -1272,19 +1294,45 @@ object ProviderUtil {
   
 }
 
+/**
+ * Collects information on occurring types and where used information.
+ */
 trait OccuringTypes {
   
-   private val occuringTypeIdsWithName = scala.collection.mutable.SortedSet[(Int,String)]() 
+   /**
+    * Used to save occurring type id, type full name and filename with definition.
+    */
+   private val occurringTypeIdsWithName = scala.collection.mutable.SortedSet[(Int,String,Option[String])]()
+   /**
+    * Used to save where used information by type id.
+    */
    private val whereUsedCollection = scala.collection.mutable.Map[Int,scala.collection.mutable.Set[ERangePositionWithTokenId]]()
   
-   def addOccuringType(typeId: Int, fullname: String) : Unit = {
-     occuringTypeIdsWithName += ((typeId,fullname))
+   /**
+    * Add type id, type full name and Option of filename of type position from ensime.
+    * @param  typeId              Type id.
+    * @param  fullname            Full type name.
+    * @param  definitionFilename  Filename of definition position returned from ensime.
+    * 
+    */
+   def addOccurringType(typeId: Int, fullname: String, definitionFilename: Option[String]) : Unit = {
+     occurringTypeIdsWithName += ((typeId,fullname,definitionFilename))
    }
    
-   def getOccuringTypesWithName() : scala.collection.mutable.SortedSet[(Int,String)] = {
-     occuringTypeIdsWithName
+   /**
+    * Returns a set containing tuples with type id, type full name, and Option of filename of definition from ensime.
+    * @return   Set containing tuples with type id, type full name, and Option of filename of definition from ensime.
+    */
+   def getOccurringTypesWithName() : scala.collection.mutable.SortedSet[(Int,String,Option[String])] = {
+     occurringTypeIdsWithName
    } 
    
+   
+   /**
+    * Add where used information for a type id.
+    * @param  typeId  Type id.
+    * @param  srcPos  Source position.
+    */
    def addWhereUsedInformation(typeId: Int, srcPos: ERangePositionWithTokenId) : Unit = {
      val s = whereUsedCollection.get(typeId)
      s match {
@@ -1296,11 +1344,20 @@ trait OccuringTypes {
        }
      }
    }
-   
+
+  /**
+   * Optionally returns a set containing source positions for a type id.
+   * @param   typeId  Type id.
+   * @return  Option of set with source positions.
+   */
   def getWhereUsedByTypeId(typeId: Int) : Option[scala.collection.mutable.Set[ERangePositionWithTokenId]] = {
     whereUsedCollection.get(typeId)
   }
   
+  /**
+   * Returns map containing source positions for type ids.
+   * @retun Map of type ids to set of source positions.
+   */
   def getWhereUsedAllTypes() : scala.collection.mutable.Map[Int,scala.collection.mutable.Set[ERangePositionWithTokenId]] = {
     whereUsedCollection
   }

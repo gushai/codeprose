@@ -37,6 +37,7 @@ class EnsimeProviderContext(
     val inputFolders: List[String]    
 		) extends ProviderContext {
   
+  // Lines to be selected in source samples
   val whereUsedSourceCodeSamplesNumberOfLinesBefore = 2
   val whereUsedSourceCodeSamplesNumberOfLinesAfter = 2
   
@@ -54,13 +55,53 @@ class EnsimeProviderContext(
 
 
 /**
- * The EnsimeProvider
+ * The EnsimeProvider uses a org.codeprose.provider.util.ScalaTokenizer to generate
+ * tokens and enriches them with information via a connection to an ensime-server.
  * 
  * Usage: 
  *  - Call order: 
  *    1.) initialize()
- *    2.) getProjectInformation(files: List[File])
+ *    2.) getProjectInformation() or enrichProjectInformation()
  *    3.) close()
+ * 
+ * 
+ * Information collected:
+ *   
+ *  - ProjectSummary.enrichedTokens:
+ *    
+ *    Tokens are generated with org.codeprose.provider.util.ScalaTokenizer.
+ *    
+ *    If no connection is established with the server the ScalaTokenizer output is returned
+ *    without further information.
+ *    
+ *    Else the following org.codeprose.api.scalang.ScalaLang keys are used:
+ *      - tokenType
+ *      - typeId
+ *      - internalTokenId
+ *      - declaredAt
+ *      - fullName
+ *      - symbolDesignation
+ *      - implicitConversionIndicator
+ *      - implicitConversionIds
+ *      - implicitParameterIndicator
+ *      - implicitParameterIds
+ *      - whereUsedWithInFile
+ *      - isCallable
+ *      - ownerTypeId
+ *   
+ *  - ProjectSummary.summary:
+ *  
+ *    If no connection is established to the server no summary information is saved.
+ *    
+ *    Else the following org.codeprose.api.scalang.ScalaLang keys are used:
+ *      - fileList
+ *      - packageNamePerFile
+ *      - packageInformation
+ *      - typeInspectInformation
+ *      - whereUsedByTypeId
+ *      - whereUsedByTypeIdWithCodeSample
+ *      - implicitConversionInformation
+ *      - implicitParameterInformation
  *  
  * @param c EnsimeProviderContext contains the information needed to setup the EnsimeProvider.
  *          Most importantly, it includes <host:port> of the ensime server.

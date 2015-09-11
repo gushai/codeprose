@@ -37,7 +37,7 @@ trait Provider {
    * Enriches a projectInfo.
    * 
    * Please note:
-   * - The information the Provider requires to inside the input projectInfo.
+   * - The information the Provider requires to be inside the input projectInfo.
    * - The information the Provider collects and what properties of 
    *  the returned projectInfo can be assumed to hold.
    * 

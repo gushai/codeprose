@@ -46,7 +46,7 @@ class BrokerContextScala(
  * 
  * @param bc BrokerContextScala 
  */
-class BrokerScala()(implicit bc: BrokerContextScala)
+class ScalaBroker()(implicit bc: BrokerContextScala)
     extends Broker with LazyLogging {
     
   

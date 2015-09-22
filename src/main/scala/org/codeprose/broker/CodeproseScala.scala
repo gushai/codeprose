@@ -152,7 +152,7 @@ object Codeprose extends LazyLogging {
    */
   def runCodeprose(implicit bc: BrokerContextScala): Unit = {
     logger.info("Run starting codeprose broker.")
-    val broker = new BrokerScala()
+    val broker = new ScalaBroker()
     broker.initialize()
     val info = broker.analyzeSourceCode()
     broker.generateOutput(info)           

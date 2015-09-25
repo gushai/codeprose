@@ -2,10 +2,30 @@
 
 **Leveraging Editor Services for Literate Programming**
 
-codeprose is a literate programming tool for Scala featuring text decoration via markdown comments and source code enriched with compile time information via [ENSIME](https://github.com/ensime/).
+## What is codeprose?
 
-Output examples:
+Codeprose is a literate programming tool for Scala. It generates HTML output including 
+syntax highlighting and source code annotated with compile time information. 
+ 
+Tokens are enriched with detailed type information, links to declaration and 
+type definition as well as information about implicit conversions and parameters. 
+ 
+Further, both type and package summaries as well as 'where used' information is provided.
+  
+In the spirit of literate programming Codeprose allows syntax formatting via Markdown 
+in comments. Compile time information is obtained by interfacing with the editor 
+service [ENSIME](https://github.com/ensime/) which guarantees independence from the Scala compiler and improves 
+re-usability and maintenance.
+  
+Codeprose's design makes it easily extendible to other or mixtures of languages and 
+offers the possibility of introducing other output formats such as, for example, LaTeX.
+
+codeprose is a literate programming tool for Scala featuring text decoration via markdown comments and source code enriched with compile time information via .
+
+
+## Output examples:
 -   To be added ...
+
 
 ## Comment
 
@@ -19,11 +39,11 @@ Codeprose is still a beta! The current version is build against a fork of the [e
 -    [ensime-sbt](https://github.com/ensime/ensime-sbt) (to generate the ensime file)
 -    ensime-server and ensime-client from [gushai/ensime-server](https://github.com/gushai/ensime-server)
 -    [codeprose](https://github.com/gushai/codeprose)
--    Project to run codeprose on. (See e.g. [gushai/codeprosetestprojects](https://github.com/gushai/codeprosetestprojects))
+-    Project to run codeprose on. (See e.g. [gushai/codeproseTestProject](https://github.com/gushai/codeproseTestProject))
 
 #### 1. Get ensime-server and ensime-client.
 
-1.   Clone the fork of the [ensime-server](https://github.com/gushai/ensime-server.git) (includes the ensime-client) at [gushai/ensime-server](https://github.com/gushai/ensime-server) to a local folder.
+1.   Clone the fork of the [ensime-server](https://github.com/gushai/ensime-server.git) (includes the ensime-client) at [gushai/ensime-server](https://github.com/gushai/ensime-server) to a local folder. Please use the branch "client_basedon_20150730".
 2.   Start sbt in the ensime-server folder and run `publishLocal` to publish the ensime-client codeprose uses.
 
 #### 2. Get codeprose
@@ -32,7 +52,7 @@ Clone [codeprose](https://github.com/gushai/codeprose.git) at [gushai/codeprose]
 
 #### 3. Setup a project to run codeprose on
 
-To run codeprose the ensime environment needs to be set up in the project. Check out the test projects at  [gushai/codeprosetestprojects](https://github.com/gushai/codeprosetestprojects) as an example.
+To run codeprose the ensime environment needs to be set up in the project. Check out the test projects at  [gushai/codeproseTestProject](https://github.com/gushai/codeproseTestProject) as an example.
 
 
  1.   Add  [ensime-sbt](https://github.com/ensime/ensime-sbt)  to your projects plugins by adding 

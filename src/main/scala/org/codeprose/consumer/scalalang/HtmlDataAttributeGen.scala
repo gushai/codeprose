@@ -9,13 +9,13 @@ import org.codeprose.api.scalalang.ScalaLang
 
 
 /**
- * Generates html data attributes for tokens.
+ * Generates HTML data attributes for tokens.
  * @param   htmlOutputContext HtmlOutputContext.
  */
 class HtmlDataAttributeGen(htmlOutputContext: HtmlOutputContext) {
   
   // Prefix of all data attributes. 
-  // Use in jQuery: $(selector).data("cp-ATTRIBUTE"
+  // Use in jQuery: $(selector).data("cp-ATTRIBUTE")
   val htmlDataAttributePrefix  = "data-cp-" 
   
   /**
@@ -131,7 +131,7 @@ class HtmlDataAttributeGen(htmlOutputContext: HtmlOutputContext) {
   }
 
   /**
-   * Generate html data attributes for Literals.
+   * Generate HTML data attributes for Literals.
    * @token token Token to process.
    * @return      (key,value) : (String,String) with key = data-cp-ATTRIBUTE and value information to save.
    */

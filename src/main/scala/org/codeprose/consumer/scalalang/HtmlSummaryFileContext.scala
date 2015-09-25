@@ -1,10 +1,23 @@
 package org.codeprose.consumer.scalalang
 
-
+/**
+ * Provides the HTML frame for a summary page (incl. index.html).
+ * 
+ * Includes 
+ *  - HTML head (incl. scripts)
+ *  - header and footer
+ */
 class HtmlSummaryFileContext(){
 
   def htmlDataAttributePrefix  = "cp-"  
     
+  /**
+   * Returns the upper part of an output html file. This includes:
+	 *  - html headers
+	 *  - js scripts (per token and per File)
+	 *  - header div
+	 * @return    String containing the above information.  
+	 */
   def getBegin(title: String,script: String,withLinkToOverview: Boolean) : String = {
     
     val linkToOverview = if(withLinkToOverview){
@@ -56,7 +69,12 @@ $script
   }
   
   /**
+   * Provides a div to wrap summary page content in.
    * 
+   * Use for "summary" and "details" in summary pages.
+   * 
+   * @param title   Section title
+   * @param content HTML content to be places inside div.
    */
   def packageContent(title: String, content: String) : String = {
 	  

@@ -199,6 +199,11 @@ class WriterHtml(implicit c: WriterContextHtml) extends Consumer with LazyLoggin
     
   }
   
+  /**
+   * Generates and saves the type information page to disk.
+   * @param projectInfo       Project information
+   * @param htmlOutputContext Output context.
+   */
   private def generateTypeInformationPage(projectInfo: ProjectInfo, htmlOutputContext: HtmlOutputContext) : Unit = { 
    
     
@@ -416,6 +421,11 @@ function getInterfaceEntry(intrface){
     
   }
   
+   /**
+   * Generates and saves the where used information page to disk.
+   * @param projectInfo       Project information
+   * @param htmlOutputContext Output context.
+   */
   private def generateWhereUsedPage(projectInfo: ProjectInfo, htmlOutputContext: HtmlOutputContext) : Unit = { 
 
     val relFileName = c.summaryFilesRelPath.get("summary.whereUsed")
@@ -593,6 +603,11 @@ function getInterfaceEntry(intrface){
     }    
   }
   
+   /**
+   * Generates and saves the package information page to disk.
+   * @param projectInfo       Project information
+   * @param htmlOutputContext Output context.
+   */
   private def generatePackageInformationPage(projectInfo: ProjectInfo, htmlOutputContext: HtmlOutputContext) : Unit = { 
 
     val relFileName = c.summaryFilesRelPath.get("summary.packageinfo")
@@ -776,7 +791,10 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
  
   
   /**
-   * Creates the javascript files that act as db.
+   * Saves JSON objects to disk. 
+   * Delegates to other functions.
+   * @param projectSummary  Project information  
+   * @param htmlOutputContext Output context.
    */
   private def generateGlobalJSInformationFiles(
       projectSummary: ProjectSummary, 
@@ -823,7 +841,7 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
   }
   
   /**
-   * Saves type information to disk in js file.
+   * Saves type information as JSON object.
    * 
    * Included:
    *  - typeIds         Array of all type ids found
@@ -857,7 +875,7 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
   
   
   /**
-   * Saves where used information to disk in js file.
+   * Saves where used information JSON object.
    * 
    * Included:
    *  - whereUsedInformation Map from type id to source postions with sample.
@@ -913,7 +931,7 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
   
   
   /**
-   * Saves where used information to disk in js file.
+   * Saves where used information JSON object.
    * 
    * Included:
    *  - packageNames        Array of package names
@@ -946,7 +964,7 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
   
   
   /**
-   * Saves helper information to disk in js file.
+   * Saves helper information JSON object.
    * 
    * Included
    *  - srcFileToRelLink: Map from source file to relative output link.
@@ -975,7 +993,7 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
   }
   
   /**
-   * Saves implicit information to disk in js file.
+   * Saves implicit information JSON object.
    * 
    * Included:
    *  - implicitConverions
@@ -1038,9 +1056,10 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
   
   /**
    * Generate the output file for an individual source file.
-   * @param srcFile    Source file
-   * @param tokens  Enriched tokens of the source file.
-   * @   TODO
+   * @param srcFile           Source file
+   * @param tokens            Enriched tokens of the source file.
+   * @param projectSummary    Project information
+   * @param htmlOutputContext Output context.
    */
   private def generateSrcFilePage(
       srcFile: File, 
@@ -1072,12 +1091,17 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
 
   }
 
+  /**
+   * Generates the HTML representations for source code.
+   * @param tokens      Tokens
+   * @param htmlContext HtmlSrcFileContext
+   * @return            HTML elements for all tokens.
+   */
   private def generateHtmlEntries(
       tokens: ArrayBuffer[Token])(implicit htmlContext: HtmlSrcFileContext)
     : Iterable[String] = {
  
-    
-    
+       
     tokens.map(e=> e.text)
     
     // Group entries into: List[List[Token]] where each List contains a line of src code or a MultilineComment
@@ -1117,14 +1141,14 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
     // htmlEntries.foreach(t=>println(t))
     
     htmlEntries
-    
-    
-  
-    
+        
   }
   
   /**
    * Determines a group of tokens to be processed together.
+   * 
+   * Groups tokens that comprise one line.
+   * 
    * @param tokens                      Tokens.
    * @param idxLastTokenToProcessedNow  Last used index.
    * @return                            New index.
@@ -1142,7 +1166,7 @@ tableEntry += "<tr>" + "<td style='text-align:right;padding-right:2em;padding-to
   }
   
   /**
-   * Processes group of tokens and returns their html output,
+   * Processes group of tokens and returns their HTML output,
    * the line update and an indicator for an open code table.
    * @param toProcess       Tokens to process.
    * @param currentLine     Current line number.

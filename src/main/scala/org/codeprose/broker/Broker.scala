@@ -28,10 +28,13 @@ import org.codeprose.api.ProjectInfo
  *    Broker -> Provider
  *    Broker -> Consumer
  *   
- *  - b. Piped Provider and Consumer
+ *  - b. n>0 Provider and k>0 Consumer
  *  
- *    Broker -> Provider 1 -> -> ... -> Provider n
+ *    Broker -> Provider 1
+ *    ... 
+ *    Broker -> Provider n
  *    Broker -> Consumer 1
+ *    ...
  *    Broker -> Consumer k
  *  
  * How to exchange information? 

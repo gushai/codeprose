@@ -1,7 +1,14 @@
 package org.codeprose.consumer.scalalang
 
 
-
+/**
+ * Provides the HTML frame for an source file representation.
+ * 
+ * Includes 
+ *  - HTML head (incl. scripts)
+ *  - header and footer
+ *  - table elements to wrap code lines and text sections
+ */
 class HtmlSrcFileContext(
     filename: String, 
     packagName: String, 

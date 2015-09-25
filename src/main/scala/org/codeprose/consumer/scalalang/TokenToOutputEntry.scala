@@ -32,13 +32,13 @@ trait TokenToOutputEntry {
 
 
 /**
- * Generates the 
+ * Provides the HTML elements for a token.text.
  */
 class TokenToOutputEntryHtml(htmlOutputContext: HtmlOutputContext) 
     extends HtmlDataAttributeGen(htmlOutputContext) with TokenToOutputEntry { 
        
   /**
-   * Returns wrapper for tocken.text.
+   * Returns wrapper for token.text.
    * @param token Token
    * @return      Wrapper for token.text in output with usage as
    *              (beg,end) : (String,String) beg + token.text + end 

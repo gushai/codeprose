@@ -24,7 +24,8 @@ codeprose is a literate programming tool for Scala featuring text decoration via
 
 
 ## Output examples:
--   To be added ...
+
+[codeproseTestProject](https://github.com/gushai/codeproseTestProject) contains a test project. The generated output is located in folder ```output```.
 
 
 ## Comment

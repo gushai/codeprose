@@ -30,7 +30,9 @@ codeprose is a literate programming tool for Scala featuring text decoration via
 
 ## Comment
 
-Codeprose is still a beta! The current version is build against a fork of the [ensime-server](https://github.com/ensime/ensime-server) that can be found at [gushai/ensime-server](https://github.com/gushai/ensime-server). This repository also includes the ensime-client that is used by codeprose. The ensime-client needs to be published locally.
+- Codeprose is still a beta! The current version is build against a fork of the [ensime-server](https://github.com/ensime/ensime-server) that can be found at [gushai/ensime-server](https://github.com/gushai/ensime-server). This repository also includes the ensime-client that is used by codeprose. The ensime-client needs to be published locally.
+
+- There is a new and much improved [ensime-server](https://github.com/ensime/ensime-server) available. Codeprose is in desperate need for an update to make full use of the improvements in ensime's latest version.
 
 ## Installation
 

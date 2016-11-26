@@ -20,8 +20,6 @@ re-usability and maintenance.
 Codeprose's design makes it easily extendible to other or mixtures of languages and 
 offers the possibility of introducing other output formats such as, for example, LaTeX.
 
-codeprose is a literate programming tool for Scala featuring text decoration via markdown comments and source code enriched with compile time information via .
-
 
 ## Output examples:
 
@@ -32,7 +30,7 @@ codeprose is a literate programming tool for Scala featuring text decoration via
 
 - Codeprose is still a beta! The current version is build against a fork of the [ensime-server](https://github.com/ensime/ensime-server) that can be found at [gushai/ensime-server](https://github.com/gushai/ensime-server). This repository also includes the ensime-client that is used by codeprose. The ensime-client needs to be published locally.
 
-- There is a new and much improved [ensime-server](https://github.com/ensime/ensime-server) available. Codeprose is in desperate need for an update to make full use of the improvements in ensime's latest version.
+- There is a new and much improved [ensime-server](https://github.com/ensime/ensime-server) available. Codeprose is in desperate need for an update to make full use of the improvements in ENSIME's latest version.
 
 ## Installation
 
@@ -79,7 +77,7 @@ Go into the ensime-server folder from installation step 1.1 and execute
 
 to start the server.
 
-**Note**: If you start the ensime-server for the first time on a project it takes a while until ensime has  gathered all information. Be patient.
+**Note**: If you start the ensime-server for the first time on a project it takes a while until the ensime-server has  gathered all information. Be patient.
 
 #### 2. Run codeprose
 
